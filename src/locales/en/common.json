@@ -1,0 +1,1124 @@
+{
+  "navbar": {
+    "about": "ABOUT US",
+    "publicTransactions": "PUBLIC TRANSACTIONS",
+    "marketplace": "MARKETPLACE",
+    "auction": "AUCTION",
+    "deals": "DEALS",
+    "explorer": "EXPLORER",
+    "search": "SEARCH",
+    "language": "LANGUAGE",
+    "profile": "PROFILE", 
+    "fractionalization":"FRACTIONALIZATION",
+    "mint": "Mint",
+    "ourStory": "Our Story",
+    "team": "Team", 
+    "careers": "Careers",
+    "tokenInfo": {
+      "tokenOwner": "Token Owner",
+      "enterTokenId": "Enter token ID",
+      "loading": "Loading...",
+      "getOwner": "Get Owner",
+      "owner": "Owner",
+      "walletBalance": "Wallet Balance",
+      "enterWalletAddress": "Enter wallet address",
+      "getBalance": "Get Balance",
+      "balance": "Balance",
+      "tokensLabel": "tokens",
+      "tokenBtn": "Token",
+      "balanceBtn": "Balance",
+      "checkOwnerTitle": "Check Owner by Token ID",
+      "checkBalanceTitle": "Check NFT Balance by Address",
+      "invalidTokenId": "Enter a valid Token ID (number)",
+      "invalidWalletAddress": "Enter a valid BNB wallet address",
+      "network": "Network",
+      "switchToTestnet": "Switch to BSC Testnet!",
+      "error": "Error"
+    },
+    "transfer": {
+      "button": "Transfer",
+      "title": "Safe Transfer",
+      "fromPlaceholder": "From (0x...)",
+      "toPlaceholder": "To (0x...)",
+      "tokenIdPlaceholder": "Token ID",
+      "transfer": "Transfer",
+      "transferring": "Transferring..."
+    }
+  },
+  "auction": {
+    "title": "Auctions",
+    "empty": "No active auctions found",
+    "errorLoading": "Failed to load auctions"
+  },
+  "hero": {
+    "title": "REVOLUTIONIZING REAL ESTATE",
+    "titleSecond": "TRANSACTION IN {{regionUpper}}",
+    "description": "Tokenizing real estate to reduce cost and streamline transaction",
+    "savings": "₹2000 crore annually",
+    "exploreDistricts": "Explore Districts",
+    "learnMore": "Learn More",
+    "districts": "Districts",
+    "transactions": "Transactions",
+    "districtsTitle": "DISTRICTS",
+    "tableName": "Name",
+    "tableTransactions": "No. of Transactions"
+  },
+  "marketplace": {
+    "clearAllFilters": "Clear all Filters",
+    "tokenType": "Token Type",
+    "district": "District",
+    "price": "Price",
+    "size": "Size",
+    "search": "Search",
+    "priceRange": "Price Range",
+    "sizeRange": "Size Range",
+    "min": "Min",
+    "max": "Max",
+    "tokenOptions": {
+      "introduction": "Introduction",
+      "faq": "FAQ",
+      "policies": "Policies",
+      "documentation": "Documentation"
+    },
+    "districtOptions": {
+      "delhi": "Delhi",
+      "mumbai": "Mumbai",
+      "bangalore": "Bangalore",
+      "chennai": "Chennai"
+    },
+    "saleType": "Sale Type",
+    "saleTypeOptions": {
+      "all": "All",
+      "public": "Public Sale",
+      "govt": "Govt Sale"
+    },
+    "tokenName": "TOKEN NAME",
+    "districtName": "DISTRICT NAME",
+    "priceLabel": "PRICE",
+    "sizeLabel": "SIZE"
+  },
+  "deals": {
+    "func1": "Gift",
+    "func2": "Mortgage",
+    "rentAgreement": "Rent Agreement",
+    "func3": "Private Sale",
+    "func4": "Delegate Authority",
+    "func5": "Public Sale",
+    "func6": "Freeze Token",
+    "func7": "Unfreeze Token",
+    "func8": "Mint Token",
+    "func9": "Batch Mint",
+    "createAuction": "Create Auction",
+    "landRegistration": "Development Agreement",
+    "landRegistrationOwnerTokens": "Owner Tokens",
+    "landRegistrationDeveloperTokens": "Developer Tokens",
+    "landRegistrationMortgageTokens": "Mortgage Tokens",
+    "createDevelopmentAgreement": "Create Development Agreement",
+    "fractionalization": "Fractionalization",
+    "requestMortgageRelease": "Request Mortgage Release",
+    "demolish": "Demolish Flats",
+    "demolishSubflats": "Demolish Subflats",
+    "transferOwnership": "Transfer Ownership",
+    "setFee": "Set Fee",
+    "setGovernmentWallet": "Set Government Wallet",
+    "updateAdmin": "Update Admin",
+    "tokenId": "Token Id",
+    "required": "*",
+    "emptyFieldError": "This field can not be empty!",
+    "enterTokenId": "Enter Token ID",
+    "submit": "SUBMIT",
+    "fractionalize": "Fractionalize"
+  },
+  "landRegistration": {
+    "title": "Development Agreement"
+  },
+  
+  "dealsAuction": {
+    "basePriceUsdt": "Base Price (USDT)",
+    "createAuction": "Create Auction",
+    "creatingAuction": "Creating Auction...",
+    "auctionCreated": "✓ Auction Created",
+    "placeholders": {
+      "enterBasePrice": "Enter base price in USDT"
+    }
+  },
+  "dealsForm": {
+    "assetType": "Asset Type",
+    "land": "Land",
+    "flat": "Flat",
+    "subflat": "Sub Flat",
+    "tokenId": "Token ID",
+    "parentTokenId": "Parent Token ID",
+    "flatTokenId": "Flat ID",
+    "numberOfFractions": "Number of Fractions",
+    "recipientAddress": "Receiver Address",
+    "buyerAddress": "Buyer Address",
+    "delegateAddress": "Delegate Address",
+    "lenderAddress": "Lender Address",
+    "loanAmount": "Loan Amount (USDT)",
+    "interestAmount": "Interest Amount (%)",
+    "durationDays": "Duration Days",
+    "saleAmount": "Sale Amount",
+    "saleAmountUsdt": "Sale Amount (USDT)",
+    "message": "Message",
+    "placeholders": {
+      "enterTokenId": "Enter Token ID",
+      "enterCount": "Enter count",
+      "enterTokenIdDelegation": "Enter Token ID for delegation",
+      "enterReceiverAddress": "Enter receiver wallet address (0x...)",
+      "enterBuyerAddress": "Enter buyer wallet address (0x...)",
+      "enterDelegateAddress": "Enter wallet address to delegate authority (0x...)",
+      "enterLenderAddress": "Enter lender wallet address (0x...)",
+      "enterLoanAmount": "Enter loan amount in USDT",
+      "enterInterestAmount": "Enter interest amount in USDT",
+      "enterDurationDays": "Enter loan duration in days",
+      "enterSaleAmount": "Enter sale amount in USDT (e.g., 100)",
+      "enterMessageOptional": "Enter a message for the receiver (optional)"
+    }
+  },
+  "dealsButtons": {
+    "freezeToken": "Freeze Token",
+    "freezing": "Freezing...",
+    "unfreezeToken": "Unfreeze Token",
+    "unfreezing": "Unfreezing...",
+    "approveNft": "Approve NFT",
+    "approvingNft": "Approving NFT...",
+    "nftApproved": "✓ NFT Approved",
+    "approveUsdt": "Approve USDT",
+    "approvingUsdt": "Approving USDT...",
+    "usdtApproved": "✓ USDT Approved",
+    "delegateToken": "Delegate Token",
+    "delegating": "Delegating...",
+    "recordingDelegation": "Recording Delegation...",
+    "requestMortgage": "Request Mortgage",
+    "requestingMortgage": "Requesting Mortgage...",
+    "recordingRequest": "Recording Request...",
+    "initiatePrivateSale": "Initiate Private Sale",
+    "initiatingPrivateSale": "Initiating Private Sale...",
+    "privateSaleInitiated": "✓ Private Sale Initiated",
+    "initiatePublicSale": "Initiate Public Sale",
+    "initiatingPublicSale": "Initiating Public Sale...",
+    "publicSaleInitiated": "✓ Public Sale Initiated",
+    "createGift": "Create Gift",
+    "creatingGift": "Creating Gift...",
+    "giftCreated": "✓ Gift Created",
+    "confirming": "Confirming...",
+    "processing": "Processing...",
+    "approve": "Approve",
+    "approved": "Approved",
+    "loadingFee": "Loading Fee...",
+    "transferOwnership": "Transfer Ownership",
+    "transferringOwnership": "Transferring Ownership...",
+    "setFee": "Set Fee",
+    "settingFee": "Setting Fee...",
+    "setGovernmentWallet": "Set Government Wallet",
+    "settingGovernmentWallet": "Setting Government Wallet...",
+    "updateAdmin": "Update Sale Admin",
+    "updatingAdmin": "Updating Sale Admin...",
+    "step": {
+      "step1ApproveNft": "Step 1: Approve NFT",
+      "step2ApproveUsdt": "Step 2: Approve USDT",
+      "step3CreateGift": "Step 3: Create Gift",
+      "step3InitiatePrivateSale": "Step 3: Initiate Private Sale",
+      "step3InitiatePublicSale": "Step 3: Initiate Public Sale"
+    }
+  },
+  "setFee": {
+    "contractLabel": "Select Contract",
+    "options": {
+      "sale": "Sales Contract",
+      "mortgage": "Mortgage Contract",
+      "gift": "Gift Contract"
+    },
+    "feeValue": "Fee Value",
+    "placeholders": {
+      "enterFee": "Enter fee"
+    }
+  },
+  "transferOwnership": {
+    "contractLabel": "Select Contract",
+    "options": {
+      "usdt": "USDT Contract",
+      "sale": "Sales Contract",
+      "mortgage": "Mortgage Contract",
+      "gift": "Gift Contract",
+      "nft": "NFT Contract",
+      "delegate": "Delegate Contract"
+    },
+    "newOwnerAddress": "New Owner Address",
+    "placeholders": {
+      "enterNewOwnerAddress": "Enter new owner wallet address (0x...)"
+    }
+  },
+  "setGovernmentWallet": {
+    "addressLabel": "Government Wallet Address",
+    "placeholders": {
+      "enterAddress": "Enter government wallet address (0x...)"
+    }
+  },
+  "updateAdmin": {
+    "contractLabel": "Select Contract",
+    "options": {
+      "sale": "Sales Contract",
+      "gift": "Gift Contract"
+    },
+    "addressLabel": "Admin Address",
+    "placeholders": {
+      "enterAddress": "Enter admin wallet address (0x...)"
+    }
+  },
+  "explorer": {
+    "tokenName": "TOKEN NAME",
+    "ownedBy": "Owned By",
+    "tokenId": "Token ID",
+    "currentListedPrice": "Current Listed Price",
+    "highestBidPrice": "Highest Bid Price",
+    "lakh": "Lakh",
+    "makeOffer": "MAKE OFFER",
+    "makeBid": "MAKE BID",
+    "updateBid": "UPDATE BID",
+    "previousBid": "Your previous bid",
+    "buy": "BUY",
+    "tabs": {
+      "properties": "Properties",
+      "ownershipHistory": "Ownership History",
+      "transactionHistory": "Transaction History",
+      "bidHistory": "Bid History",
+      "offers": "Offers"
+    },
+    "tableHeaders": {
+      "from": "From",
+      "to": "To",
+      "event": "Event",
+      "sellingPrice": "Selling Price",
+      "owner": "Owner",
+      "duration": "Duration"
+    },
+    "offersTabs": {
+      "offers": "OFFERS",
+      "myOffers": "MY OFFERS"
+    },
+    "makeOfferModal": {
+      "title": "Make an Offer",
+      "priceLabel": "Your Offer Price",
+      "expirationLabel": "Expiration Date",
+      "cancel": "Cancel",
+      "submit": "Submit Offer"
+    },
+    "offersTable": {
+      "price": "Price",
+      "askDiff": "Ask Diff",
+      "offers": "Offers",
+      "createdAt": "Created At",
+      "expiresIn": "Expires In",
+      "bidder": "Bidder"
+    },
+    "history": {
+      "connectWalletPrompt": "Please connect your wallet to view transaction history",
+      "headers": {
+        "from": "From",
+        "to": "To",
+        "price": "Price",
+        "type": "Type"
+      },
+      "na": "N/A",
+      "noHistoryForToken": "No transaction history found for Token ID {{tokenId}}",
+      "noHistoryAvailable": "No transaction history available"
+    },
+    "bidHistory": {
+      "headers": {
+        "bidder": "Bidder",
+        "amount": "Amount",
+        "time": "Time"
+      },
+      "noBids": "No bids yet for this token."
+    },
+    "bidModal": {
+      "amountLabel": "Bid Amount (USDT)",
+      "amountPlaceholder": "Enter your bid amount"
+    },
+    "myOffersMessage": "Your offers will be displayed here...",
+    "comingSoon": "COMING SOON",
+    "featureInDevelopment": "This feature is currently under development.",
+    "sampleData": {
+      "companyName": "Opus Bloc",
+      "eventType": "Transfer",
+      "duration": "May 2025 - Present",
+      "price": "100000"
+    },
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "Name",
+      "district": "District",
+      "type": "Type",
+      "size": "Size",
+      "saleType": "Sale Type",
+      "contractAddress": "Contract Address",
+      "transactionHash": "Transaction Hash"
+    },
+    "units": {
+      "sqft": "sqft",
+      "sqyd": "sq yd",
+      "acres": "acres"
+    },
+    "labels2": {
+      "price": "Price"
+    },
+    "buyModal": {
+      "title": "Buy Token",
+      "tokenId": "Token ID",
+      "tokenIdHelp": "Token ID is automatically selected from the current property",
+      "selectDistrict": "Select a district",
+      "approving": "Approving...",
+      "approveUsdt": "Approve USDT",
+      "usdtApproved": "✓ USDT Approved",
+      "buyNow": "Buy Now",
+      "buying": "Buying...",
+      "processing": "Processing...",
+      "usdtApprovedHelper": "✓ USDT Approved! You can now buy the token."
+    },
+    "cancelSale": "Cancel Sale",
+    "cancelling": "Cancelling...",
+    "insufficientBalanceNote": "NOTE: Add at least {{amount}} USDT to your wallet to buy this NFT."
+  },
+  "districts": {
+    "srikakulam": "Srikakulam",
+    "vizianagaram": "Vizianagaram",
+    "parvathipuramManyam": "Parvathipuram Manyam",
+    "visakhapatnam": "Visakhapatnam",
+    "anakapalli": "Anakapalli",
+    "alluriSitharamaRaju": "Alluri Sitharama Raju",
+    "kakinada": "Kakinada",
+    "drBRAmbedkarKonaseema": "Dr. B.R. Ambedkar Konaseema",
+    "eastGodavari": "East Godavari",
+    "westGodavari": "West Godavari",
+    "eluru": "Eluru",
+    "krishna": "Krishna",
+    "ntr": "NTR",
+    "guntur": "Guntur",
+    "palnadu": "Palnadu",
+    "bapatla": "Bapatla",
+    "prakasam": "Prakasam",
+    "spsrNellore": "Sri Potti Sriramulu Nellore (SPSR Nellore)",
+    "kurnool": "Kurnool",
+    "nandyal": "Nandyal",
+    "anantapur": "Anantapur",
+    "sriSathyaSai": "Sri Sathya Sai",
+    "ysrKadapa": "YSR Kadapa",
+    "annamayya": "Annamayya",
+    "tirupati": "Tirupati",
+    "chittoor": "Chittoor",
+
+    "The Line": "The Line",
+    "Oxagon": "Oxagon",
+    "Trojena": "Trojena",
+    "Sindalah": "Sindalah",
+    "Magna/Leyja": "Magna/Leyja",
+    "Magna/Epicon": "Magna/Epicon",
+    "Magna/Siranna": "Magna/Siranna",
+    "Magna/Utamo": "Magna/Utamo",
+    "Magna/Norlana": "Magna/Norlana",
+    "Magna/Aquellum": "Magna/Aquellum",
+    "Magna/Zardun": "Magna/Zardun",
+    "Magna/Xaynor": "Magna/Xaynor",
+    "Magna/Elanan": "Magna/Elanan",
+    "Magna/Gidori": "Magna/Gidori",
+    "Magna/Treyam": "Magna/Treyam",
+    "Magna/Jaumur": "Magna/Jaumur",
+
+    "Abu Dhabi City": "Abu Dhabi City",
+    "Al Ain": "Al Ain",
+    "Dubai": "Dubai",
+    "Sharjah": "Sharjah",
+    "Ajman": "Ajman",
+    "Umm Al Quwain": "Umm Al Quwain",
+    "Ras Al Khaimah": "Ras Al Khaimah",
+    "Fujairah": "Fujairah",
+    "Al Dhafra (Al Gharbia)": "Al Dhafra (Al Gharbia)",
+    "Jebel Ali": "Jebel Ali",
+    "Bangkok": "Bangkok",
+    "Chiang Mai": "Chiang Mai",
+    "Phuket": "Phuket",
+    "Pattaya": "Pattaya",
+    "Chiang Rai": "Chiang Rai",
+    "Ayutthaya": "Ayutthaya",
+    "Hat Yai": "Hat Yai",
+    "Krabi": "Krabi",
+    "Surat Thani": "Surat Thani",
+    "Nakhon Ratchasima": "Nakhon Ratchasima",
+    "Ahmednagar": "Ahmednagar",
+    "Akola": "Akola",
+    "Amravati": "Amravati",
+    "Aurangabad": "Aurangabad",
+    "Beed": "Beed",
+    "Bhandara": "Bhandara",
+    "Buldhana": "Buldhana",
+    "Chandrapur": "Chandrapur",
+    "Dhule": "Dhule",
+    "Gadchiroli": "Gadchiroli",
+    "Gondia": "Gondia",
+    "Hingoli": "Hingoli",
+    "Jalgaon": "Jalgaon",
+    "Jalna": "Jalna",
+    "Kolhapur": "Kolhapur",
+    "Latur": "Latur",
+    "Mumbai City": "Mumbai City",
+    "Mumbai Suburban": "Mumbai Suburban",
+    "Nagpur": "Nagpur",
+    "Nanded": "Nanded",
+    "Nandurbar": "Nandurbar",
+    "Nashik": "Nashik",
+    "Osmanabad": "Osmanabad",
+    "Palghar": "Palghar",
+    "Parbhani": "Parbhani",
+    "Pune": "Pune",
+    "Raigad": "Raigad",
+    "Ratnagiri": "Ratnagiri",
+    "Sangli": "Sangli",
+    "Satara": "Satara",
+    "Sindhudurg": "Sindhudurg",
+    "Solapur": "Solapur",
+    "Thane": "Thane",
+    "Wardha": "Wardha",
+    "Washim": "Washim",
+    "Yavatmal": "Yavatmal",
+    "Adilabad": "Adilabad",
+    "Bhadradri Kothagudem": "Bhadradri Kothagudem",
+    "Hanamkonda": "Hanamkonda",
+    "Hyderabad": "Hyderabad",
+    "Jagtial": "Jagtial",
+    "Jangaon": "Jangaon",
+    "Jayashankar Bhupalpally": "Jayashankar Bhupalpally",
+    "Jogulamba Gadwal": "Jogulamba Gadwal",
+    "Kamareddy": "Kamareddy",
+    "Karimnagar": "Karimnagar",
+    "Khammam": "Khammam",
+    "Kumuram Bheem Asifabad": "Kumuram Bheem Asifabad",
+    "Mahabubabad": "Mahabubabad",
+    "Mahabubnagar": "Mahabubnagar",
+    "Mancherial": "Mancherial",
+    "Medak": "Medak",
+    "Medchal–Malkajgiri": "Medchal–Malkajgiri",
+    "Mulugu": "Mulugu",
+    "Nagarkurnool": "Nagarkurnool",
+    "Nalgonda": "Nalgonda",
+    "Narayanpet": "Narayanpet",
+    "Nirmal": "Nirmal",
+    "Nizamabad": "Nizamabad",
+    "Peddapalli": "Peddapalli",
+    "Rajanna Sircilla": "Rajanna Sircilla",
+    "Ranga Reddy": "Ranga Reddy",
+    "Sangareddy": "Sangareddy",
+    "Siddipet": "Siddipet",
+    "Suryapet": "Suryapet",
+    "Vikarabad": "Vikarabad",
+    "Wanaparthy": "Wanaparthy",
+    "Warangal": "Warangal",
+    "Yadadri Bhuvanagiri": "Yadadri Bhuvanagiri",
+    "Sohar": "Sohar",
+     "Doha" : "Doha",
+  "Al Rayyan": "Al Rayyan",
+  "Al Wakrah" : "Al Wakrah",
+  "Umm Salal"  : "Umm Salal",
+  "Al Khor" : "Al Khor",
+  "Al Daayen" : "Al Daayen",
+  "Al Shahaniya" : "Al Shahaniya",
+  "Al Shamal" : "Al Shamal",
+  "Mesaieed" : "Mesaieed",
+  "Dukhan" : "Dukhan",
+    "Muscat"  : "Muscat",
+  "Muttrah" : "Muttrah",
+  "Seeb"  : "Seeb",
+  "Rustaq" : "Rustaq",
+  "Nizwa" : "Nizwa",
+  "Sur" : "Sur",
+  "Ibra" : "Ibra",
+  "Salalah" : "Salalah",
+  "Ibri" : "Ibri"
+  }
+,
+  "banner": "Banner for important information or Updates",
+  "footer": {
+    "companyDescription": "Revolutionizing real estate transactions in {{regionTitle}} through blockchain technology. Tokenizing properties to reduce costs and streamline processes.",
+    "navigation": "Navigation",
+    "aboutUs": "About Us",
+    "marketplace": "Marketplace",
+    "deals": "Deals",
+    "explorer": "Explorer",
+    "team": "Team",
+    "careers": "Careers",
+    "resources": "Resources",
+    "helpCenter": "Help Center",
+    "documentation": "Documentation",
+    "apiReference": "API Reference",
+    "security": "Security",
+    "systemStatus": "System Status",
+    "contact": "Contact",
+    "email": "support@opusbloc.com",
+    "phone": "+91 (0) 123-456-7890",
+    "location": "{{regionTitle}}",
+    "stayUpdated": "Stay Updated",
+    "emailPlaceholder": "Enter your email",
+    "subscribe": "Subscribe",
+    "stats": {
+      "annualSavings": "Annual Savings",
+      "districts": "Districts",
+      "transactions": "Transactions",
+      "support": "Support"
+    },
+    "copyright": "Opus Bloc. All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "cookiePolicy": "Cookie Policy",
+    "compliance": "Compliance",
+    "builtWith": "Built with",
+    "forAndhraPradesh": "for {{regionTitle}}"
+  },
+  "languages": {
+    "english": "English",
+    "hindi": "हिंदी",
+    "telugu": "తెలుగు"
+  },
+  "aboutUs": {
+    "title": "About Us",
+    "paragraph1": "Opus Bloc Inc. is driven by a mission to harness the power of both blockchain technology and artificial intelligence (AI) to solve complex problems that affect individuals, organizations, and governments worldwide. The company envisions a future where decentralized systems and intelligent automation empower communities by providing secure, transparent, and efficient solutions that are accessible to all. Unlike many firms focused solely on cryptocurrency or speculative financial applications, Opus Bloc prioritizes practical, real-world use cases that deliver tangible benefits through the seamless integration of blockchain and AI. This commitment to impact-driven innovation sets the company apart, as it seeks to bridge the gap between advanced technology and everyday challenges, ensuring that billions can benefit from its solutions.",
+    "paragraph2": "The vision of Opus Bloc extends beyond technological advancement to societal transformation. By creating custom blockchains tailored to specific needs and leveraging AI to enhance decision-making, automation, and data analysis, the company aims to democratize access to secure, intelligent, and efficient systems. This fosters trust and collaboration across sectors—whether it's streamlining operations for large organizations with AI-driven insights, enabling secure digital identities for underserved populations through blockchain, or optimizing processes with the combined power of both technologies. Opus Bloc is dedicated to making blockchain and AI tools for global progress, ensuring that these technologies work together to create meaningful change and empower communities worldwide."
+  },
+  "profile": {
+    "tabs": {
+      "overview": "Overview",
+      "myTokens": "My Tokens",
+      "history": "History",
+      "pendingApprovals": "Pending Approvals",
+      "settings": "Settings",
+      "governmentApproval": "Government Approvals",
+"giftStatus": "Approvals Status",
+      "delegatedToMe": "Delegated To Me",
+      "auctionBidding": "Auction Bidding",
+      "myAuctions": "My Auctions",
+      "landRequests": "Land Requests",
+      "unlockTokens": "Unlock Tokens"
+    },
+    "walletNotConnectedTitle": "Wallet Not Connected",
+    "walletNotConnectedDesc": "Please connect your wallet to view your profile.",
+    "editProfile": "Edit Profile",
+    "disconnect": "Disconnect",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "email": "Email",
+    "emailPlaceholder": "Enter your email",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself",
+      "saveChanges": "Save Changes",
+      "viewToken": "View Token",
+      "overview": {
+      "totalTransactions": "Total Transactions",
+      "tokensOwned": "Tokens Owned",
+      "walletBalance": "Wallet Balance",
+      "usdtBalance": "USDT Balance",
+      "walletInformation": "Wallet Information",
+      "address": "Address",
+      "ethBalance": "BNB Balance"
+    },
+    "history": {
+      "title": "Transaction History",
+      "loading": "Loading transaction history...",
+      "walletAddress": "Wallet Address",
+      "retry": "Retry",
+      "table": {
+        "type": "Type",
+        "tokenName": "Token Name",
+        "tokenId": "Token ID",
+        "propertyType": "Property Type",
+        "price": "Price",
+        "date": "Date",
+        "districtName": "District Name",
+        "transactionHash": "Transaction Hash",
+        "actions": "Actions"
+      },
+      "downloadDeed": "Download Deed",
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "showing": "Showing",
+        "to": "to",
+        "results": "results"
+      },
+      "types": {
+        "Public_Sale": "Public Sale",
+        "Private_Sale": "Private Sale",
+        "Delegate_NFT": "Delegate NFT",
+        "Delegate_Transfer": "Delegate Transfer",
+        "Revoke_Delegation": "Revoke Delegation",
+        "create_mortage": "Create Mortgage",
+        "loan_repay": "Loan Repay",
+        "liquidate_collateral": "Liquidate Collateral",
+        "Cancel_Sale": "Cancel Sale",
+        "Buy_NFT": "Buy NFT",
+        "Gift_Created": "Gift Created"
+      }
+    },
+    "delegatedToMe": {
+      "empty": "No tokens delegated to you.",
+      "transfer": "Transfer",
+      "transferModal": {
+        "title": "Transfer Delegated Token",
+        "toAddress": "To Address",
+        "toAddressPlaceholder": "Enter receiver wallet address (0x...)",
+        "transfer": "Transfer"
+      }
+    },
+    "auctionBidding": {
+      "empty": "You haven't placed any bids yet.",
+      "labels": {
+        "basePrice": "Base Price",
+        "yourBidPrice": "Your Bid Price",
+        "tokenId": "Token ID"
+      }
+    },
+    "unlockTokens": {
+      "title": "Unlock Tokens",
+      "empty": "No unlock requests found.",
+      "columns": {
+        "tokenId": "Token ID",
+        "requestId": "Request ID",
+        "requester": "Requester",
+        "developer": "Developer",
+        "government": "Government",
+        "ownerTokens": "Owner Tokens",
+        "developerTokens": "Developer Tokens",
+        "mortgageTokens": "Mortgage Tokens",
+        "status": "Status",
+        "created": "Created"
+      }
+    }
+  },
+  "profileApprovals": {
+    "approvals": {
+      "title": "Pending Approvals",
+      "emptyTitle": "No Pending Approvals",
+      "emptyDesc": "You have no pending contract approvals at this time.",
+      "tokenId": "Token ID",
+      "amount": "Amount",
+      "borrower": "Borrower",
+      "requested": "Requested",
+      "seller": "Seller",
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "details": "Details",
+        "acceptMortgage": "Accept Mortgage",
+        "rejectMortgage": "Reject Mortgage"
+      }
+    },
+    "types": {
+      "mortage_requested": "Mortgage Requested"
+    },
+    "modal": {
+      "title": "Approve Mortgage",
+      "titlePrivateSale": "Approve Private Sale"
+    }
+  },
+  "propertyTypes": {
+    "residential": "Residential",
+    "apartment": "Apartment",
+    "commercial": "Commercial",
+    "house_villa": "House / Villa",
+    "land_parcel": "Land Parcel"
+  },
+  "categoryTypes": {
+    "residential_layout": "Residential Layout",
+    "house_villa": "House / Villa",
+    "apartment": "Apartment",
+    "land_parcel": "Land Parcel"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "approving": "Approving...",
+    "status": "Status",
+    "createdAt": "Created"
+  },
+  "tokens": {
+    "title": "My Tokens",
+    "allTokens": "All Tokens",
+    "owned": "Owned",
+    "listedForSale": "Listed for Sale",
+    "delegated": "Delegated",
+    "mortgage": "Mortgage",
+    "lending": "Lending",
+    "developerShare": "Developer's Share",
+    "mortgageRepayment": "Mortgage Repayment",
+    "liquidateLoan": "Liquidate Loan",
+    "mortgaged": "Mortgaged",
+    "auctioned": "Auctioned",
+    "developerTokens": "Developer Tokens",
+    "public": "Public",
+    "government": "Government",
+    "private": "Private",
+    "delegate": "Delegate",
+    "approveUSDT": "Approve USDT",
+    "approvalRequired": "Approval required",
+    "repaying": "Repaying...",
+    "repay": "Repay",
+     "repaid": "Retry",
+    "available": "Available",
+    "frozen": "Frozen",
+    "buyersInterested": "buyers interested",
+    "cancelSale": "Cancel Sale",
+    "cancelBid": "Cancel Bid",
+    "acceptBid": "Accept Bid",
+    "to": "To",
+    "revoke": "Revoke",
+    "rate": "Rate",
+    "interest": "Interest",
+    "due": "Due",
+    "repayLoan": "Repay Loan",
+    "liquidateToken": "Liquidate Token",
+    "showingCount": "{{count}} of {{total}} token(s)",
+    "loadingOwned": "Loading owned tokens...",
+    "loadingListed": "Loading sale data...",
+    "loadingDelegated": "Loading delegation data...",
+    "loadingMortgage": "Loading mortgage data...",
+    "noTokensFound": "No Tokens Found",
+    "tokenId": "Token ID",
+    "loanAmount": "Loan Amount",
+    "lender": "Lender",
+    "duration": "Duration",
+    "mintToken": "Mint Token",
+    "empty": {
+      "all": "You don't own any tokens yet. Start by minting your first token!",
+      "category": "You don't have any tokens in the {{category}} category."
+    }
+  },
+  "tokenInfoPage": {
+    "title": "Token Info",
+    "back": "Back",
+    "goBack": "Go Back",
+    "loading": "Loading token info...",
+    "propertyDetails": "Property Details",
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "Name",
+      "district": "District",
+      "propertyType": "Property Type",
+      "size": "Size",
+      "contractAddress": "Contract Address",
+      "createdAt": "Created At",
+      "description": "Description"
+    },
+    "fields": {
+      "ownedBy": "Owned By",
+      "district": "District",
+      "category": "Category",
+      "propertyType": "Property Type",
+      "surveyNumber": "Survey Number",
+      "doorNumber": "Door Number",
+      "flatNumber": "Flat Number",
+      "plotNumber": "Plot Number",
+      "areaAcre": "Area (acre)",
+      "areaSqYd": "Area (sq. yd)",
+      "builtUpAreaSqft": "Built-up Area (sqft)",
+      "roadFrontage": "Road Frontage",
+      "boundaryNorth": "Boundary North",
+      "boundaryEast": "Boundary East",
+      "boundaryWest": "Boundary West",
+      "boundarySouth": "Boundary South",
+      "uniqueKey": "Unique Key",
+      "status": "Status",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "state": "State",
+      "country": "Country"
+    }
+  }
+  ,
+  "mint": {
+    "title": "Mint Token",
+    "connectWalletFirst": "Please connect your wallet first",
+    "fillRequiredFields": "Please fill required fields (image, district, category, name)",
+    "imageUrlLabel": "Token Image URL",
+    "imageUrlPlaceholder": "https://...",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g., Plot in {district}",
+    "districtLabel": "District",
+    "districtPlaceholder": "Select district",
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "Select category",
+    "surveyNumberLabel": "Survey Number",
+    "doorNumberLabel": "Door Number",
+    "flatNumberLabel": "Flat Number",
+    "plotNumberLabel": "Plot Number",
+    "sizeLabel": "Size",
+    "sizeUnitPlaceholder": "Select unit",
+    "sizeValuePlaceholder": "Enter size value",
+    "boundaryNorthLabel": "Boundary North",
+    "boundaryEastLabel": "Boundary East",
+    "boundaryWestLabel": "Boundary West",
+    "boundarySouthLabel": "Boundary South",
+    "roadFrontageLabel": "Road Frontage",
+    "descriptionLabel": "Description",
+    "buttonMint": "Mint",
+    "minting": "Minting...",
+    "transactionFailed": "Transaction failed"
+  },
+
+  "status": {
+  "noTransactionsTitle": "No Transactions Found",
+  "noTransactionsDesc": "You do not have any pending or completed transactions.",
+
+  "types": {
+    "gift": "Gift Request",
+    "privateSale": "Private Sale Request",
+    "publicSale": "Public Sale Request",
+    "mortgageApproval": "Mortgage Approval",
+    "repay": "Repay Request",
+    "auction": "Auction Approval",
+    "delegate": "Delegate Approval",
+    "delegateTransfer": "Delegate Transfer",
+    "revoke": "Revoke Delegation"
+  },
+
+  "labels": {
+    "tokenId": "Token ID",
+    "flatId": "Flat ID",
+    "subflatId": "Subflat ID",
+    "nftContract": "NFT Contract",
+
+    "sender": "Sender",
+    "receiver": "Receiver",
+    "message": "Message",
+
+    "buyer": "Buyer",
+    "seller": "Seller",
+
+    "borrower": "Borrower",
+    "lender": "Lender",
+    "loanAmount": "Loan Amount",
+    "interest": "Interest",
+
+    "auctionId": "Auction ID",
+    "bidder": "Bidder",
+    "bidAmount": "Bid Amount",
+
+    "delegater": "Delegater",
+    "delegatee": "Delegatee",
+
+    "from": "From",
+    "to": "To",
+
+    "lastUpdated": "Last Updated"
+  }
+},
+"govApproval": {
+  "tabs": {
+    "gift": "Gift Approvals",
+    "auctionApproval": "Auction Approvals",
+    "privateSale": "Private Sale",
+    "publicSale": "Public Sale",
+    "delegate": "Delegate Approvals",
+    "delerequest": "Delegate Transfer Requests",
+    "repay": "Repay Requests",
+    "revoke": "Revoke Delegation Requests",
+    "mortgage": "Mortgage Approvals",
+    "land": "Development Agreement",
+    "unlock": "Unlock Token",
+    "all": "All Approvals",
+    "rent": "Rent Agreement",
+    "renew": "Renew Requests",
+    "rentCancel": "Rent Cancel"
+  },
+
+  "gift": {
+    "empty": "No pending approvals right now."
+  },
+  "privateSale": {
+    "empty": "No pending private sale approvals."
+  },
+  "publicSale": {
+    "empty": "No pending public sale approvals."
+  },
+  "mortgage": {
+    "empty": "No pending mortgage approvals."
+  },
+  "repay": {
+    "empty": "No repay requests available."
+  },
+  "revoke": {
+    "empty": "No revoke delegation requests available."
+  },
+  "delegate": {
+    "empty": "No pending delegate approvals."
+  },
+  "delerequest": {
+    "empty": "No delegate transfer requests available."
+  },
+  "auctionApproval": {
+    "empty": "No auction approvals pending."
+  },
+   "badges": {
+    "approvedByBorrower": "Approved by Borrower"
+  },
+  
+
+  "labels": {
+    "tokenId": "Token ID",
+    "flatId": "Flat ID",
+    "subflatId": "Subflat ID",
+    "mortgageId": "Mortgage ID",
+    "district": "District",
+    "type": "Type",
+    "durationDays": "Duration",
+    "approvedOn": "Approved On",
+    "basePrice": "Base Price",
+    "bidPrice": "Bid Price",
+    "sender": "Sender",
+    "receiver": "Receiver",
+    "message": "Message",
+    "amount":"Amount",
+
+    "ownerDelegater": "Owner (Delegater)",
+    "delegater": "Delegater",
+    "delegatee": "Delegatee",
+
+    "borrower": "Borrower",
+    "lender": "Lender",
+    "loanAmount": "Loan Amount",
+    "interestAmount": "Interest Amount",
+
+    "buyer": "Buyer",
+    "seller": "Seller",
+
+    "nftAddress": "NFT Address",
+    "contract": "Contract",
+
+    "auctionId": "Auction ID",
+"acceptedBy": "Accepted By",
+
+
+    "fromAddress": "From Address",
+    "toAddress": "To Address",
+    "creatorAddress": "Creator Address",
+    "lenderAddress": "Lender Address",
+    "sellerAddress": "Seller Address",
+    "govWallet": "Gov Wallet",
+    "delegateAddress": "Delegate Address",
+
+    "requested": "Requested",
+    "requestedOn": "Requested On" 
+  },
+
+  "status": {
+    "pending": "Pending",
+    "pendingApproval": "Pending Approval",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "accepted": "Accepted",
+    "approvedByBorrower": "Approved by Borrower",
+    "approvedByGov": "Approved by Government",
+    "rejectedByGov": "Rejected by Government"
+  },
+
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+
+  "messages": {
+    "processing": "Processing...",
+    "transactionError": "Error: Transaction failed. Please try again."
+  }
+  
+},
+"publicTransactions": {
+  "title": "Public Transaction History",
+  "subtitle": "View all public blockchain transactions",
+
+  "tabs": {
+    "all": "All Types",
+    "transferSubflat": "Transfer Subflat",
+    "publicSaleSubflat": "Public Sale Subflat",
+    "privateSaleSubflat": "Private Sale Subflat",
+    "buyNftSubflat": "Buy NFT Subflat"
+  },
+
+  "filters": {
+    "moreTypes": "More Types:",
+    "selectType": "Select a type"
+  },
+
+  "dropdownTypes": {
+    "cancelSaleSubflat": "Cancel Sale Subflat",
+    "auctionSaleSubflat": "Auction Sale Subflat",
+
+    "transferFlat": "Transfer Flat",
+    "publicSaleFlat": "Public Sale Flat",
+    "privateSaleFlat": "Private Sale Flat",
+    "buyNftFlat": "Buy NFT Flat",
+    "cancelSaleFlat": "Cancel Sale Flat",
+    "auctionSaleFlat": "Auction Sale Flat",
+
+    "flatConsolidation": "Flat Consolidation",
+    "mortgageReleaseApproved": "Mortgage Release Approved"
+  },
+
+  "table": {
+    "from": "From",
+    "toBuyer": "To (Buyer)",
+    "date": "Date",
+    "functionName": "Function Name"
+  },
+
+  "labels": {
+    "contractInteraction": "Contract Interaction"
+  },
+
+  "messages": {
+    "loading": "Loading transactions...",
+    "noTransactions": "No transactions found"
+  },
+
+  "pagination": {
+    "label": "Showing {{from}} to {{to}} of {{total}} results",
+    "previous": "Previous",
+    "next": "Next"
+  },
+
+  "types": {
+    "TRANSFER_SUBFLAT": "Transfer Subflat",
+    "Public_Sale_Subflat": "Public Sale Subflat",
+    "Private_Sale_Subflat": "Private Sale Subflat",
+    "Buy_NFT_Subflat": "Buy NFT Subflat",
+    "Cancel_Sale_Subflat": "Cancel Sale Subflat",
+    "AUCTION_SALE_SUBFLAT": "Auction Sale Subflat",
+    "mortage_requested_subflat": "Mortgage Requested (Subflat)",
+    "mortage_accepted_subflat": "Mortgage Accepted (Subflat)",
+    "mortage_rejected_subflat": "Mortgage Rejected (Subflat)",
+
+    "TRANSFER_FLAT": "Transfer Flat",
+    "Public_Sale_Flat": "Public Sale Flat",
+    "Private_Sale_Flat": "Private Sale Flat",
+    "Buy_NFT_Flat": "Buy NFT Flat",
+    "Cancel_Sale_Flat": "Cancel Sale Flat",
+    "AUCTION_SALE_FLAT": "Auction Sale Flat",
+    "mortage_requested_flat": "Mortgage Requested (Flat)",
+    "mortage_accepted_flat": "Mortgage Accepted (Flat)",
+    "mortage_rejected_flat": "Mortgage Rejected (Flat)",
+
+    "FLAT_CONSOLIDATION": "Flat Consolidation",
+    "MORTGAGE_RELEASE_APPROVED": "Mortgage Release Approved",
+
+    "Public_Sale": "Public Sale",
+    "mortage_requested": "Mortgage Requested",
+    "Gift_Created": "Gift Created",
+    "NFT_MINT": "NFT Mint",
+    "TRANSFER": "Transfer",
+    "Gift_Requested": "Gift Requested",
+    "MINT": "Mint"
+  }
+}
+
+
+
+
+}

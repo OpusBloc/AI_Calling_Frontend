@@ -1,0 +1,1095 @@
+{
+  "navbar": {
+    "about": "معلومات عنا",
+    "publicTransactions": "المعاملات العامة",
+    "marketplace": "السوق",
+    "auction": "المزاد",
+    "deals": "الصفقات",
+    "explorer": "المستكشف",
+    "search": "بحث",
+    "language": "اللغة",
+    "profile": "الملف الشخصي",
+    "mint": "سكّ",
+    "ourStory": "قصتنا",
+    "team": "الفريق",
+    "careers": "الوظائف",
+    "tokenInfo": {
+      "tokenOwner": "مالك الرمز",
+      "enterTokenId": "أدخل رقم الرمز (Token ID)",
+      "loading": "جارٍ التحميل...",
+      "getOwner": "عرض المالك",
+      "owner": "المالك",
+      "walletBalance": "رصيد المحفظة",
+      "enterWalletAddress": "أدخل عنوان المحفظة",
+      "getBalance": "عرض الرصيد",
+      "balance": "الرصيد",
+      "tokensLabel": "الرموز",
+      "tokenBtn": "رمز",
+      "balanceBtn": "الرصيد",
+      "checkOwnerTitle": "تحقق من المالك بواسطة Token ID",
+      "checkBalanceTitle": "تحقق من رصيد NFT بواسطة العنوان",
+      "invalidTokenId": "الرجاء إدخال Token ID صالح (رقم)",
+      "invalidWalletAddress": "الرجاء إدخال عنوان محفظة BNB صالح",
+      "network": "الشبكة",
+      "switchToTestnet": "التبديل إلى BSC Testnet!",
+      "error": "خطأ"
+    },
+    "transfer": {
+      "button": "تحويل",
+      "title": "تحويل آمن",
+      "fromPlaceholder": "من (0x...)",
+      "toPlaceholder": "إلى (0x...)",
+      "tokenIdPlaceholder": "Token ID",
+      "transfer": "تحويل",
+      "transferring": "جارٍ التحويل..."
+    }
+  },
+
+  "auction": {
+    "title": "المزادات",
+    "empty": "لا توجد مزادات نشطة حالياً",
+    "errorLoading": "فشل في تحميل بيانات المزادات"
+  },
+
+  "hero": {
+    "title": "ثورة في معاملات العقارات",
+    "titleSecond": "المعاملات في {{regionUpper}}",
+    "description": "تحويل العقارات إلى رموز لتقليل التكلفة وتبسيط إجراءات المعاملات",
+    "savings": "₹2000 كرور سنويًا",
+    "exploreDistricts": "استكشف المناطق",
+    "learnMore": "اعرف المزيد",
+    "districts": "المناطق",
+    "transactions": "المعاملات",
+    "districtsTitle": "المناطق",
+    "tableName": "الاسم",
+    "tableTransactions": "عدد المعاملات"
+  },
+
+  "marketplace": {
+    "clearAllFilters": "مسح جميع الفلاتر",
+    "tokenType": "نوع الرمز",
+    "district": "المنطقة",
+    "price": "السعر",
+    "size": "المساحة",
+    "search": "بحث",
+    "priceRange": "نطاق السعر",
+    "sizeRange": "نطاق المساحة",
+    "min": "الحد الأدنى",
+    "max": "الحد الأعلى",
+    "tokenOptions": {
+      "introduction": "مقدمة",
+      "faq": "الأسئلة الشائعة",
+      "policies": "السياسات",
+      "documentation": "التوثيق"
+    },
+    "districtOptions": {
+      "delhi": "دلهي",
+      "mumbai": "مومباي",
+      "bangalore": "بنغالور",
+      "chennai": "تشيناي"
+    },
+    "saleType": "نوع البيع",
+    "saleTypeOptions": {
+      "all": "الكل",
+      "public": "بيع عام",
+      "govt": "بيع حكومي"
+    },
+    "tokenName": "اسم الرمز",
+    "districtName": "اسم المنطقة",
+    "priceLabel": "السعر",
+    "sizeLabel": "المساحة"
+  },
+
+  "deals": {
+    "func1": "هدية",
+    "func2": "رهن (Mortgage)",
+    "func3": "بيع خاص",
+    "func4": "تفويض الصلاحيات",
+    "func5": "بيع عام",
+    "func6": "تجميد الرمز",
+    "func7": "إلغاء تجميد الرمز",
+    "func8": "سكّ رمز",
+    "func9": "سكّ دفعة واحدة",
+    "createAuction": "إنشاء مزاد",
+    "landRegistration": "اتفاقية تطوير",
+    "landRegistrationOwnerTokens": "رموز المالك",
+    "landRegistrationDeveloperTokens": "رموز المطوّر",
+    "landRegistrationMortgageTokens": "رموز الرهن",
+    "createDevelopmentAgreement": "إنشاء اتفاقية تطوير",
+    "fractionalization": "تقسيم إلى حصص",
+    "requestMortgageRelease": "طلب فكّ الرهن",
+    "demolish": "هدم الشقق",
+    "demolishSubflats": "هدم الشقق الفرعية",
+    "transferOwnership": "نقل الملكية",
+    "setFee": "تحديد الرسوم",
+    "setGovernmentWallet": "تعيين محفظة الحكومة",
+    "updateAdmin": "تحديث المشرف",
+    "tokenId": "Token ID",
+    "required": "*",
+    "emptyFieldError": "هذا الحقل لا يمكن أن يكون فارغًا!",
+    "enterTokenId": "أدخل Token ID",
+    "submit": "إرسال",
+    "fractionalize": "تقسيم الحصص"
+  },
+
+  "landRegistration": {
+    "title": "اتفاقية تطوير"
+  },
+
+  "dealsAuction": {
+    "basePriceUsdt": "السعر الابتدائي (USDT)",
+    "createAuction": "إنشاء مزاد",
+    "creatingAuction": "جارٍ إنشاء المزاد...",
+    "auctionCreated": "✓ تم إنشاء المزاد",
+    "placeholders": {
+      "enterBasePrice": "أدخل السعر الابتدائي بـ USDT"
+    }
+  },
+
+  "dealsForm": {
+    "assetType": "نوع الأصل",
+    "land": "أرض",
+    "flat": "شقة",
+    "subflat": "شقة فرعية",
+    "tokenId": "Token ID",
+    "parentTokenId": "Parent Token ID",
+    "flatTokenId": "Flat ID",
+    "numberOfFractions": "عدد الحصص",
+    "recipientAddress": "عنوان المستلم",
+    "buyerAddress": "عنوان المشتري",
+    "delegateAddress": "عنوان المفوَّض",
+    "lenderAddress": "عنوان المقرض",
+    "loanAmount": "مبلغ القرض (USDT)",
+    "interestAmount": "نسبة الفائدة (%)",
+    "durationDays": "المدة (أيام)",
+    "saleAmount": "قيمة البيع",
+    "saleAmountUsdt": "قيمة البيع (USDT)",
+    "message": "رسالة",
+    "placeholders": {
+      "enterTokenId": "أدخل Token ID",
+      "enterCount": "أدخل العدد",
+      "enterTokenIdDelegation": "أدخل Token ID للتفويض",
+      "enterReceiverAddress": "أدخل عنوان محفظة المستلم (0x...)",
+      "enterBuyerAddress": "أدخل عنوان محفظة المشتري (0x...)",
+      "enterDelegateAddress": "أدخل عنوان محفظة المفوَّض (0x...)",
+      "enterLenderAddress": "أدخل عنوان محفظة المقرض (0x...)",
+      "enterLoanAmount": "أدخل مبلغ القرض بـ USDT",
+      "enterInterestAmount": "أدخل مبلغ الفائدة بـ USDT",
+      "enterDurationDays": "أدخل مدة القرض بالأيام",
+      "enterSaleAmount": "أدخل قيمة البيع بـ USDT (مثال: 100)",
+      "enterMessageOptional": "أدخل رسالة للمستلم (اختياري)"
+    }
+  },
+
+  "dealsButtons": {
+    "freezeToken": "تجميد الرمز",
+    "freezing": "جارٍ التجميد...",
+    "unfreezeToken": "إلغاء تجميد الرمز",
+    "unfreezing": "جارٍ إلغاء التجميد...",
+    "approveNft": "الموافقة على NFT",
+    "approvingNft": "جارٍ الموافقة على NFT...",
+    "nftApproved": "✓ تمّت الموافقة على NFT",
+    "approveUsdt": "الموافقة على USDT",
+    "approvingUsdt": "جارٍ الموافقة على USDT...",
+    "usdtApproved": "✓ تمّت الموافقة على USDT",
+    "delegateToken": "تفويض الرمز",
+    "delegating": "جارٍ التفويض...",
+    "recordingDelegation": "جارٍ تسجيل التفويض...",
+    "requestMortgage": "طلب رهن",
+    "requestingMortgage": "جارٍ إرسال طلب الرهن...",
+    "recordingRequest": "جارٍ تسجيل الطلب...",
+    "initiatePrivateSale": "بدء بيع خاص",
+    "initiatingPrivateSale": "جارٍ بدء البيع الخاص...",
+    "privateSaleInitiated": "✓ تم بدء البيع الخاص",
+    "initiatePublicSale": "بدء بيع عام",
+    "initiatingPublicSale": "جارٍ بدء البيع العام...",
+    "publicSaleInitiated": "✓ تم بدء البيع العام",
+    "createGift": "إنشاء هدية",
+    "creatingGift": "جارٍ إنشاء الهدية...",
+    "giftCreated": "✓ تم إنشاء الهدية",
+    "confirming": "جارٍ التأكيد...",
+    "processing": "جارٍ المعالجة...",
+    "approve": "موافقة",
+    "approved": "تمت الموافقة",
+    "loadingFee": "جارٍ تحميل الرسوم...",
+    "transferOwnership": "نقل الملكية",
+    "transferringOwnership": "جارٍ نقل الملكية...",
+    "setFee": "تحديد الرسوم",
+    "settingFee": "جارٍ تحديد الرسوم...",
+    "setGovernmentWallet": "تعيين محفظة حكومية",
+    "settingGovernmentWallet": "جارٍ تعيين المحفظة الحكومية...",
+    "updateAdmin": "تحديث مشرف البيع",
+    "updatingAdmin": "جارٍ تحديث مشرف البيع...",
+    "step": {
+      "step1ApproveNft": "الخطوة 1: الموافقة على NFT",
+      "step2ApproveUsdt": "الخطوة 2: الموافقة على USDT",
+      "step3CreateGift": "الخطوة 3: إنشاء هدية",
+      "step3InitiatePrivateSale": "الخطوة 3: بدء بيع خاص",
+      "step3InitiatePublicSale": "الخطوة 3: بدء بيع عام"
+    }
+  },
+
+  "setFee": {
+    "contractLabel": "اختر العقد",
+    "options": {
+      "sale": "عقد البيع",
+      "mortgage": "عقد الرهن",
+      "gift": "عقد الهدية"
+    },
+    "feeValue": "قيمة الرسوم",
+    "placeholders": {
+      "enterFee": "أدخل قيمة الرسوم"
+    }
+  },
+
+  "transferOwnership": {
+    "contractLabel": "اختر العقد",
+    "options": {
+      "usdt": "عقد USDT",
+      "sale": "عقد البيع",
+      "mortgage": "عقد الرهن",
+      "gift": "عقد الهدية",
+      "nft": "عقد NFT",
+      "delegate": "عقد التفويض"
+    },
+    "newOwnerAddress": "عنوان المالك الجديد",
+    "placeholders": {
+      "enterNewOwnerAddress": "أدخل عنوان محفظة المالك الجديد (0x...)"
+    }
+  },
+
+  "setGovernmentWallet": {
+    "addressLabel": "عنوان المحفظة الحكومية",
+    "placeholders": {
+      "enterAddress": "أدخل عنوان المحفظة الحكومية (0x...)"
+    }
+  },
+
+  "updateAdmin": {
+    "contractLabel": "اختر العقد",
+    "options": {
+      "sale": "عقد البيع",
+      "gift": "عقد الهدية"
+    },
+    "addressLabel": "عنوان المشرف",
+    "placeholders": {
+      "enterAddress": "أدخل عنوان محفظة المشرف (0x...)"
+    }
+  },
+
+  "explorer": {
+    "tokenName": "اسم الرمز",
+    "ownedBy": "مملوك من",
+    "tokenId": "Token ID",
+    "currentListedPrice": "السعر الحالي المعروض",
+    "highestBidPrice": "أعلى سعر مزايدة",
+    "lakh": "لاك",
+    "makeOffer": "تقديم عرض",
+    "makeBid": "تقديم مزايدة",
+    "updateBid": "تحديث المزايدة",
+    "previousBid": "مزايدتك السابقة",
+    "buy": "شراء",
+    "tabs": {
+      "properties": "خصائص العقار",
+      "ownershipHistory": "سجل الملكية",
+      "transactionHistory": "سجل المعاملات",
+      "bidHistory": "سجل المزايدات",
+      "offers": "العروض"
+    },
+    "tableHeaders": {
+      "from": "من",
+      "to": "إلى",
+      "event": "الحدث",
+      "sellingPrice": "سعر البيع",
+      "owner": "المالك",
+      "duration": "المدة"
+    },
+    "offersTabs": {
+      "offers": "العروض",
+      "myOffers": "عروضي"
+    },
+    "makeOfferModal": {
+      "title": "تقديم عرض",
+      "priceLabel": "سعر العرض",
+      "expirationLabel": "تاريخ الانتهاء",
+      "cancel": "إلغاء",
+      "submit": "إرسال العرض"
+    },
+    "offersTable": {
+      "price": "السعر",
+      "askDiff": "الفرق عن سعر الطلب",
+      "offers": "عدد العروض",
+      "createdAt": "تاريخ الإنشاء",
+      "expiresIn": "ينتهي خلال",
+      "bidder": "المزايد"
+    },
+    "history": {
+      "connectWalletPrompt": "يرجى ربط المحفظة لعرض سجل المعاملات",
+      "headers": {
+        "from": "من",
+        "to": "إلى",
+        "price": "السعر",
+        "type": "النوع"
+      },
+      "na": "غير متوفر",
+      "noHistoryForToken": "لا يوجد سجل معاملات للرمز Token ID {{tokenId}}",
+      "noHistoryAvailable": "لا يوجد أي سجل للمعاملات"
+    },
+    "bidHistory": {
+      "headers": {
+        "bidder": "المزايد",
+        "amount": "المبلغ",
+        "time": "الوقت"
+      },
+      "noBids": "لا توجد مزايدات على هذا الرمز حتى الآن."
+    },
+    "bidModal": {
+      "amountLabel": "مبلغ المزايدة (USDT)",
+      "amountPlaceholder": "أدخل مبلغ المزايدة"
+    },
+    "myOffersMessage": "ستظهر عروضك هنا...",
+    "comingSoon": "قريباً",
+    "featureInDevelopment": "هذه الميزة قيد التطوير.",
+    "sampleData": {
+      "companyName": "Opus Bloc",
+      "eventType": "تحويل",
+      "duration": "مايو 2025 - الآن",
+      "price": "100000"
+    },
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "الاسم",
+      "district": "المنطقة",
+      "type": "النوع",
+      "size": "المساحة",
+      "saleType": "نوع البيع",
+      "contractAddress": "عنوان العقد",
+      "transactionHash": "هاش المعاملة"
+    },
+    "units": {
+      "sqft": "قدم مربع",
+      "sqyd": "ياردة مربعة",
+      "acres": "فدان"
+    },
+    "labels2": {
+      "price": "السعر"
+    },
+    "buyModal": {
+      "title": "شراء رمز",
+      "tokenId": "Token ID",
+      "tokenIdHelp": "يتم اختيار Token ID تلقائياً من العقار الحالي",
+      "selectDistrict": "اختر المنطقة",
+      "approving": "جارٍ الموافقة...",
+      "approveUsdt": "الموافقة على USDT",
+      "usdtApproved": "✓ تمّت الموافقة على USDT",
+      "buyNow": "اشتر الآن",
+      "buying": "جارٍ الشراء...",
+      "processing": "جارٍ المعالجة...",
+      "usdtApprovedHelper": "✓ تمّت الموافقة على USDT! يمكنك الآن شراء الرمز."
+    },
+    "cancelSale": "إلغاء البيع",
+    "cancelling": "جارٍ الإلغاء...",
+    "insufficientBalanceNote": "ملاحظة: يُرجى توفر ما لا يقل عن {{amount}} USDT في محفظتك لشراء هذا الـNFT."
+  },
+
+  "districts": {
+    "srikakulam": "سريكاکولام",
+    "vizianagaram": "فيزياناجارام",
+    "parvathipuramManyam": "بارفاثيبورام مانيام",
+    "visakhapatnam": "فيزاكاباتنام",
+    "anakapalli": "أنakapalli",
+    "alluriSitharamaRaju": "ألوري سيتاراما راجو",
+    "kakinada": "كاكينادا",
+    "drBRAmbedkarKonaseema": "د. ب. ر. أمبدكار كوناسّيما",
+    "eastGodavari": "إيست جودافاري",
+    "westGodavari": "ويست جودافاري",
+    "eluru": "إيلورو",
+    "krishna": "كريشنا",
+    "ntr": "ن. ت. ر",
+    "guntur": "جنتور",
+    "palnadu": "بالنادو",
+    "bapatla": "باباتلا",
+    "prakasam": "بركاسام",
+    "spsrNellore": "سري بوتّي سري رامولو نيلّور",
+    "kurnool": "كورنول",
+    "nandyal": "نانديال",
+    "anantapur": "أنانتابور",
+    "sriSathyaSai": "سري ساتيا ساي",
+    "ysrKadapa": "واي إس آر كادابا",
+    "annamayya": "أنّامايّا",
+    "tirupati": "تيروباتي",
+    "chittoor": "تشيتّور",
+
+    "The Line": "ذا لاين",
+    "Oxagon": "أوكساغون",
+    "Trojena": "تروجينا",
+    "Sindalah": "سندالة",
+    "Magna/Leyja": "ماغنا/ليجا",
+    "Magna/Epicon": "ماغنا/إبيكون",
+    "Magna/Siranna": "ماغنا/سيرانّا",
+    "Magna/Utamo": "ماغنا/أوتامو",
+    "Magna/Norlana": "ماغنا/نورلانا",
+    "Magna/Aquellum": "ماغنا/أكويلوم",
+    "Magna/Zardun": "ماغنا/زاردون",
+    "Magna/Xaynor": "ماغنا/اكساينور",
+    "Magna/Elanan": "ماغنا/إلانان",
+    "Magna/Gidori": "ماغنا/جيدوري",
+    "Magna/Treyam": "ماغنا/تريام",
+    "Magna/Jaumur": "ماغنا/جاومور",
+
+    "Abu Dhabi City": "مدينة أبوظبي",
+    "Al Ain": "العين",
+    "Dubai": "دبي",
+    "Sharjah": "الشارقة",
+    "Ajman": "عجمان",
+    "Umm Al Quwain": "أم القيوين",
+    "Ras Al Khaimah": "رأس الخيمة",
+    "Fujairah": "الفجيرة",
+    "Al Dhafra (Al Gharbia)": "الظفرة (الغربية)",
+    "Jebel Ali": "جبل علي",
+    "Bangkok": "بانكوك",
+    "Chiang Mai": "تشيانغ ماي",
+    "Phuket": "بوكيت",
+    "Pattaya": "باتايا",
+    "Chiang Rai": "تشيانغ راي",
+    "Ayutthaya": "أيوثايا",
+    "Hat Yai": "هات ياي",
+    "Krabi": "كرابي",
+    "Surat Thani": "سورات ثاني",
+    "Nakhon Ratchasima": "ناخون راتشاسيما",
+
+    "Ahmednagar": "أحمدنغر",
+    "Akola": "أكولا",
+    "Amravati": "أمرأفاتي",
+    "Aurangabad": "أورانجاباد",
+    "Beed": "بيد",
+    "Bhandara": "بهندارة",
+    "Buldhana": "بولدانا",
+    "Chandrapur": "تشاندربور",
+    "Dhule": "دهولي",
+    "Gadchiroli": "غادشيرولي",
+    "Gondia": "غونديا",
+    "Hingoli": "هينغولي",
+    "Jalgaon": "جالغاون",
+    "Jalna": "جالنا",
+    "Kolhapur": "كولهابور",
+    "Latur": "لاتور",
+    "Mumbai City": "مدينة مومباي",
+    "Mumbai Suburban": "ضواحي مومباي",
+    "Nagpur": "ناجبور",
+    "Nanded": "نانديد",
+    "Nandurbar": "ناندوربار",
+    "Nashik": "ناشيك",
+    "Osmanabad": "عثمان آباد",
+    "Palghar": "بالغار",
+    "Parbhani": "باربهاني",
+    "Pune": "بونه",
+    "Raigad": "رايغاد",
+    "Ratnagiri": "راتناجيري",
+    "Sangli": "سانغلي",
+    "Satara": "ساتارا",
+    "Sindhudurg": "سندهودورغ",
+    "Solapur": "سولاپور",
+    "Thane": "ثاني",
+    "Wardha": "واردها",
+    "Washim": "واشيم",
+    "Yavatmal": "يافتمال",
+
+    "Adilabad": "أديل آباد",
+    "Bhadradri Kothagudem": "بهدرادري كوثاغوديم",
+    "Hanamkonda": "هَنَمكوندا",
+    "Hyderabad": "حيدر آباد",
+    "Jagtial": "جاغتيال",
+    "Jangaon": "جانغاون",
+    "Jayashankar Bhupalpally": "جاياشانكار بوبالبالي",
+    "Jogulamba Gadwal": "جوجولامبا غادوال",
+    "Kamareddy": "كاماردي",
+    "Karimnagar": "كريم نغر",
+    "Khammam": "خَمّام",
+    "Kumuram Bheem Asifabad": "كومورام بهيم أسيف أباد",
+    "Mahabubabad": "محبوب أباد",
+    "Mahabubnagar": "محبوب نغر",
+    "Mancherial": "مانشريال",
+    "Medak": "ميداك",
+    "Medchal–Malkajgiri": "ميدشال–مالكاجيري",
+    "Mulugu": "مولوجو",
+    "Nagarkurnool": "ناغار كورو نول",
+    "Nalgonda": "نالغوندا",
+    "Narayanpet": "نارايان بيت",
+    "Nirmal": "نيرمال",
+    "Nizamabad": "نظام أباد",
+    "Peddapalli": "بيدابالي",
+    "Rajanna Sircilla": "راجَنّا سيرسيلا",
+    "Ranga Reddy": "رانغا ريدي",
+    "Sangareddy": "سانغا ريدي",
+    "Siddipet": "سِدّيبيت",
+    "Suryapet": "سوريا بيت",
+    "Vikarabad": "فيكار أباد",
+    "Wanaparthy": "وانابارثي",
+    "Warangal": "وارانغال",
+    "Yadadri Bhuvanagiri": "يادادري بهوفاناغيري"
+  },
+
+  "banner": "شريط لعرض المعلومات أو التحديثات المهمة",
+
+  "footer": {
+    "companyDescription": "نحدث ثورة في معاملات العقارات في {{regionTitle}} باستخدام تقنية البلوك تشين. نقوم بتحويل العقارات إلى رموز لتقليل التكاليف وتبسيط الإجراءات.",
+    "navigation": "التنقل",
+    "aboutUs": "معلومات عنا",
+    "marketplace": "السوق",
+    "deals": "الصفقات",
+    "explorer": "المستكشف",
+    "team": "الفريق",
+    "careers": "الوظائف",
+    "resources": "الموارد",
+    "helpCenter": "مركز المساعدة",
+    "documentation": "التوثيق",
+    "apiReference": "مرجع API",
+    "security": "الأمان",
+    "systemStatus": "حالة النظام",
+    "contact": "اتصال",
+    "email": "support@opusbloc.com",
+    "phone": "+91 (0) 123-456-7890",
+    "location": "{{regionTitle}}",
+    "stayUpdated": "ابقَ على اطلاع",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "subscribe": "اشتراك",
+    "stats": {
+      "annualSavings": "التوفير السنوي",
+      "districts": "المناطق",
+      "transactions": "المعاملات",
+      "support": "الدعم"
+    },
+    "copyright": "Opus Bloc. جميع الحقوق محفوظة.",
+    "privacyPolicy": "سياسة الخصوصية",
+    "termsOfService": "شروط الخدمة",
+    "cookiePolicy": "سياسة ملفات تعريف الارتباط",
+    "compliance": "الامتثال",
+    "builtWith": "تم التطوير باستخدام",
+    "forAndhraPradesh": "لـ {{regionTitle}}"
+  },
+
+  "languages": {
+    "english": "الإنجليزية",
+    "hindi": "الهندية",
+    "telugu": "التيلجو",
+    "thai": "التايلندية",
+    "arabic": "العربية"
+  },
+
+  "aboutUs": {
+    "title": "معلومات عنا",
+    "paragraph1": "تسعى شركة Opus Bloc Inc. إلى تسخير قوة تقنية البلوك تشين والذكاء الاصطناعي لحل المشكلات المعقدة التي تواجه الأفراد والمؤسسات والحكومات حول العالم. تتصور الشركة مستقبلاً تُمكِّن فيه الأنظمة اللامركزية والأتمتة الذكية المجتمعات من خلال حلول آمنة وشفافة وفعّالة ومتاحة للجميع.",
+    "paragraph2": "تمتد رؤية Opus Bloc إلى أبعد من التطور التقني نحو إحداث تغيير مجتمعي حقيقي. فمن خلال إنشاء سلاسل بلوك تشين مخصصة واستخدام الذكاء الاصطناعي لتحسين اتخاذ القرار والأتمتة وتحليل البيانات، تهدف الشركة إلى ديمقراطية الوصول إلى أنظمة رقمية آمنة وذكية، ما يعزز الثقة والتعاون بين مختلف القطاعات."
+  },
+
+  "profile": {
+    "tabs": {
+      "overview": "نظرة عامة",
+      "myTokens": "رموزي",
+      "history": "السجل",
+      "pendingApprovals": "الموافقات المعلّقة",
+      "settings": "الإعدادات",
+      "governmentApproval": "موافقات حكومية",
+      "giftStatus": "حالة الموافقات",
+      "delegatedToMe": "مفوَّض إليّ",
+      "auctionBidding": "مزايدات المزادات",
+      "myAuctions": "مزاداتي",
+      "landRequests": "طلبات الأراضي",
+      "unlockTokens": "فك قفل الرموز"
+    },
+
+    "walletNotConnectedTitle": "المحفظة غير متصلة",
+    "walletNotConnectedDesc": "يرجى ربط المحفظة لعرض ملفك الشخصي.",
+    "editProfile": "تعديل الملف الشخصي",
+    "disconnect": "قطع الاتصال",
+    "name": "الاسم",
+    "namePlaceholder": "أدخل اسمك",
+    "email": "البريد الإلكتروني",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "bio": "نبذة",
+    "bioPlaceholder": "حدّثنا عن نفسك",
+    "saveChanges": "حفظ التغييرات",
+    "viewToken": "عرض الرمز",
+
+    "overview": {
+      "totalTransactions": "إجمالي المعاملات",
+      "tokensOwned": "الرموز المملوكة",
+      "walletBalance": "رصيد المحفظة",
+      "usdtBalance": "رصيد USDT",
+      "walletInformation": "معلومات المحفظة",
+      "address": "العنوان",
+      "ethBalance": "رصيد BNB"
+    },
+
+    "history": {
+      "title": "سجل المعاملات",
+      "loading": "جارٍ تحميل سجل المعاملات...",
+      "walletAddress": "عنوان المحفظة",
+      "retry": "إعادة المحاولة",
+      "table": {
+        "type": "النوع",
+        "tokenName": "اسم الرمز",
+        "tokenId": "Token ID",
+        "propertyType": "نوع العقار",
+        "price": "السعر",
+        "date": "التاريخ",
+        "districtName": "اسم المنطقة",
+        "transactionHash": "هاش المعاملة",
+        "actions": "الإجراءات"
+      },
+      "downloadDeed": "تحميل صك الملكية",
+      "pagination": {
+        "previous": "السابق",
+        "next": "التالي",
+        "showing": "عرض",
+        "to": "إلى",
+        "results": "نتائج"
+      },
+      "types": {
+        "Public_Sale": "بيع عام",
+        "Private_Sale": "بيع خاص",
+        "Delegate_NFT": "تفويض NFT",
+        "Delegate_Transfer": "تحويل مفوَّض",
+        "Revoke_Delegation": "إلغاء التفويض",
+        "create_mortage": "إنشاء رهن",
+        "loan_repay": "سداد قرض",
+        "liquidate_collateral": "تصفية الضمان",
+        "Cancel_Sale": "إلغاء البيع",
+        "Buy_NFT": "شراء NFT",
+        "Gift_Created": "تم إنشاء هدية"
+      }
+    },
+
+    "delegatedToMe": {
+      "empty": "لا توجد أي رموز مفوَّضة إليك.",
+      "transfer": "تحويل",
+      "transferModal": {
+        "title": "تحويل رمز مفوَّض",
+        "toAddress": "عنوان المستلم",
+        "toAddressPlaceholder": "أدخل عنوان محفظة المستلم (0x...)",
+        "transfer": "تحويل"
+      }
+    },
+
+    "auctionBidding": {
+      "empty": "لم تقم بأي مزايدة بعد.",
+      "labels": {
+        "basePrice": "السعر الابتدائي",
+        "yourBidPrice": "سعر مزايدتك",
+        "tokenId": "Token ID"
+      }
+    },
+
+    "unlockTokens": {
+      "title": "فك قفل الرموز",
+      "empty": "لا توجد طلبات لفك قفل الرموز.",
+      "columns": {
+        "tokenId": "Token ID",
+        "requestId": "Request ID",
+        "requester": "مقدّم الطلب",
+        "developer": "المطور",
+        "government": "الحكومة",
+        "ownerTokens": "رموز المالك",
+        "developerTokens": "رموز المطور",
+        "mortgageTokens": "رموز الرهن",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء"
+      }
+    }
+  },
+
+  "profileApprovals": {
+    "approvals": {
+      "title": "الموافقات المعلّقة",
+      "emptyTitle": "لا توجد موافقات معلّقة",
+      "emptyDesc": "لا توجد لديك حالياً أي موافقات عقود معلّقة.",
+      "tokenId": "Token ID",
+      "amount": "المبلغ",
+      "borrower": "المقترض",
+      "requested": "تاريخ الطلب",
+      "seller": "البائع",
+      "actions": {
+        "approve": "موافقة",
+        "reject": "رفض",
+        "details": "تفاصيل",
+        "acceptMortgage": "قبول الرهن",
+        "rejectMortgage": "رفض الرهن"
+      }
+    },
+    "types": {
+      "mortage_requested": "طلب رهن"
+    },
+    "modal": {
+      "title": "الموافقة على الرهن",
+      "titlePrivateSale": "الموافقة على البيع الخاص"
+    }
+  },
+
+  "propertyTypes": {
+    "residential": "سكني",
+    "apartment": "شقة",
+    "commercial": "تجاري",
+    "house_villa": "منزل / فيلا",
+    "land_parcel": "قطعة أرض"
+  },
+
+  "categoryTypes": {
+    "residential_layout": "مخطط سكني",
+    "house_villa": "منزل / فيلا",
+    "apartment": "شقة",
+    "land_parcel": "قطعة أرض"
+  },
+
+  "common": {
+    "cancel": "إلغاء",
+    "loading": "جارٍ التحميل...",
+    "approving": "جارٍ الموافقة...",
+    "status": "الحالة",
+    "createdAt": "تاريخ الإنشاء"
+  },
+
+  "tokens": {
+    "title": "رموزي",
+    "allTokens": "كل الرموز",
+    "owned": "مملوكة",
+    "listedForSale": "معروضة للبيع",
+    "delegated": "مفوَّضة",
+    "mortgage": "رهن",
+    "lending": "إقراض",
+    "developerShare": "حصة المطوّر",
+    "mortgageRepayment": "سداد الرهن",
+    "liquidateLoan": "تصفية القرض",
+    "mortgaged": "مرهونة",
+    "auctioned": "في المزاد",
+    "developerTokens": "رموز المطوّر",
+    "public": "عام",
+    "government": "حكومي",
+    "private": "خاص",
+    "delegate": "تفويض",
+    "approveUSDT": "الموافقة على USDT",
+    "approvalRequired": "موافقة مطلوبة",
+    "repaying": "جارٍ السداد...",
+    "repay": "سداد",
+    "repaid": "أعد المحاولة",
+    "available": "متاحة",
+    "frozen": "مجمّدة",
+    "buyersInterested": "مشتريّن مهتمين",
+    "cancelSale": "إلغاء البيع",
+    "cancelBid": "إلغاء المزايدة",
+    "acceptBid": "قبول المزايدة",
+    "to": "إلى",
+    "revoke": "إلغاء",
+    "rate": "النسبة",
+    "interest": "الفائدة",
+    "due": "تاريخ الاستحقاق",
+    "repayLoan": "سداد القرض",
+    "liquidateToken": "تصفية الرمز",
+    "showingCount": "عرض {{count}} من أصل {{total}} رمز(رموز)",
+    "loadingOwned": "جارٍ تحميل الرموز المملوكة...",
+    "loadingListed": "جارٍ تحميل بيانات البيع...",
+    "loadingDelegated": "جارٍ تحميل بيانات التفويض...",
+    "loadingMortgage": "جارٍ تحميل بيانات الرهن...",
+    "noTokensFound": "لم يتم العثور على أي رموز",
+    "tokenId": "Token ID",
+    "loanAmount": "مبلغ القرض",
+    "lender": "المقرض",
+    "duration": "المدة",
+    "mintToken": "سكّ رمز",
+    "empty": {
+      "all": "لا تملك أي رموز حتى الآن. ابدأ بسكّ أول رمز لك!",
+      "category": "لا يوجد لديك أي رموز في فئة {{category}}."
+    }
+  },
+
+  "tokenInfoPage": {
+    "title": "معلومات الرمز",
+    "back": "رجوع",
+    "goBack": "رجوع للخلف",
+    "loading": "جارٍ تحميل معلومات الرمز...",
+    "propertyDetails": "تفاصيل العقار",
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "الاسم",
+      "district": "المنطقة",
+      "propertyType": "نوع العقار",
+      "size": "المساحة",
+      "contractAddress": "عنوان العقد",
+      "createdAt": "تاريخ الإنشاء",
+      "description": "الوصف"
+    },
+    "fields": {
+      "ownedBy": "مملوك من",
+      "district": "المنطقة",
+      "category": "الفئة",
+      "propertyType": "نوع العقار",
+      "surveyNumber": "رقم المسح",
+      "doorNumber": "رقم الباب",
+      "flatNumber": "رقم الشقة",
+      "plotNumber": "رقم القطعة",
+      "areaAcre": "المساحة (فدان)",
+      "areaSqYd": "المساحة (ياردة مربعة)",
+      "builtUpAreaSqft": "المساحة المبنية (قدم مربعة)",
+      "roadFrontage": "واجهة على الطريق",
+      "boundaryNorth": "الحد الشمالي",
+      "boundaryEast": "الحد الشرقي",
+      "boundaryWest": "الحد الغربي",
+      "boundarySouth": "الحد الجنوبي",
+      "uniqueKey": "المعرّف الفريد",
+      "status": "الحالة",
+      "createdAt": "تاريخ الإنشاء",
+      "updatedAt": "تاريخ التحديث",
+      "state": "الولاية / المقاطعة",
+      "country": "الدولة"
+    }
+  },
+
+  "mint": {
+    "title": "سكّ رمز",
+    "connectWalletFirst": "يرجى ربط المحفظة أولاً",
+    "fillRequiredFields": "يرجى ملء الحقول المطلوبة (الصورة، المنطقة، الفئة، الاسم)",
+    "imageUrlLabel": "رابط صورة الرمز",
+    "imageUrlPlaceholder": "https://...",
+    "nameLabel": "الاسم",
+    "namePlaceholder": "مثال: قطعة أرض في {district}",
+    "districtLabel": "المنطقة",
+    "districtPlaceholder": "اختر المنطقة",
+    "categoryLabel": "الفئة",
+    "categoryPlaceholder": "اختر الفئة",
+    "surveyNumberLabel": "رقم المسح",
+    "doorNumberLabel": "رقم الباب",
+    "flatNumberLabel": "رقم الشقة",
+    "plotNumberLabel": "رقم القطعة",
+    "sizeLabel": "المساحة",
+    "sizeUnitPlaceholder": "اختر الوحدة",
+    "sizeValuePlaceholder": "أدخل المساحة",
+    "boundaryNorthLabel": "الحد الشمالي",
+    "boundaryEastLabel": "الحد الشرقي",
+    "boundaryWestLabel": "الحد الغربي",
+    "boundarySouthLabel": "الحد الجنوبي",
+    "roadFrontageLabel": "واجهة الطريق",
+    "descriptionLabel": "الوصف",
+    "buttonMint": "سكّ",
+    "minting": "جارٍ السكّ...",
+    "transactionFailed": "فشلت المعاملة"
+  },
+
+  "status": {
+    "noTransactionsTitle": "لا توجد معاملات",
+    "noTransactionsDesc": "لا توجد لديك أي معاملات جارية أو مكتملة.",
+
+    "types": {
+      "gift": "طلب هدية",
+      "privateSale": "طلب بيع خاص",
+      "publicSale": "طلب بيع عام",
+      "mortgageApproval": "طلب موافقة رهن",
+      "repay": "طلب سداد",
+      "auction": "طلب مزاد",
+      "delegate": "طلب تفويض",
+      "delegateTransfer": "تحويل مفوَّض",
+      "revoke": "إلغاء تفويض"
+    },
+
+    "labels": {
+      "tokenId": "Token ID",
+      "flatId": "Flat ID",
+      "subflatId": "Subflat ID",
+      "nftContract": "عقد NFT",
+      "sender": "المرسل",
+      "receiver": "المستلم",
+      "message": "رسالة",
+      "buyer": "المشتري",
+      "seller": "البائع",
+      "borrower": "المقترض",
+      "lender": "المقرض",
+      "loanAmount": "مبلغ القرض",
+      "interest": "الفائدة",
+      "auctionId": "Auction ID",
+      "bidder": "المزايد",
+      "bidAmount": "مبلغ المزايدة",
+      "delegater": "المفوِّض",
+      "delegatee": "المفوَّض له",
+      "from": "من",
+      "to": "إلى",
+      "lastUpdated": "آخر تحديث"
+    }
+  },
+
+  "govApproval": {
+    "tabs": {
+      "gift": "موافقات الهدايا",
+      "auctionApproval": "موافقات المزاد",
+      "privateSale": "بيع خاص",
+      "publicSale": "بيع عام",
+      "delegate": "موافقات التفويض",
+      "delerequest": "طلبات تحويل مفوَّض",
+      "repay": "طلبات السداد",
+      "revoke": "طلبات إلغاء التفويض",
+      "mortgage": "موافقات الرهن"
+    },
+
+    "gift": {
+      "empty": "لا توجد طلبات موافقة حالياً."
+    },
+    "privateSale": {
+      "empty": "لا توجد طلبات بيع خاص."
+    },
+    "publicSale": {
+      "empty": "لا توجد طلبات بيع عام."
+    },
+    "mortgage": {
+      "empty": "لا توجد طلبات رهن."
+    },
+    "repay": {
+      "empty": "لا توجد طلبات سداد."
+    },
+    "revoke": {
+      "empty": "لا توجد طلبات إلغاء تفويض."
+    },
+    "delegate": {
+      "empty": "لا توجد طلبات تفويض."
+    },
+    "delerequest": {
+      "empty": "لا توجد طلبات تحويل مفوَّض."
+    },
+    "auctionApproval": {
+      "empty": "لا توجد طلبات موافقة مزاد."
+    },
+
+    "labels": {
+      "tokenId": "Token ID",
+      "flatId": "Flat ID",
+      "subflatId": "Subflat ID",
+      "mortgageId": "Mortgage ID",
+      "ownerDelegater": "المالك (المفوِّض)",
+      "delegater": "المفوِّض",
+      "delegatee": "المفوَّض له",
+      "borrower": "المقترض",
+      "lender": "المقرض",
+      "loanAmount": "مبلغ القرض",
+      "interestAmount": "مبلغ الفائدة",
+      "buyer": "المشتري",
+      "seller": "البائع",
+      "nftAddress": "عنوان NFT",
+      "contract": "العقد",
+      "auctionId": "Auction ID",
+      "acceptedBy": "مقبول بواسطة",
+      "fromAddress": "العنوان المرسل منه",
+      "toAddress": "العنوان المرسل إليه",
+      "creatorAddress": "عنوان المُنشئ",
+      "lenderAddress": "عنوان المقرض",
+      "sellerAddress": "عنوان البائع",
+      "govWallet": "محفظة الحكومة",
+      "delegateAddress": "عنوان المفوِّض",
+      "requested": "تم الطلب",
+      "requestedOn": "تاريخ الطلب"
+    },
+
+    "status": {
+      "pending": "قيد الانتظار",
+      "pendingApproval": "في انتظار الموافقة",
+      "approved": "موافق عليه",
+      "rejected": "مرفوض",
+      "accepted": "مقبول",
+      "approvedByBorrower": "موافق عليه من المقترض",
+      "approvedByGov": "موافق عليه من الحكومة",
+      "rejectedByGov": "مرفوض من الحكومة"
+    },
+
+    "actions": {
+      "approve": "موافقة",
+      "reject": "رفض"
+    },
+
+    "messages": {
+      "processing": "جارٍ المعالجة...",
+      "transactionError": "خطأ: فشلت المعاملة. يرجى المحاولة مرة أخرى."
+    }
+  },
+
+  "publicTransactions": {
+    "title": "سجل المعاملات العامة",
+    "subtitle": "عرض جميع المعاملات على البلوك تشين",
+
+    "tabs": {
+      "all": "جميع الأنواع",
+      "transferSubflat": "تحويل شقة فرعية",
+      "publicSaleSubflat": "بيع شقة فرعية (عام)",
+      "privateSaleSubflat": "بيع شقة فرعية (خاص)",
+      "buyNftSubflat": "شراء NFT شقة فرعية"
+    },
+
+    "filters": {
+      "moreTypes": "أنواع إضافية:",
+      "selectType": "اختر نوعًا"
+    },
+
+    "dropdownTypes": {
+      "cancelSaleSubflat": "إلغاء بيع شقة فرعية",
+      "auctionSaleSubflat": "بيع شقة فرعية في مزاد",
+      "transferFlat": "تحويل شقة",
+      "publicSaleFlat": "بيع شقة (عام)",
+      "privateSaleFlat": "بيع شقة (خاص)",
+      "buyNftFlat": "شراء NFT شقة",
+      "cancelSaleFlat": "إلغاء بيع شقة",
+      "auctionSaleFlat": "بيع شقة في مزاد",
+      "flatConsolidation": "دمج الشقق",
+      "mortgageReleaseApproved": "تمت الموافقة على فكّ الرهن"
+    },
+
+    "table": {
+      "from": "من",
+      "toBuyer": "إلى (المشتري)",
+      "date": "التاريخ",
+      "functionName": "اسم الدالة"
+    },
+
+    "labels": {
+      "contractInteraction": "تفاعل مع العقد"
+    },
+
+    "messages": {
+      "loading": "جارٍ تحميل المعاملات...",
+      "noTransactions": "لم يتم العثور على معاملات"
+    },
+
+    "pagination": {
+      "label": "عرض {{from}} إلى {{to}} من أصل {{total}} نتيجة",
+      "previous": "السابق",
+      "next": "التالي"
+    },
+
+    "types": {
+      "TRANSFER_SUBFLAT": "تحويل شقة فرعية",
+      "Public_Sale_Subflat": "بيع شقة فرعية (عام)",
+      "Private_Sale_Subflat": "بيع شقة فرعية (خاص)",
+      "Buy_NFT_Subflat": "شراء NFT شقة فرعية",
+      "Cancel_Sale_Subflat": "إلغاء بيع شقة فرعية",
+      "AUCTION_SALE_SUBFLAT": "بيع شقة فرعية في مزاد",
+      "mortage_requested_subflat": "طلب رهن (شقة فرعية)",
+      "mortage_accepted_subflat": "قبول رهن (شقة فرعية)",
+      "mortage_rejected_subflat": "رفض رهن (شقة فرعية)",
+
+      "TRANSFER_FLAT": "تحويل شقة",
+      "Public_Sale_Flat": "بيع شقة (عام)",
+      "Private_Sale_Flat": "بيع شقة (خاص)",
+      "Buy_NFT_Flat": "شراء NFT شقة",
+      "Cancel_Sale_Flat": "إلغاء بيع شقة",
+      "AUCTION_SALE_FLAT": "بيع شقة في مزاد",
+      "mortage_requested_flat": "طلب رهن (شقة)",
+      "mortage_accepted_flat": "قبول رهن (شقة)",
+      "mortage_rejected_flat": "رفض رهن (شقة)",
+
+      "FLAT_CONSOLIDATION": "دمج الشقق",
+      "MORTGAGE_RELEASE_APPROVED": "تمت الموافقة على فكّ الرهن",
+
+      "Public_Sale": "بيع عام",
+      "mortage_requested": "طلب رهن",
+      "Gift_Created": "تم إنشاء هدية",
+      "NFT_MINT": "سكّ NFT",
+      "TRANSFER": "تحويل",
+      "Gift_Requested": "طلب هدية",
+      "MINT": "سكّ"
+    }
+  }
+}

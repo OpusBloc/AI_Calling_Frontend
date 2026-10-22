@@ -1,0 +1,464 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   Opus Bloc Design System — token layer
+   Ported from the design-system project (`_ds/opus-bloc-design-system-58703bb5`).
+
+   The admin is LIGHT-FIRST: `:root` carries the design system's
+   [data-theme="light"] values (warm ivory canvas, deep antique gold).
+   `.dark` carries its dark scope (deep navy canvas, champagne gold).
+   `.dark` is toggled on <html> by Navbar.tsx.
+
+   Only semantic tokens flip between themes — the brand scales below do not.
+   Use the semantic aliases in components, never the raw scales.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand gold (matte champagne, sampled from the mark) — constant ---- */
+  --gold-50: #faf5e4;
+  --gold-100: #f1e8cb;
+  --gold-200: #e8dbae;
+  --gold-300: #dccc95;
+  --gold-400: #d8c68d; /* primary champagne — dark theme accent */
+  --gold-500: #c2ae74;
+  --gold-600: #a8915a; /* antique — light theme accent */
+  --gold-700: #8c7a4e;
+  --gold-800: #6e5f3e;
+
+  --gradient-gold: linear-gradient(135deg, #efe2b4 0%, #d8c68d 46%, #a8915a 100%);
+
+  /* ---- Ink / dark canvas — constant ---- */
+  --ink-900: #040616;
+  --ink-800: #080b1e;
+  --ink-700: #0d1126;
+  --ink-600: #141934;
+  --ink-500: #1c2240;
+  --ink-400: #272e4f;
+
+  /* ---- Cream / light canvas — constant ---- */
+  --cream-50: #fbf8f0;
+  --cream-100: #f6f1e4;
+  --cream-200: #ece4d2;
+
+  /* ---- Semantic status (muted and premium — never neon) ----
+     These are THEME-AWARE. The design system is dark-first, so its published
+     values (gain #6FB58A, loss #D2706A, info #7FA8C9, warn #D7B25E) are light
+     tints chosen to sit on navy — as text on a light surface they fail badly
+     (warn is ~1.9:1 on white, i.e. invisible). The light theme therefore uses
+     darker siblings of the same hues, still muted, all ≥5:1 on the cream
+     canvas. The dark theme restores the design system's own values below.
+     The low-alpha *-bg tints are hue-only and work on either canvas. */
+  --gain: #2b7252;
+  --loss: #a8443e;
+  --info: #3d6b8a;
+  --warn: #7d5f18;
+  --gain-bg: rgba(111, 181, 138, 0.18);
+  --loss-bg: rgba(210, 112, 106, 0.18);
+  --info-bg: rgba(127, 168, 201, 0.18);
+  --warn-bg: rgba(215, 178, 94, 0.22);
+
+  /* ======================= LIGHT THEME (default) ======================= */
+  --canvas: var(--cream-100);
+  --surface: #ffffff;
+  --raised: var(--cream-50);
+  --surface-hover: var(--cream-200);
+  --surface-input: var(--cream-100);
+  --surface-inverse: var(--ink-900);
+
+  --hairline: rgba(110, 95, 62, 0.2);
+  --hairline-strong: rgba(110, 95, 62, 0.36);
+
+  --text-heading: #1a1c2e;
+  --text-body: #494b5c;
+  --text-muted: #7c7c6c;
+  --text-faint: #a9a795;
+
+  --accent: var(--gold-600);
+  --accent-strong: var(--gold-700);
+  --accent-text: #816c3c;
+  --accent-bg: rgba(168, 145, 90, 0.14);
+  /* Text sitting on a gold fill is black in BOTH themes. White on the light
+     theme's --accent (#A8915A) is only ~2.9:1; black is ~7.5:1, and it matches
+     the gradient controls, which are also black-on-gold. */
+  --on-accent: #000000;
+
+  --chip-neutral-bg: rgba(22, 24, 42, 0.05);
+  --focus-ring: rgba(168, 145, 90, 0.55);
+
+  --shadow-sm: 0 1px 2px rgba(40, 34, 18, 0.06);
+  --shadow-md: 0 10px 28px -12px rgba(40, 34, 18, 0.16);
+  --shadow-lg: 0 24px 56px -20px rgba(40, 34, 18, 0.22);
+  --glow-gold:
+    0 0 0 1px rgba(168, 145, 90, 0.4), 0 12px 32px -10px rgba(168, 145, 90, 0.42);
+  --inner-lit: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  /* Chart series — categorical, assign in this order, never cycled.
+     Validated (CVD + normal-vision separation) on this theme's --surface. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-other: #b5b3a8;
+  --chart-grid: rgba(110, 95, 62, 0.14);
+}
+
+/* ========================== DARK THEME ========================== */
+.dark {
+  --canvas: var(--ink-700);
+  --surface: var(--ink-600);
+  --raised: var(--ink-500);
+  --surface-hover: var(--ink-400);
+  --surface-input: var(--ink-800);
+  --surface-inverse: var(--cream-50);
+
+  --hairline: rgba(216, 198, 141, 0.16);
+  --hairline-strong: rgba(216, 198, 141, 0.34);
+
+  --text-heading: #f5f2e8;
+  --text-body: #c7c5b4;
+  --text-muted: #908e7c;
+  --text-faint: #5e5d52;
+
+  --accent: var(--gold-400);
+  --accent-strong: var(--gold-300);
+  --accent-text: var(--gold-300);
+  --accent-bg: rgba(216, 198, 141, 0.1);
+  --on-accent: #000000;
+
+  --chip-neutral-bg: rgba(245, 242, 232, 0.06);
+  --focus-ring: rgba(216, 198, 141, 0.55);
+
+  /* Dark theme restores the design system's published semantic values — these
+     are the ones intended to sit on the navy canvas. */
+  --gain: #6fb58a;
+  --loss: #d2706a;
+  --info: #7fa8c9;
+  --warn: #d7b25e;
+  --gain-bg: rgba(111, 181, 138, 0.14);
+  --loss-bg: rgba(210, 112, 106, 0.14);
+  --info-bg: rgba(127, 168, 201, 0.14);
+  --warn-bg: rgba(215, 178, 94, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+  --glow-gold:
+    0 0 0 1px rgba(216, 198, 141, 0.35), 0 10px 40px -10px rgba(216, 198, 141, 0.32);
+  --inner-lit: inset 0 1px 0 rgba(245, 242, 232, 0.05);
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-other: #5e5d52;
+  --chart-grid: rgba(216, 198, 141, 0.1);
+}
+
+/* ---- Expose the semantic tokens as Tailwind utilities ----
+   bg-surface, text-heading, border-hairline, text-accent, font-mono, … */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-input: var(--surface-input);
+  --color-surface-inverse: var(--surface-inverse);
+
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-text: var(--accent-text);
+  --color-accent-bg: var(--accent-bg);
+  --color-on-accent: var(--on-accent);
+  --color-chip: var(--chip-neutral-bg);
+
+  --color-gain: var(--gain);
+  --color-gain-bg: var(--gain-bg);
+  --color-loss: var(--loss);
+  --color-loss-bg: var(--loss-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+
+  --font-sans: var(--font-manrope, "Segoe UI"), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
+  --font-display: var(--font-cormorant, Georgia), serif;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-glow: var(--glow-gold);
+  --shadow-lit: var(--inner-lit);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--text-body);
+  font-family:
+    var(--font-manrope, "Segoe UI"),
+    "Noto Naskh Arabic",
+    "Noto Sans Devanagari",
+    "Noto Sans Telugu",
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular figures. Every money / percentage / token count / address uses this —
+   it is what keeps columns of numbers aligned and is core to the brand voice. */
+.tnum {
+  font-family: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gold gradient for UI controls (active tab segments, primary confirm).
+   Deliberately NOT --gradient-gold: the brand gradient runs #EFE2B4 → #A8915A,
+   and that much luminance range across a small pill goes muddy at the dark end
+   and shifts text contrast along the label. This keeps the same champagne
+   character in a tighter, lighter band, so black text stays legible edge to
+   edge (~12:1 even at the darkest stop).
+   The gradient is theme-independent, so the text colour is pinned to black in
+   both themes rather than following --on-accent. */
+:root {
+  --gradient-gold-ui: linear-gradient(
+    135deg,
+    #f7eccb 0%,
+    #e6d5a4 50%,
+    #d2bc86 100%
+  );
+}
+
+.gold-gradient,
+.gold-gradient * {
+  color: #000;
+}
+
+.gold-gradient {
+  background-image: var(--gradient-gold-ui);
+  border-color: transparent;
+}
+
+.gold-gradient:hover {
+  box-shadow: var(--glow-gold);
+}
+
+/* Form field label.
+   Deliberately NOT .eyebrow: that is the design system's kicker treatment
+   (11px mono, uppercase, 0.32em tracking) and it is meant for very short
+   captions like "FRACTIONAL OWNERSHIP". Applied to a real field label such as
+   "Eligible categories" the tracking sprawls the word out and it stops reading
+   as a label at all. This is plain sans at a readable size. */
+.field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-body);
+}
+
+/* Mono eyebrow label — the design system's small uppercase caption */
+.eyebrow {
+  font-family: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+::selection {
+  background: rgba(168, 145, 90, 0.28);
+}
+
+/* ---- Scrollbars ----------------------------------------------------------
+   Without this every scrollable region falls back to the browser's own
+   chrome, which is the one piece of UI that never matches the theme.
+   Firefox takes the two `scrollbar-*` properties; Chrome/Edge/Safari take the
+   ::-webkit pseudo-elements. Both are set so the result is the same
+   everywhere. `color-scheme` additionally keeps any remaining native widget
+   (date pickers, the overlay scrollbar on macOS) on the right side. */
+:root {
+  color-scheme: light;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 9999px;
+  /* Transparent border + clipped background paints a thinner thumb that grows
+     on hover, without changing the track width and reflowing content. */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Slide-over drawer (right edge) and its backdrop. Used for the property edit
+   panel, which is a long form — a drawer keeps the page visible behind it and
+   gives the form full height instead of a capped 90vh centred box. */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fadeIn,
+.animate-fade-in {
+  animation: fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-right,
+  .animate-fadeIn,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 30s linear infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.auth-panel-scroll {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.auth-panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.auth-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-panel-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.auth-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Sidebar nav list — token-driven scrollbar, and rows that hold their height.
+   The nav is a flex column, so its children default to `flex-shrink: 1`: when a
+   collapsible group expands, the browser squashes every sibling row to fit
+   before it will scroll. Pinning shrink to 0 keeps each row at its own height
+   and lets the overflow scroll instead. */
+.nav-scroll > * {
+  flex-shrink: 0;
+}
+
+.nav-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 9999px;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}

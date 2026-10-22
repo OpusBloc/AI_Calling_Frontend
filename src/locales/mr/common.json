@@ -1,0 +1,1094 @@
+{
+  "navbar": {
+    "about": "आमच्याबद्दल",
+    "publicTransactions": "सार्वजनिक व्यवहार",
+    "marketplace": "मार्केटप्लेस",
+    "auction": "लिलाव",
+    "deals": "डील्स",
+    "explorer": "एक्सप्लोरर",
+    "search": "शोधा",
+    "language": "भाषा",
+    "profile": "प्रोफाइल",
+    "mint": "मिंट",
+    "ourStory": "आमची कथा",
+    "team": "संघ",
+    "careers": "करिअर्स",
+    "tokenInfo": {
+      "tokenOwner": "टोकन मालक",
+      "enterTokenId": "Token ID टाका",
+      "loading": "लोड होत आहे...",
+      "getOwner": "मालक पाहा",
+      "owner": "मालक",
+      "walletBalance": "वॉलेट बॅलन्स",
+      "enterWalletAddress": "वॉलेट अ‍ॅड्रेस टाका",
+      "getBalance": "बॅलन्स पाहा",
+      "balance": "बॅलन्स",
+      "tokensLabel": "टोकन्स",
+      "tokenBtn": "टोकन",
+      "balanceBtn": "बॅलन्स",
+      "checkOwnerTitle": "Token ID ने मालक तपासा",
+      "checkBalanceTitle": "अ‍ॅड्रेसने NFT बॅलन्स तपासा",
+      "invalidTokenId": "कृपया योग्य Token ID (संख्या) टाका",
+      "invalidWalletAddress": "कृपया योग्य BNB वॉलेट अ‍ॅड्रेस टाका",
+      "network": "नेटवर्क",
+      "switchToTestnet": "BSC Testnet वर स्विच करा!",
+      "error": "चूक"
+    },
+    "transfer": {
+      "button": "ट्रान्सफर",
+      "title": "सुरक्षित ट्रान्सफर",
+      "fromPlaceholder": "पासून (0x...)",
+      "toPlaceholder": "कोणाकडे (0x...)",
+      "tokenIdPlaceholder": "Token ID",
+      "transfer": "ट्रान्सफर",
+      "transferring": "ट्रान्सफर होत आहे..."
+    }
+  },
+
+  "auction": {
+    "title": "लिलाव",
+    "empty": "सध्या कोणतेही सक्रिय लिलाव आढळले नाहीत",
+    "errorLoading": "लिलाव माहिती लोड करण्यात अयशस्वी"
+  },
+
+  "hero": {
+    "title": "स्थावर मालमत्तेचा आमूलाग्र बदल",
+    "titleSecond": "{{regionUpper}} मधील व्यवहार",
+    "description": "व्यवहार खर्च कमी करण्यासाठी आणि प्रक्रिया सुलभ करण्यासाठी स्थावर मालमत्ता टोकनाइझ करणे",
+    "savings": "दरवर्षी ₹2000 कोटींची बचत",
+    "exploreDistricts": "जिल्हे एक्सप्लोर करा",
+    "learnMore": "अधिक जाणून घ्या",
+    "districts": "जिल्हे",
+    "transactions": "व्यवहार",
+    "districtsTitle": "जिल्हे",
+    "tableName": "नाव",
+    "tableTransactions": "व्यवहारांची संख्या"
+  },
+
+  "marketplace": {
+    "clearAllFilters": "सर्व फिल्टर्स काढा",
+    "tokenType": "टोकन प्रकार",
+    "district": "जिल्हा",
+    "price": "किंमत",
+    "size": "आकार",
+    "search": "शोधा",
+    "priceRange": "किंमत श्रेणी",
+    "sizeRange": "आकार श्रेणी",
+    "min": "किमान",
+    "max": "कमाल",
+    "tokenOptions": {
+      "introduction": "परिचय",
+      "faq": "नेहमी विचारले जाणारे प्रश्न",
+      "policies": "धोरणे",
+      "documentation": "दस्तऐवजीकरण"
+    },
+    "districtOptions": {
+      "delhi": "दिल्ली",
+      "mumbai": "मुंबई",
+      "bangalore": "बंगळूरू",
+      "chennai": "चेन्नई"
+    },
+    "saleType": "विक्री प्रकार",
+    "saleTypeOptions": {
+      "all": "सर्व",
+      "public": "सार्वजनिक विक्री",
+      "govt": "शासकीय विक्री"
+    },
+    "tokenName": "टोकन नाव",
+    "districtName": "जिल्ह्याचे नाव",
+    "priceLabel": "किंमत",
+    "sizeLabel": "आकार"
+  },
+
+  "deals": {
+    "func1": "गिफ्ट",
+    "func2": "गहाण (मॉर्टगेज)",
+    "func3": "खासगी विक्री",
+    "func4": "डेलेगेट ऑथॉरिटी",
+    "func5": "सार्वजनिक विक्री",
+    "func6": "टोकन फ्रीज करा",
+    "func7": "टोकन अनफ्रीज करा",
+    "func8": "टोकन मिंट करा",
+    "func9": "बॅच मिंट",
+    "createAuction": "लिलाव तयार करा",
+    "landRegistration": "विकास करार",
+    "landRegistrationOwnerTokens": "मालकाचे टोकन्स",
+    "landRegistrationDeveloperTokens": "डेव्हलपर टोकन्स",
+    "landRegistrationMortgageTokens": "मॉर्टगेज टोकन्स",
+    "createDevelopmentAgreement": "विकास करार तयार करा",
+    "fractionalization": "फ्रॅक्शनलायझेशन",
+    "requestMortgageRelease": "मॉर्टगेज रिलीज विनंती",
+    "demolish": "फ्लॅट्स पाडा",
+    "demolishSubflats": "सबफ्लॅट्स पाडा",
+    "transferOwnership": "मालकी हक्क ट्रान्सफर करा",
+    "setFee": "फी सेट करा",
+    "setGovernmentWallet": "शासकीय वॉलेट सेट करा",
+    "updateAdmin": "अ‍ॅडमिन अपडेट करा",
+    "tokenId": "Token ID",
+    "required": "*",
+    "emptyFieldError": "हे फील्ड रिकामे ठेवू शकत नाही!",
+    "enterTokenId": "Token ID टाका",
+    "submit": "सबमिट",
+    "fractionalize": "फ्रॅक्शनलाइज करा"
+  },
+
+  "landRegistration": {
+    "title": "विकास करार"
+  },
+
+  "dealsAuction": {
+    "basePriceUsdt": "बेस किंमत (USDT)",
+    "createAuction": "लिलाव तयार करा",
+    "creatingAuction": "लिलाव तयार होत आहे...",
+    "auctionCreated": "✓ लिलाव तयार झाला",
+    "placeholders": {
+      "enterBasePrice": "बेस किंमत USDT मध्ये टाका"
+    }
+  },
+
+  "dealsForm": {
+    "assetType": "अ‍ॅसेट प्रकार",
+    "land": "जमीन",
+    "flat": "फ्लॅट",
+    "subflat": "सबफ्लॅट",
+    "tokenId": "Token ID",
+    "parentTokenId": "Parent Token ID",
+    "flatTokenId": "Flat ID",
+    "numberOfFractions": "फ्रॅक्शनची संख्या",
+    "recipientAddress": "रिसीव्हर अ‍ॅड्रेस",
+    "buyerAddress": "खरेदीदाराचा अ‍ॅड्रेस",
+    "delegateAddress": "डेलेगेट अ‍ॅड्रेस",
+    "lenderAddress": "लेंडर अ‍ॅड्रेस",
+    "loanAmount": "कर्ज रक्कम (USDT)",
+    "interestAmount": "व्याज (%)",
+    "durationDays": "कालावधी (दिवस)",
+    "saleAmount": "विक्री किंमत",
+    "saleAmountUsdt": "विक्री किंमत (USDT)",
+    "message": "मेसेज",
+    "placeholders": {
+      "enterTokenId": "Token ID टाका",
+      "enterCount": "संख्या टाका",
+      "enterTokenIdDelegation": "डेलेगेशनसाठी Token ID टाका",
+      "enterReceiverAddress": "रिसीव्हर वॉलेट अ‍ॅड्रेस टाका (0x...)",
+      "enterBuyerAddress": "खरेदीदाराचा वॉलेट अ‍ॅड्रेस टाका (0x...)",
+      "enterDelegateAddress": "डेलेगेशनसाठी वॉलेट अ‍ॅड्रेस टाका (0x...)",
+      "enterLenderAddress": "लेंडर वॉलेट अ‍ॅड्रेस टाका (0x...)",
+      "enterLoanAmount": "कर्ज रक्कम USDT मध्ये टाका",
+      "enterInterestAmount": "व्याजाची रक्कम USDT मध्ये टाका",
+      "enterDurationDays": "कर्ज कालावधी (दिवस) टाका",
+      "enterSaleAmount": "विक्री किंमत USDT मध्ये टाका (उदा. 100)",
+      "enterMessageOptional": "रिसीव्हरसाठी मेसेज टाका (ऐच्छिक)"
+    }
+  },
+
+  "dealsButtons": {
+    "freezeToken": "टोकन फ्रीज करा",
+    "freezing": "फ्रीज होत आहे...",
+    "unfreezeToken": "टोकन अनफ्रीज करा",
+    "unfreezing": "अनफ्रीज होत आहे...",
+    "approveNft": "NFT मंजूर करा",
+    "approvingNft": "NFT मंजूर होत आहे...",
+    "nftApproved": "✓ NFT मंजूर झाले",
+    "approveUsdt": "USDT मंजूर करा",
+    "approvingUsdt": "USDT मंजूर होत आहे...",
+    "usdtApproved": "✓ USDT मंजूर झाले",
+    "delegateToken": "टोकन डेलेगेट करा",
+    "delegating": "डेलेगेट होत आहे...",
+    "recordingDelegation": "डेलेगेशन रेकॉर्ड होत आहे...",
+    "requestMortgage": "मॉर्टगेज विनंती",
+    "requestingMortgage": "मॉर्टगेज विनंती होत आहे...",
+    "recordingRequest": "विनंती रेकॉर्ड होत आहे...",
+    "initiatePrivateSale": "खासगी विक्री सुरू करा",
+    "initiatingPrivateSale": "खासगी विक्री सुरू होत आहे...",
+    "privateSaleInitiated": "✓ खासगी विक्री सुरू झाली",
+    "initiatePublicSale": "सार्वजनिक विक्री सुरू करा",
+    "initiatingPublicSale": "सार्वजनिक विक्री सुरू होत आहे...",
+    "publicSaleInitiated": "✓ सार्वजनिक विक्री सुरू झाली",
+    "createGift": "गिफ्ट तयार करा",
+    "creatingGift": "गिफ्ट तयार होत आहे...",
+    "giftCreated": "✓ गिफ्ट तयार झाले",
+    "confirming": "कन्फर्म होत आहे...",
+    "processing": "प्रोसेसिंग चालू आहे...",
+    "approve": "मंजूर करा",
+    "approved": "मंजूर झाले",
+    "loadingFee": "फी लोड होत आहे...",
+    "transferOwnership": "मालकी हक्क ट्रान्सफर करा",
+    "transferringOwnership": "मालकी हक्क ट्रान्सफर होत आहे...",
+    "setFee": "फी सेट करा",
+    "settingFee": "फी सेट केली जात आहे...",
+    "setGovernmentWallet": "शासकीय वॉलेट सेट करा",
+    "settingGovernmentWallet": "शासकीय वॉलेट सेट होत आहे...",
+    "updateAdmin": "सेल अ‍ॅडमिन अपडेट करा",
+    "updatingAdmin": "अ‍ॅडमिन अपडेट होत आहे...",
+    "step": {
+      "step1ApproveNft": "स्टेप 1: NFT मंजूर करा",
+      "step2ApproveUsdt": "स्टेप 2: USDT मंजूर करा",
+      "step3CreateGift": "स्टेप 3: गिफ्ट तयार करा",
+      "step3InitiatePrivateSale": "स्टेप 3: खासगी विक्री सुरू करा",
+      "step3InitiatePublicSale": "स्टेप 3: सार्वजनिक विक्री सुरू करा"
+    }
+  },
+
+  "setFee": {
+    "contractLabel": "कॉन्ट्रॅक्ट निवडा",
+    "options": {
+      "sale": "सेल कॉन्ट्रॅक्ट",
+      "mortgage": "मॉर्टगेज कॉन्ट्रॅक्ट",
+      "gift": "गिफ्ट कॉन्ट्रॅक्ट"
+    },
+    "feeValue": "फी रक्कम",
+    "placeholders": {
+      "enterFee": "फी टाका"
+    }
+  },
+
+  "transferOwnership": {
+    "contractLabel": "कॉन्ट्रॅक्ट निवडा",
+    "options": {
+      "usdt": "USDT कॉन्ट्रॅक्ट",
+      "sale": "सेल कॉन्ट्रॅक्ट",
+      "mortgage": "मॉर्टगेज कॉन्ट्रॅक्ट",
+      "gift": "गिफ्ट कॉन्ट्रॅक्ट",
+      "nft": "NFT कॉन्ट्रॅक्ट",
+      "delegate": "डेलेगेट कॉन्ट्रॅक्ट"
+    },
+    "newOwnerAddress": "नवीन मालकाचा अ‍ॅड्रेस",
+    "placeholders": {
+      "enterNewOwnerAddress": "नवीन मालकाचा वॉलेट अ‍ॅड्रेस टाका (0x...)"
+    }
+  },
+
+  "setGovernmentWallet": {
+    "addressLabel": "शासकीय वॉलेट अ‍ॅड्रेस",
+    "placeholders": {
+      "enterAddress": "शासकीय वॉलेट अ‍ॅड्रेस टाका (0x...)"
+    }
+  },
+
+  "updateAdmin": {
+    "contractLabel": "कॉन्ट्रॅक्ट निवडा",
+    "options": {
+      "sale": "सेल कॉन्ट्रॅक्ट",
+      "gift": "गिफ्ट कॉन्ट्रॅक्ट"
+    },
+    "addressLabel": "अ‍ॅडमिन अ‍ॅड्रेस",
+    "placeholders": {
+      "enterAddress": "अ‍ॅडमिनचा वॉलेट अ‍ॅड्रेस टाका (0x...)"
+    }
+  },
+
+  "explorer": {
+    "tokenName": "टोकन नाव",
+    "ownedBy": "मालक",
+    "tokenId": "Token ID",
+    "currentListedPrice": "सध्याची लिस्टेड किंमत",
+    "highestBidPrice": "सर्वोच्च बिड किंमत",
+    "lakh": "लाख",
+    "makeOffer": "ऑफर करा",
+    "makeBid": "बिड करा",
+    "updateBid": "बिड अपडेट करा",
+    "previousBid": "तुमची मागील बिड",
+    "buy": "खरेदी करा",
+    "tabs": {
+      "properties": "प्रॉपर्टीज",
+      "ownershipHistory": "मालकी इतिहास",
+      "transactionHistory": "व्यवहार इतिहास",
+      "bidHistory": "बिड इतिहास",
+      "offers": "ऑफर्स"
+    },
+    "tableHeaders": {
+      "from": "पासून",
+      "to": "पर्यंत",
+      "event": "इव्हेंट",
+      "sellingPrice": "विक्री किंमत",
+      "owner": "मालक",
+      "duration": "कालावधी"
+    },
+    "offersTabs": {
+      "offers": "ऑफर्स",
+      "myOffers": "माझ्या ऑफर्स"
+    },
+    "makeOfferModal": {
+      "title": "ऑफर करा",
+      "priceLabel": "तुमची ऑफर किंमत",
+      "expirationLabel": "एक्सपायरी तारीख",
+      "cancel": "रद्द करा",
+      "submit": "ऑफर सबमिट करा"
+    },
+    "offersTable": {
+      "price": "किंमत",
+      "askDiff": "मागील किंमतीतील फरक",
+      "offers": "ऑफर्स",
+      "createdAt": "तयार केव्हा",
+      "expiresIn": "एक्सपायर होण्यास उर्वरित",
+      "bidder": "बिडर"
+    },
+    "history": {
+      "connectWalletPrompt": "व्यवहार इतिहास पाहण्यासाठी कृपया वॉलेट कनेक्ट करा",
+      "headers": {
+        "from": "पासून",
+        "to": "पर्यंत",
+        "price": "किंमत",
+        "type": "प्रकार"
+      },
+      "na": "N/A",
+      "noHistoryForToken": "Token ID {{tokenId}} साठी व्यवहार इतिहास सापडला नाही",
+      "noHistoryAvailable": "कोणताही व्यवहार इतिहास उपलब्ध नाही"
+    },
+    "bidHistory": {
+      "headers": {
+        "bidder": "बिडर",
+        "amount": "रक्कम",
+        "time": "वेळ"
+      },
+      "noBids": "या टोकनसाठी अजून कोणतीही बिड नाही"
+    },
+    "bidModal": {
+      "amountLabel": "बिड रक्कम (USDT)",
+      "amountPlaceholder": "तुमची बिड रक्कम टाका"
+    },
+    "myOffersMessage": "तुमच्या ऑफर्स येथे दिसतील...",
+    "comingSoon": "लवकरच येत आहे",
+    "featureInDevelopment": "हा फिचर विकासाधीन आहे.",
+    "sampleData": {
+      "companyName": "Opus Bloc",
+      "eventType": "ट्रान्सफर",
+      "duration": "मे 2025 - चालू",
+      "price": "100000"
+    },
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "नाव",
+      "district": "जिल्हा",
+      "type": "प्रकार",
+      "size": "आकार",
+      "saleType": "विक्री प्रकार",
+      "contractAddress": "कॉन्ट्रॅक्ट अ‍ॅड्रेस",
+      "transactionHash": "व्यवहार हॅश"
+    },
+    "units": {
+      "sqft": "चौरस फूट",
+      "sqyd": "चौरस यार्ड",
+      "acres": "एकर"
+    },
+    "labels2": {
+      "price": "किंमत"
+    },
+    "buyModal": {
+      "title": "टोकन खरेदी करा",
+      "tokenId": "Token ID",
+      "tokenIdHelp": "Token ID सध्याच्या प्रॉपर्टीतून आपोआप निवडले जाईल",
+      "selectDistrict": "जिल्हा निवडा",
+      "approving": "मंजूर होत आहे...",
+      "approveUsdt": "USDT मंजूर करा",
+      "usdtApproved": "✓ USDT मंजूर झाले",
+      "buyNow": "आता खरेदी करा",
+      "buying": "खरेदी चालू आहे...",
+      "processing": "प्रोसेसिंग चालू आहे...",
+      "usdtApprovedHelper": "✓ USDT मंजूर झाले! आता तुम्ही टोकन खरेदी करू शकता."
+    },
+    "cancelSale": "विक्री रद्द करा",
+    "cancelling": "रद्द होत आहे...",
+    "insufficientBalanceNote": "टीप: हे NFT खरेदी करण्यासाठी आपल्या वॉलेटमध्ये किमान {{amount}} USDT असणे आवश्यक आहे."
+  },
+
+  "districts": {
+    "srikakulam": "श्रीकाकुलम",
+    "vizianagaram": "विझियानगरम",
+    "parvathipuramManyam": "पर्वतीपूरम मन्यम",
+    "visakhapatnam": "विशाखापट्टणम",
+    "anakapalli": "अनकापल्ली",
+    "alluriSitharamaRaju": "अल्लुरी सीताराम राजू",
+    "kakinada": "काकीनाडा",
+    "drBRAmbedkarKonaseema": "डॉ. बी. आर. आंबेडकर कोनसीमा",
+    "eastGodavari": "ईस्ट गोदावरी",
+    "westGodavari": "वेस्ट गोदावरी",
+    "eluru": "एलुरू",
+    "krishna": "कृष्णा",
+    "ntr": "एन टी आर",
+    "guntur": "गुंटूर",
+    "palnadu": "पल्नाडू",
+    "bapatla": "बापतला",
+    "prakasam": "प्रकाशम",
+    "spsrNellore": "श्री पोत्ती श्रीरामुलू नेल्लोर",
+    "kurnool": "कुर्नूल",
+    "nandyal": "नंद्याल",
+    "anantapur": "अनंतपूर",
+    "sriSathyaSai": "श्री सत्य साई",
+    "ysrKadapa": "वायएसआर कडप्पा",
+    "annamayya": "अन्नमय्या",
+    "tirupati": "तिरुपती",
+    "chittoor": "चित्तूर",
+
+    "The Line": "द लाईन",
+    "Oxagon": "ऑक्सागॉन",
+    "Trojena": "ट्रोजेना",
+    "Sindalah": "सिंदालाह",
+    "Magna/Leyja": "मॅग्ना/लेज्या",
+    "Magna/Epicon": "मॅग्ना/एपिकॉन",
+    "Magna/Siranna": "मॅग्ना/सिरान्ना",
+    "Magna/Utamo": "मॅग्ना/उटॅमो",
+    "Magna/Norlana": "मॅग्ना/नॉर्लाना",
+    "Magna/Aquellum": "मॅग्ना/अक्वेल्लम",
+    "Magna/Zardun": "मॅग्ना/झारदुन",
+    "Magna/Xaynor": "मॅग्ना/झेनॉर",
+    "Magna/Elanan": "मॅग्ना/एलानन",
+    "Magna/Gidori": "मॅग्ना/गिडोरी",
+    "Magna/Treyam": "मॅग्ना/ट्रेयम",
+    "Magna/Jaumur": "मॅग्ना/जौमुर",
+
+    "Abu Dhabi City": "अबू धाबी सिटी",
+    "Al Ain": "अल ऐन",
+    "Dubai": "दुबई",
+    "Sharjah": "शारजाह",
+    "Ajman": "अजमान",
+    "Umm Al Quwain": "उम्म अल क्वैन",
+    "Ras Al Khaimah": "रास अल खैमा",
+    "Fujairah": "फुजैराह",
+    "Al Dhafra (Al Gharbia)": "अल धाफ्रा (अल घार्बिया)",
+    "Jebel Ali": "जेबेल अली",
+    "Bangkok": "बँकॉक",
+    "Chiang Mai": "चियांग माई",
+    "Phuket": "फुकेट",
+    "Pattaya": "पटाया",
+    "Chiang Rai": "चियांग राय",
+    "Ayutthaya": "अयुथया",
+    "Hat Yai": "हाट याय",
+    "Krabi": "क्राबी",
+    "Surat Thani": "सुरत थानी",
+    "Nakhon Ratchasima": "नखोन रत्चासीमा",
+
+    "Ahmednagar": "अहमदनगर",
+    "Akola": "अकोला",
+    "Amravati": "अमरावती",
+    "Aurangabad": "औरंगाबाद",
+    "Beed": "बीड",
+    "Bhandara": "भंडारा",
+    "Buldhana": "बुलढाणा",
+    "Chandrapur": "चंद्रपूर",
+    "Dhule": "धुळे",
+    "Gadchiroli": "गडचिरोली",
+    "Gondia": "गोंदिया",
+    "Hingoli": "हिंगोली",
+    "Jalgaon": "जळगाव",
+    "Jalna": "जालना",
+    "Kolhapur": "कोल्हापूर",
+    "Latur": "लातूर",
+    "Mumbai City": "मुंबई सिटी",
+    "Mumbai Suburban": "मुंबई उपनगरी",
+    "Nagpur": "नागपूर",
+    "Nanded": "नांदेड",
+    "Nandurbar": "नंदुरबार",
+    "Nashik": "नाशिक",
+    "Osmanabad": "उस्मानाबाद",
+    "Palghar": "पालघर",
+    "Parbhani": "परभणी",
+    "Pune": "पुणे",
+    "Raigad": "रायगड",
+    "Ratnagiri": "रत्नागिरी",
+    "Sangli": "सांगली",
+    "Satara": "सातारा",
+    "Sindhudurg": "सिंधुदुर्ग",
+    "Solapur": "सोलापूर",
+    "Thane": "ठाणे",
+    "Wardha": "वर्धा",
+    "Washim": "वाशीम",
+    "Yavatmal": "यवतमाळ",
+
+    "Adilabad": "आदिलाबाद",
+    "Bhadradri Kothagudem": "भद्राद्री कोठागुडेम",
+    "Hanamkonda": "हनमकोंडा",
+    "Hyderabad": "हैदराबाद",
+    "Jagtial": "जगत्याळ",
+    "Jangaon": "जंगाव",
+    "Jayashankar Bhupalpally": "जयशंकर भूपालपल्ली",
+    "Jogulamba Gadwal": "जोगुलांबा गडवाल",
+    "Kamareddy": "कामारेड्डी",
+    "Karimnagar": "करीमनगर",
+    "Khammam": "खम्मम",
+    "Kumuram Bheem Asifabad": "कुमारम भीम आसिफाबाद",
+    "Mahabubabad": "महबूबाबाद",
+    "Mahabubnagar": "महबूबनगर",
+    "Mancherial": "मंचेरियल",
+    "Medak": "मेदक",
+    "Medchal–Malkajgiri": "मेदचल–मलकाजगिरी",
+    "Mulugu": "मुलुगु",
+    "Nagarkurnool": "नगरकुर्नूल",
+    "Nalgonda": "नलगोंडा",
+    "Narayanpet": "नारायणपेट",
+    "Nirmal": "निर्मल",
+    "Nizamabad": "निजामाबाद",
+    "Peddapalli": "पेड्डापल्ली",
+    "Rajanna Sircilla": "राजन्ना सिरसिल्ला",
+    "Ranga Reddy": "रंगा रेड्डी",
+    "Sangareddy": "संगारेड्डी",
+    "Siddipet": "सिद्दीपेट",
+    "Suryapet": "सूर्यापेट",
+    "Vikarabad": "विकाराबाद",
+    "Wanaparthy": "वनपर्ती",
+    "Warangal": "वारंगल",
+    "Yadadri Bhuvanagiri": "यादद्री भुवनगिरी"
+  },
+
+  "banner": "महत्त्वाच्या माहिती किंवा अपडेट्ससाठी बॅनर",
+
+  "footer": {
+    "companyDescription": "{{regionTitle}} मधील स्थावर मालमत्ता व्यवहारांना ब्लॉकचेन तंत्रज्ञानाद्वारे क्रांतिकारी बनवत आहोत. मालमत्तांना टोकनमध्ये रूपांतरित करून खर्च कमी करणे आणि प्रक्रिया सुलभ करणे.",
+    "navigation": "नेव्हिगेशन",
+    "aboutUs": "आमच्याबद्दल",
+    "marketplace": "मार्केटप्लेस",
+    "deals": "डील्स",
+    "explorer": "एक्सप्लोरर",
+    "team": "संघ",
+    "careers": "करिअर्स",
+    "resources": "संसाधने",
+    "helpCenter": "मदत केंद्र",
+    "documentation": "दस्तऐवजीकरण",
+    "apiReference": "API संदर्भ",
+    "security": "सुरक्षा",
+    "systemStatus": "सिस्टम स्थिती",
+    "contact": "संपर्क",
+    "email": "support@opusbloc.com",
+    "phone": "+91 (0) 123-456-7890",
+    "location": "{{regionTitle}}",
+    "stayUpdated": "अपडेटेड रहा",
+    "emailPlaceholder": "तुमचा ईमेल टाका",
+    "subscribe": "सबस्क्राइब",
+    "stats": {
+      "annualSavings": "वार्षिक बचत",
+      "districts": "जिल्हे",
+      "transactions": "व्यवहार",
+      "support": "सपोर्ट"
+    },
+    "copyright": "Opus Bloc. सर्व हक्क राखीव.",
+    "privacyPolicy": "गोपनीयता धोरण",
+    "termsOfService": "सेवेची अटी",
+    "cookiePolicy": "कुकी धोरण",
+    "compliance": "अनुपालन",
+    "builtWith": "यांनी बनविलेले",
+    "forAndhraPradesh": "{{regionTitle}} साठी"
+  },
+
+  "languages": {
+    "english": "इंग्रजी",
+    "hindi": "हिंदी",
+    "telugu": "तेलुगू",
+    "thai": "थाई"
+  },
+
+  "aboutUs": {
+    "title": "आमच्याबद्दल",
+    "paragraph1": "Opus Bloc Inc. ही कंपनी ब्लॉकचेन तंत्रज्ञान आणि कृत्रिम बुद्धिमत्ता (AI) यांचा वापर करून व्यक्ती, संस्था आणि सरकारांना भेडसावणाऱ्या गुंतागुंतीच्या समस्यांचे निराकरण करण्याच्या ध्येयाने प्रेरित आहे. कंपनीची दृष्टी अशी आहे की विकेंद्रीकृत प्रणाली आणि बुद्धिमान ऑटोमेशनच्या मदतीने सुरक्षित, पारदर्शक आणि सर्वांसाठी सहज उपलब्ध उपाय तयार करून समाजाला सक्षम करणे.",
+    "paragraph2": "Opus Bloc केवळ तांत्रिक प्रगतीपुरती मर्यादित नसून सामाजिक परिवर्तनावरही लक्ष केंद्रित करते. विशिष्ट गरजांसाठी सानुकूल ब्लॉकचेन तयार करून आणि निर्णयप्रक्रिया, ऑटोमेशन आणि डेटा विश्लेषण सुधारणासाठी AI चा वापर करून, कंपनी सुरक्षित आणि स्मार्ट डिजिटल प्रणाली सर्वांसाठी उपलब्ध करून देण्याचा प्रयत्न करते, ज्यामुळे विश्वास आणि सहकार्य वाढते."
+  },
+
+  "profile": {
+    "tabs": {
+      "overview": "ओव्हरव्ह्यू",
+      "myTokens": "माझे टोकन्स",
+      "history": "इतिहास",
+      "pendingApprovals": "प्रलंबित मंजुरी",
+      "settings": "सेटिंग्ज",
+      "governmentApproval": "शासकीय मंजुरी",
+      "giftStatus": "मंजुरीची स्थिती",
+      "delegatedToMe": "मला डेलिगेट केलेले",
+      "auctionBidding": "लिलाव बिडिंग",
+      "myAuctions": "माझे लिलाव",
+      "landRequests": "जमीन विनंत्या",
+      "unlockTokens": "टोकन्स अनलॉक करा"
+    },
+
+    "walletNotConnectedTitle": "वॉलेट कनेक्ट केलेले नाही",
+    "walletNotConnectedDesc": "आपले प्रोफाइल पाहण्यासाठी कृपया वॉलेट कनेक्ट करा.",
+    "editProfile": "प्रोफाइल एडिट करा",
+    "disconnect": "डिस्कनेक्ट",
+    "name": "नाव",
+    "namePlaceholder": "आपले नाव टाका",
+    "email": "ईमेल",
+    "emailPlaceholder": "आपला ईमेल टाका",
+    "bio": "बायो",
+    "bioPlaceholder": "स्वतःबद्दल सांगा",
+    "saveChanges": "बदल सेव्ह करा",
+    "viewToken": "टोकन पाहा",
+
+    "overview": {
+      "totalTransactions": "एकूण व्यवहार",
+      "tokensOwned": "मालकीचे टोकन्स",
+      "walletBalance": "वॉलेट बॅलन्स",
+      "usdtBalance": "USDT बॅलन्स",
+      "walletInformation": "वॉलेट माहिती",
+      "address": "अ‍ॅड्रेस",
+      "ethBalance": "BNB बॅलन्स"
+    },
+
+    "history": {
+      "title": "व्यवहार इतिहास",
+      "loading": "व्यवहार इतिहास लोड होत आहे...",
+      "walletAddress": "वॉलेट अ‍ॅड्रेस",
+      "retry": "पुन्हा प्रयत्न करा",
+      "table": {
+        "type": "प्रकार",
+        "tokenName": "टोकन नाव",
+        "tokenId": "Token ID",
+        "propertyType": "प्रॉपर्टी प्रकार",
+        "price": "किंमत",
+        "date": "तारीख",
+        "districtName": "जिल्हा नाव",
+        "transactionHash": "व्यवहार हॅश",
+        "actions": "अ‍ॅक्शन्स"
+      },
+      "downloadDeed": "डीड डाउनलोड करा",
+      "pagination": {
+        "previous": "मागील",
+        "next": "पुढील",
+        "showing": "दाखवत आहे",
+        "to": "ते",
+        "results": "रिझल्ट्स"
+      },
+      "types": {
+        "Public_Sale": "सार्वजनिक विक्री",
+        "Private_Sale": "खासगी विक्री",
+        "Delegate_NFT": "NFT डेलिगेट",
+        "Delegate_Transfer": "डेलिगेट ट्रान्सफर",
+        "Revoke_Delegation": "डेलिगेशन रद्द",
+        "create_mortage": "मॉर्टगेज तयार करा",
+        "loan_repay": "कर्ज फेड",
+        "liquidate_collateral": "कोलॅटरल लिक्विडेट",
+        "Cancel_Sale": "विक्री रद्द",
+        "Buy_NFT": "NFT खरेदी",
+        "Gift_Created": "गिफ्ट तयार झाले"
+      }
+    },
+
+    "delegatedToMe": {
+      "empty": "आपल्याला कोणतेही टोकन्स डेलिगेट केलेले नाहीत.",
+      "transfer": "ट्रान्सफर",
+      "transferModal": {
+        "title": "डेलिगेटेड टोकन ट्रान्सफर करा",
+        "toAddress": "रिसीव्हर अ‍ॅड्रेस",
+        "toAddressPlaceholder": "रिसीव्हर वॉलेट अ‍ॅड्रेस टाका (0x...)",
+        "transfer": "ट्रान्सफर"
+      }
+    },
+
+    "auctionBidding": {
+      "empty": "आपण अजून कोणतीही बिड लावलेली नाही.",
+      "labels": {
+        "basePrice": "बेस किंमत",
+        "yourBidPrice": "आपली बिड किंमत",
+        "tokenId": "Token ID"
+      }
+    },
+
+    "unlockTokens": {
+      "title": "टोकन्स अनलॉक करा",
+      "empty": "अनलॉक विनंत्या आढळल्या नाहीत.",
+      "columns": {
+        "tokenId": "Token ID",
+        "requestId": "Request ID",
+        "requester": "विनंती करणारा",
+        "developer": "डेव्हलपर",
+        "government": "सरकार",
+        "ownerTokens": "मालकाचे टोकन्स",
+        "developerTokens": "डेव्हलपर टोकन्स",
+        "mortgageTokens": "मॉर्टगेज टोकन्स",
+        "status": "स्थिती",
+        "created": "तयार केव्हा"
+      }
+    }
+  },
+
+  "profileApprovals": {
+    "approvals": {
+      "title": "प्रलंबित मंजुरी",
+      "emptyTitle": "कोणतीही प्रलंबित मंजुरी नाही",
+      "emptyDesc": "सध्या आपल्या कडे कोणतीही प्रलंबित कॉन्ट्रॅक्ट मंजुरी नाही.",
+      "tokenId": "Token ID",
+      "amount": "रक्कम",
+      "borrower": "कर्जदार",
+      "requested": "विनंती तारीख",
+      "seller": "विक्रेता",
+      "actions": {
+        "approve": "मंजूर करा",
+        "reject": "नाकार करा",
+        "details": "तपशील",
+        "acceptMortgage": "मॉर्टगेज स्वीकारा",
+        "rejectMortgage": "मॉर्टगेज नाकार करा"
+      }
+    },
+    "types": {
+      "mortage_requested": "मॉर्टगेज विनंती"
+    },
+    "modal": {
+      "title": "मॉर्टगेज मंजूर करा",
+      "titlePrivateSale": "खासगी विक्री मंजूर करा"
+    }
+  },
+
+  "propertyTypes": {
+    "residential": "रेसिडेन्शियल",
+    "apartment": "अपार्टमेंट",
+    "commercial": "कमर्शियल",
+    "house_villa": "हाऊस / व्हिला",
+    "land_parcel": "जमिनीचा तुकडा"
+  },
+
+  "categoryTypes": {
+    "residential_layout": "रेसिडेन्शियल लेआउट",
+    "house_villa": "हाऊस / व्हिला",
+    "apartment": "अपार्टमेंट",
+    "land_parcel": "जमिनीचा तुकडा"
+  },
+
+  "common": {
+    "cancel": "रद्द करा",
+    "loading": "लोड होत आहे...",
+    "approving": "मंजूर होत आहे...",
+    "status": "स्थिती",
+    "createdAt": "तयार केव्हा"
+  },
+
+  "tokens": {
+    "title": "माझे टोकन्स",
+    "allTokens": "सर्व टोकन्स",
+    "owned": "मालकीचे",
+    "listedForSale": "विक्रीसाठी लिस्टेड",
+    "delegated": "डेलिगेटेड",
+    "mortgage": "मॉर्टगेज",
+    "lending": "लेंडिंग",
+    "developerShare": "डेव्हलपर शेअर",
+    "mortgageRepayment": "मॉर्टगेज रिपेमेंट",
+    "liquidateLoan": "कर्ज लिक्विडेट करा",
+    "mortgaged": "मॉर्टगेज केलेले",
+    "auctioned": "लिलावात",
+    "developerTokens": "डेव्हलपर टोकन्स",
+    "public": "सार्वजनिक",
+    "government": "शासकीय",
+    "private": "खासगी",
+    "delegate": "डेलिगेट करा",
+    "approveUSDT": "USDT मंजूर करा",
+    "approvalRequired": "मंजुरी आवश्यक",
+    "repaying": "फेड होत आहे...",
+    "repay": "फेड करा",
+    "repaid": "पुन्हा प्रयत्न करा",
+    "available": "उपलब्ध",
+    "frozen": "फ्रीज केलेले",
+    "buyersInterested": "इच्छुक खरेदीदार",
+    "cancelSale": "विक्री रद्द करा",
+    "cancelBid": "बिड रद्द करा",
+    "acceptBid": "बिड स्वीकारा",
+    "to": "कोणाकडे",
+    "revoke": "रद्द करा",
+    "rate": "दर",
+    "interest": "व्याज",
+    "due": "देय तारीख",
+    "repayLoan": "कर्ज फेडा",
+    "liquidateToken": "टोकन लिक्विडेट करा",
+    "showingCount": "{{count}} पैकी {{total}} टोकन(स) दाखवत आहे",
+    "loadingOwned": "मालकीचे टोकन्स लोड होत आहेत...",
+    "loadingListed": "सेल डेटा लोड होत आहे...",
+    "loadingDelegated": "डेलिगेशन डेटा लोड होत आहे...",
+    "loadingMortgage": "मॉर्टगेज डेटा लोड होत आहे...",
+    "noTokensFound": "कोणतेही टोकन्स सापडले नाहीत",
+    "tokenId": "Token ID",
+    "loanAmount": "कर्ज रक्कम",
+    "lender": "कर्जदाता",
+    "duration": "कालावधी",
+    "mintToken": "टोकन मिंट करा",
+    "empty": {
+      "all": "आपल्याकडे अजून कोणतेही टोकन नाहीत. पहिले टोकन मिंट करून सुरुवात करा!",
+      "category": "{{category}} या श्रेणीत आपल्याकडे कोणतेही टोकन नाही."
+    }
+  },
+
+  "tokenInfoPage": {
+    "title": "टोकन माहिती",
+    "back": "मागे",
+    "goBack": "परत जा",
+    "loading": "टोकन माहिती लोड होत आहे...",
+    "propertyDetails": "प्रॉपर्टी तपशील",
+    "labels": {
+      "tokenId": "Token ID",
+      "name": "नाव",
+      "district": "जिल्हा",
+      "propertyType": "प्रॉपर्टी प्रकार",
+      "size": "आकार",
+      "contractAddress": "कॉन्ट्रॅक्ट अ‍ॅड्रेस",
+      "createdAt": "तयार केव्हा",
+      "description": "वर्णन"
+    },
+    "fields": {
+      "ownedBy": "मालक",
+      "district": "जिल्हा",
+      "category": "श्रेणी",
+      "propertyType": "प्रॉपर्टी प्रकार",
+      "surveyNumber": "सर्व्हे नंबर",
+      "doorNumber": "दरवाजा नंबर",
+      "flatNumber": "फ्लॅट नंबर",
+      "plotNumber": "प्लॉट नंबर",
+      "areaAcre": "क्षेत्रफळ (एकर)",
+      "areaSqYd": "क्षेत्रफळ (वर्ग यार्ड)",
+      "builtUpAreaSqft": "बिल्ट-अप क्षेत्र (वर्ग फूट)",
+      "roadFrontage": "रस्ता फ्रंटेज",
+      "boundaryNorth": "उत्तर सीमेवर",
+      "boundaryEast": "पूर्व सीमेवर",
+      "boundaryWest": "पश्चिम सीमेवर",
+      "boundarySouth": "दक्षिण सीमेवर",
+      "uniqueKey": "युनिक की",
+      "status": "स्थिती",
+      "createdAt": "तयार केव्हा",
+      "updatedAt": "अपडेट केव्हा",
+      "state": "राज्य",
+      "country": "देश"
+    }
+  },
+
+  "mint": {
+    "title": "टोकन मिंट करा",
+    "connectWalletFirst": "कृपया आधी वॉलेट कनेक्ट करा",
+    "fillRequiredFields": "कृपया आवश्यक फील्ड भरा (इमेज, जिल्हा, श्रेणी, नाव)",
+    "imageUrlLabel": "टोकन इमेज URL",
+    "imageUrlPlaceholder": "https://...",
+    "nameLabel": "नाव",
+    "namePlaceholder": "उदा., {district} मधील प्लॉट",
+    "districtLabel": "जिल्हा",
+    "districtPlaceholder": "जिल्हा निवडा",
+    "categoryLabel": "श्रेणी",
+    "categoryPlaceholder": "श्रेणी निवडा",
+    "surveyNumberLabel": "सर्व्हे नंबर",
+    "doorNumberLabel": "दरवाजा नंबर",
+    "flatNumberLabel": "फ्लॅट नंबर",
+    "plotNumberLabel": "प्लॉट नंबर",
+    "sizeLabel": "आकार",
+    "sizeUnitPlaceholder": "युनिट निवडा",
+    "sizeValuePlaceholder": "आकार टाका",
+    "boundaryNorthLabel": "उत्तर सीमा",
+    "boundaryEastLabel": "पूर्व सीमा",
+    "boundaryWestLabel": "पश्चिम सीमा",
+    "boundarySouthLabel": "दक्षिण सीमा",
+    "roadFrontageLabel": "रस्ता फ्रंटेज",
+    "descriptionLabel": "वर्णन",
+    "buttonMint": "मिंट",
+    "minting": "मिंटिंग चालू आहे...",
+    "transactionFailed": "व्यवहार अयशस्वी झाला"
+  },
+
+  "status": {
+    "noTransactionsTitle": "कोणतेही व्यवहार सापडले नाहीत",
+    "noTransactionsDesc": "आपल्याकडे कोणतेही प्रलंबित किंवा पूर्ण झालेले व्यवहार नाहीत.",
+
+    "types": {
+      "gift": "गिफ्ट विनंती",
+      "privateSale": "खासगी विक्री विनंती",
+      "publicSale": "सार्वजनिक विक्री विनंती",
+      "mortgageApproval": "मॉर्टगेज मंजुरी विनंती",
+      "repay": "रिपेमेंट विनंती",
+      "auction": "लिलाव मंजुरी",
+      "delegate": "डेलेगेट मंजुरी",
+      "delegateTransfer": "डेलेगेट ट्रान्सफर",
+      "revoke": "डेलेगेशन रद्द"
+    },
+
+    "labels": {
+      "tokenId": "Token ID",
+      "flatId": "Flat ID",
+      "subflatId": "Subflat ID",
+      "nftContract": "NFT कॉन्ट्रॅक्ट",
+      "sender": "सेंडर",
+      "receiver": "रिसीव्हर",
+      "message": "मेसेज",
+      "buyer": "खरेदीदार",
+      "seller": "विक्रेता",
+      "borrower": "कर्जदार",
+      "lender": "कर्जदाता",
+      "loanAmount": "कर्ज रक्कम",
+      "interest": "व्याज",
+      "auctionId": "Auction ID",
+      "bidder": "बिडर",
+      "bidAmount": "बिड रक्कम",
+      "delegater": "डेलेगेट करणारा",
+      "delegatee": "डेलेगेट घेणारा",
+      "from": "पासून",
+      "to": "पर्यंत",
+      "lastUpdated": "शेवटचे अपडेट"
+    }
+  },
+
+  "govApproval": {
+    "tabs": {
+      "gift": "गिफ्ट मंजुरी",
+      "auctionApproval": "लिलाव मंजुरी",
+      "privateSale": "खासगी विक्री",
+      "publicSale": "सार्वजनिक विक्री",
+      "delegate": "डेलेगेट मंजुरी",
+      "delerequest": "डेलेगेट ट्रान्सफर विनंत्या",
+      "repay": "रिपेमेंट विनंत्या",
+      "revoke": "डेलेगेशन रद्द विनंत्या",
+      "mortgage": "मॉर्टगेज मंजुरी"
+    },
+
+    "gift": {
+      "empty": "सध्या कोणतीही प्रलंबित गिफ्ट मंजुरी नाही."
+    },
+    "privateSale": {
+      "empty": "कोणतीही प्रलंबित खासगी विक्री मंजुरी नाही."
+    },
+    "publicSale": {
+      "empty": "कोणतीही प्रलंबित सार्वजनिक विक्री मंजुरी नाही."
+    },
+    "mortgage": {
+      "empty": "कोणतीही प्रलंबित मॉर्टगेज मंजुरी नाही."
+    },
+    "repay": {
+      "empty": "कोणतीही रिपेमेंट विनंती नाही."
+    },
+    "revoke": {
+      "empty": "कोणतीही डेलेगेशन रद्द विनंती नाही."
+    },
+    "delegate": {
+      "empty": "कोणतीही डेलेगेट मंजुरी विनंती नाही."
+    },
+    "delerequest": {
+      "empty": "कोणतीही डेलेगेट ट्रान्सफर विनंती नाही."
+    },
+    "auctionApproval": {
+      "empty": "कोणतीही लिलाव मंजुरी विनंती नाही."
+    },
+
+    "labels": {
+      "tokenId": "Token ID",
+      "flatId": "Flat ID",
+      "subflatId": "Subflat ID",
+      "mortgageId": "Mortgage ID",
+      "ownerDelegater": "मालक (डेलेगेट करणारा)",
+      "delegater": "डेलेगेट करणारा",
+      "delegatee": "डेलेगेट घेणारा",
+      "borrower": "कर्जदार",
+      "lender": "कर्जदाता",
+      "loanAmount": "कर्ज रक्कम",
+      "interestAmount": "व्याज रक्कम",
+      "buyer": "खरेदीदार",
+      "seller": "विक्रेता",
+      "nftAddress": "NFT अ‍ॅड्रेस",
+      "contract": "कॉन्ट्रॅक्ट",
+      "auctionId": "Auction ID",
+      "acceptedBy": "यांनी स्वीकारले",
+      "fromAddress": "पासून अ‍ॅड्रेस",
+      "toAddress": "पर्यंत अ‍ॅड्रेस",
+      "creatorAddress": "क्रिएटर अ‍ॅड्रेस",
+      "lenderAddress": "कर्जदाता अ‍ॅड्रेस",
+      "sellerAddress": "विक्रेता अ‍ॅड्रेस",
+      "govWallet": "शासकीय वॉलेट",
+      "delegateAddress": "डेलेगेट अ‍ॅड्रेस",
+      "requested": "विनंती",
+      "requestedOn": "विनंती तारीख"
+    },
+
+    "status": {
+      "pending": "प्रलंबित",
+      "pendingApproval": "मंजुरी प्रलंबित",
+      "approved": "मंजूर",
+      "rejected": "नाकारले",
+      "accepted": "स्वीकारले",
+      "approvedByBorrower": "कर्जदाराने मंजूर केले",
+      "approvedByGov": "सरकारने मंजूर केले",
+      "rejectedByGov": "सरकारने नाकारले"
+    },
+
+    "actions": {
+      "approve": "मंजूर करा",
+      "reject": "नाकार करा"
+    },
+
+    "messages": {
+      "processing": "प्रोसेसिंग चालू आहे...",
+      "transactionError": "चूक: व्यवहार अयशस्वी झाला. कृपया पुन्हा प्रयत्न करा."
+    }
+  },
+
+  "publicTransactions": {
+    "title": "सार्वजनिक व्यवहार इतिहास",
+    "subtitle": "सर्व सार्वजनिक ब्लॉकचेन व्यवहार पहा",
+
+    "tabs": {
+      "all": "सर्व प्रकार",
+      "transferSubflat": "सबफ्लॅट ट्रान्सफर",
+      "publicSaleSubflat": "सबफ्लॅट सार्वजनिक विक्री",
+      "privateSaleSubflat": "सबफ्लॅट खासगी विक्री",
+      "buyNftSubflat": "सबफ्लॅट NFT खरेदी"
+    },
+
+    "filters": {
+      "moreTypes": "अधिक प्रकार:",
+      "selectType": "प्रकार निवडा"
+    },
+
+    "dropdownTypes": {
+      "cancelSaleSubflat": "सबफ्लॅट विक्री रद्द",
+      "auctionSaleSubflat": "सबफ्लॅट लिलाव विक्री",
+      "transferFlat": "फ्लॅट ट्रान्सफर",
+      "publicSaleFlat": "फ्लॅट सार्वजनिक विक्री",
+      "privateSaleFlat": "फ्लॅट खासगी विक्री",
+      "buyNftFlat": "फ्लॅट NFT खरेदी",
+      "cancelSaleFlat": "फ्लॅट विक्री रद्द",
+      "auctionSaleFlat": "फ्लॅट लिलाव विक्री",
+      "flatConsolidation": "फ्लॅट कन्सॉलिडेशन",
+      "mortgageReleaseApproved": "मॉर्टगेज रिलीज मंजूर"
+    },
+
+    "table": {
+      "from": "पासून",
+      "toBuyer": "खरेदीदाराकडे",
+      "date": "तारीख",
+      "functionName": "फंक्शन नाव"
+    },
+
+    "labels": {
+      "contractInteraction": "कॉन्ट्रॅक्ट इंटरॅक्शन"
+    },
+
+    "messages": {
+      "loading": "व्यवहार लोड होत आहेत...",
+      "noTransactions": "कोणतेही व्यवहार सापडले नाहीत"
+    },
+
+    "pagination": {
+      "label": "{{from}} ते {{to}} पैकी {{total}} रिझल्ट्स दाखवत आहे",
+      "previous": "मागील",
+      "next": "पुढील"
+    },
+
+    "types": {
+      "TRANSFER_SUBFLAT": "सबफ्लॅट ट्रान्सफर",
+      "Public_Sale_Subflat": "सबफ्लॅट सार्वजनिक विक्री",
+      "Private_Sale_Subflat": "सबफ्लॅट खासगी विक्री",
+      "Buy_NFT_Subflat": "सबफ्लॅट NFT खरेदी",
+      "Cancel_Sale_Subflat": "सबफ्लॅट विक्री रद्द",
+      "AUCTION_SALE_SUBFLAT": "सबफ्लॅट लिलाव विक्री",
+      "mortage_requested_subflat": "मॉर्टगेज विनंती (सबफ्लॅट)",
+      "mortage_accepted_subflat": "मॉर्टगेज मंजूर (सबफ्लॅट)",
+      "mortage_rejected_subflat": "मॉर्टगेज नाकारले (सबफ्लॅट)",
+
+      "TRANSFER_FLAT": "फ्लॅट ट्रान्सफर",
+      "Public_Sale_Flat": "फ्लॅट सार्वजनिक विक्री",
+      "Private_Sale_Flat": "फ्लॅट खासगी विक्री",
+      "Buy_NFT_Flat": "फ्लॅट NFT खरेदी",
+      "Cancel_Sale_Flat": "फ्लॅट विक्री रद्द",
+      "AUCTION_SALE_FLAT": "फ्लॅट लिलाव विक्री",
+      "mortage_requested_flat": "मॉर्टगेज विनंती (फ्लॅट)",
+      "mortage_accepted_flat": "मॉर्टगेज मंजूर (फ्लॅट)",
+      "mortage_rejected_flat": "मॉर्टगेज नाकारले (फ्लॅट)",
+
+      "FLAT_CONSOLIDATION": "फ्लॅट कन्सॉलिडेशन",
+      "MORTGAGE_RELEASE_APPROVED": "मॉर्टगेज रिलीज मंजूर",
+
+      "Public_Sale": "सार्वजनिक विक्री",
+      "mortage_requested": "मॉर्टगेज विनंती",
+      "Gift_Created": "गिफ्ट तयार झाले",
+      "NFT_MINT": "NFT मिंट",
+      "TRANSFER": "ट्रान्सफर",
+      "Gift_Requested": "गिफ्ट विनंती",
+      "MINT": "मिंट"
+    }
+  }
+}
