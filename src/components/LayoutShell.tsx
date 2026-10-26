@@ -1,26 +1,22 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+
 import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
 
-
-export default function LayoutShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  const isAuthPage =
-    pathname.startsWith("/auth/login") ||
-    pathname.startsWith("/auth/signup") ||
-    pathname.startsWith("/auth/forgot-password") ||
-    pathname.startsWith("/auth/otp");
+  if (pathname.startsWith("/auth")) return <>{children}</>;
 
   return (
-    <>
-      {!isAuthPage && <Navbar />}
-      {children}
-    </>
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      </div>
+    </div>
   );
 }
