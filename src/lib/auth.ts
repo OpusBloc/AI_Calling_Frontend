@@ -40,7 +40,43 @@ export const getRoleFromToken = (): string | null => {
 
 
 const TOKEN_KEY = "access_token";
+const USER_KEY = "auth_user";
 const AUTH_EVENT = "auth-changed";
+
+export interface CurrentUser {
+  email: string;
+  full_name?: string | null;
+  picture_url?: string | null;
+}
+
+/**
+ * Save the profile returned by the backend at sign-in (name, picture)
+ */
+export const setUser = (user: CurrentUser) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+};
+
+/**
+ * Signed-in user: the saved profile, else just the email from the JWT
+ */
+export const getUser = (): CurrentUser | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(USER_KEY);
+    if (saved) return JSON.parse(saved) as CurrentUser;
+  } catch {
+    // fall through to the token
+  }
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const { email } = jwtDecode<{ email?: string }>(token);
+    return email ? { email } : null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Save JWT token
@@ -67,16 +103,30 @@ export const getToken = (): string | null => {
 export const clearToken = () => {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 
   // 🔥 notify app
   window.dispatchEvent(new Event(AUTH_EVENT));
 };
 
 /**
- * Check if user is logged in
+ * True when the token can't be decoded or its `exp` is in the past
+ */
+export const isTokenExpired = (token: string): boolean => {
+  try {
+    const { exp } = jwtDecode<{ exp?: number }>(token);
+    return !exp || exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Check if user is logged in with a non-expired token
  */
 export const isAuthenticated = (): boolean => {
-  return !!getToken();
+  const token = getToken();
+  return !!token && !isTokenExpired(token);
 };
 
 /**

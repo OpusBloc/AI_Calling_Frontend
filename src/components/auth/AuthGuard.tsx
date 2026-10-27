@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getToken, clearToken } from "@/lib/auth";
+import { getToken, clearToken, isTokenExpired, onAuthChange } from "@/lib/auth";
 
 interface Props {
   children: ReactNode;
@@ -21,34 +21,39 @@ export default function AuthGuard({ children }: Props) {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    const token = getToken();
+    const check = () => {
+      const token = getToken();
 
-    // ❌ Not logged in
-    if (!token) {
-      if (!PUBLIC_ROUTES.some((r) => pathname.startsWith(r))) {
-        clearToken();
-        // Allow renders so the page isn't frozen while navigation happens
-        setAllowed(true);
+      // Drop expired/undecodable tokens so they don't count as a session
+      if (token && isTokenExpired(token)) clearToken();
+
+      const loggedIn = !!getToken();
+      const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
+
+      // Keep the spinner up until the redirect lands, so the wrong page never flashes
+      if (!loggedIn && !isPublic) {
+        setAllowed(false);
         router.replace("/auth/login");
         return;
       }
+      if (loggedIn && isPublic) {
+        setAllowed(false);
+        router.replace("/");
+        return;
+      }
+
       setAllowed(true);
-      return;
-    }
+    };
 
-    // ✅ Logged in → allow everything
-    setAllowed(true);
-
-    // If logged-in user tries to access auth pages, redirect home
-    if (PUBLIC_ROUTES.some((r) => pathname.startsWith(r))) {
-      router.replace("/");
-    }
+    check();
+    // Re-check on login/logout so the guard follows token changes
+    return onAuthChange(check);
   }, [pathname, router]);
 
   if (!allowed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-10 w-10 rounded-full border-4 border-gray-300 border-t-black" />
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-hairline border-t-accent" />
       </div>
     );
   }

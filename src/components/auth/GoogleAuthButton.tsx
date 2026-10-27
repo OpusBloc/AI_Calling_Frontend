@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { setToken } from "@/lib/auth";
+import { setToken, setUser } from "@/lib/auth";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
@@ -75,6 +75,7 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
         if (!res.ok) {
           throw new Error(data?.detail ?? `Request failed (${res.status})`);
         }
+        setUser(data.user);
         setToken(data.access_token);
         router.replace("/dashboard");
       } catch (err) {
@@ -93,7 +94,7 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
           size: "large",
           shape: "rectangular",
           text: mode === "signup" ? "signup_with" : "signin_with",
-          width: 352,
+          width: 320,
         });
       })
       .catch((err: Error) => setError(err.message));
@@ -108,7 +109,7 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
       <div ref={buttonRef} className="flex min-h-11 justify-center" />
       {loading && <p className="text-center text-sm text-muted">Signing you in…</p>}
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-md border border-loss/30 bg-loss-bg px-3 py-2 text-sm text-loss">
           {error}
         </p>
       )}
