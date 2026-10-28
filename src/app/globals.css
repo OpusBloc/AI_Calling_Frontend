@@ -297,6 +297,18 @@ body {
   background: rgba(168, 145, 90, 0.28);
 }
 
+/* Keep number fields editable by typing without showing browser stepper arrows. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 /* ---- Scrollbars ----------------------------------------------------------
    Without this every scrollable region falls back to the browser's own
    chrome, which is the one piece of UI that never matches the theme.

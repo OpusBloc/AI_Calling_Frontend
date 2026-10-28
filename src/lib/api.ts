@@ -1,7 +1,20 @@
 // src/lib/api.ts
 import { showErrorNotification } from "@/hooks/useNotification";
 import { clearToken, getToken } from "@/lib/auth";
-import type { CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoNumber, PlivoPool } from "@/types/types";
+import type {
+  Campaign,
+  CampaignCreate,
+  CampaignUpdate,
+  CreatePlivoPoolBody,
+  LeadPool,
+  Lead,
+  LeadPoolCreate,
+  LeadImportResult,
+  LeadPoolUpdate,
+  PatchPlivoPoolBody,
+  PlivoNumber,
+  PlivoPool,
+} from "@/types/types";
 
 /**
  * Error carrying the backend's HTTP status and `detail` message
@@ -93,3 +106,44 @@ export const deletePlivoPool = (id: string) =>
 
 export const getAvailablePlivoNumbers = (id: string) =>
   api<PlivoNumber[]>(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`);
+
+// Campaign endpoints
+export const getCampaigns = async (): Promise<Campaign[]> => {
+  const data = await api<Campaign[] | null>("/campaigns");
+  if (!Array.isArray(data)) return [];
+  return data.map((campaign) => ({
+    ...campaign,
+    representative_ids: campaign.representative_ids ?? [],
+    lead_pool_ids: campaign.lead_pool_ids ?? [],
+    plivo_numbers: campaign.plivo_numbers ?? [],
+    plivo_pool_ids: campaign.plivo_pool_ids ?? [],
+    retry_on: campaign.retry_on ?? [],
+  }));
+};
+
+export const createCampaign = (body: CampaignCreate) =>
+  api<Campaign>("/campaigns", { method: "POST", body });
+
+export const updateCampaign = (id: string, body: CampaignUpdate) =>
+  api<Campaign>(`/campaigns/${encodeURIComponent(id)}`, { method: "PATCH", body });
+
+export const deleteCampaign = (id: string) =>
+  api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
+export const getLeads = () => api<Lead[]>("/lead-pools/leads");
+
+export const createLeadPool = (body: LeadPoolCreate) =>
+  api<LeadPool>("/lead-pools", { method: "POST", body });
+
+export const updateLeadPool = (id: string, body: LeadPoolUpdate) =>
+  api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`, { method: "PATCH", body });
+
+export const deleteLeadPool = (id: string) =>
+  api<void>(`/lead-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const importLeadSheet = (file: File) => {
+  const body = new FormData();
+  body.append("file", file);
+  return api<LeadImportResult>("/lead-pools/import", { method: "POST", body });
+};

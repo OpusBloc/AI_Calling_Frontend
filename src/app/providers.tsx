@@ -25,7 +25,6 @@ export function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AuthGuard>{children}</AuthGuard>
       </QueryClientProvider>
-      <AuthGuard>{children}</AuthGuard>
       <Toaster
         position="top-right"
         // Above the drawer (z-50) and its backdrop so errors raised from inside it stay visible

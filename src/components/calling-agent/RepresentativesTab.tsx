@@ -195,9 +195,6 @@ function RepresentativeForm({
       onClose={onClose}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
           <Button onClick={handleSave} disabled={!complete || saving}>
             {saving ? "Saving…" : rep ? "Save changes" : "Add representative"}
           </Button>

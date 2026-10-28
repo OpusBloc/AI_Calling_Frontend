@@ -19,13 +19,67 @@ import {
   patchPlivoPool,
   deletePlivoPool,
   getAvailablePlivoNumbers,
+  getCampaigns,
+  getLeadPools,
+  getLeads,
+  createLeadPool,
+  updateLeadPool,
+  deleteLeadPool,
+  importLeadSheet,
 } from "@/lib/api";
-import { CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool } from "./types";
+import type { Campaign, CreatePlivoPoolBody, Lead, LeadPool, LeadPoolCreate, LeadPoolUpdate, PatchPlivoPoolBody, PlivoPool } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
 
 const POOLS_KEY = ["plivo-pools"];
+const CAMPAIGNS_KEY = ["campaigns"];
+const LEAD_POOLS_KEY = ["lead-pools"];
+const LEADS_KEY = ["leads"];
+
+export const useCampaigns = () =>
+  useQuery<Campaign[]>({ queryKey: CAMPAIGNS_KEY, queryFn: getCampaigns, retry: false });
+
+export const useLeadPools = () =>
+  useQuery<LeadPool[]>({ queryKey: LEAD_POOLS_KEY, queryFn: getLeadPools, retry: false });
+
+export const useLeads = () =>
+  useQuery<Lead[]>({ queryKey: LEADS_KEY, queryFn: getLeads, retry: false });
+
+export const useCreateLeadPool = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LeadPoolCreate) => createLeadPool(body),
+    onSuccess: (created) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools ? [...pools, created] : [created]),
+  });
+};
+
+export const useUpdateLeadPool = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: LeadPoolUpdate }) => updateLeadPool(id, body),
+    onSuccess: (updated) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools?.map((pool) => pool.id === updated.id ? updated : pool)),
+  });
+};
+
+export const useDeleteLeadPool = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLeadPool,
+    onSuccess: (_result, id) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools?.filter((pool) => pool.id !== id)),
+  });
+};
+
+export const useImportLeadSheet = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: importLeadSheet,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: LEAD_POOLS_KEY });
+      await qc.invalidateQueries({ queryKey: LEADS_KEY });
+    },
+  });
+};
 
 
 // GET list of numbers -> { data, isLoading, isError }

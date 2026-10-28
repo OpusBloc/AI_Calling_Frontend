@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Eye, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, RefreshCw, ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   usePlivoPools, useCreatePlivoPool, useUpdatePlivoPool, useDeletePlivoPool, usePlivoNumbers, useSyncPlivoNumbers,
 } from "../../hooks/hooks";
 import { PlivoPool } from "../../types/types";
 import { NumberMultiSelect } from "./number-multi-select";
 import { Button } from "../calling-agent/ui";
+import { showSuccessNotification } from "@/hooks/useNotification";
 
 const fmtDate = (s?: string | null) =>
   s ? new Date(s).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "-";
@@ -54,18 +55,30 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
 
   const save = () => {
     const body = { name: name.trim(), status, concurrency_limit: concurrencyLimit, phone_numbers: selected };
-    if (pool) update.mutate({ id: pool.id, body }, { onSuccess: requestClose });
-    else create.mutate(body, { onSuccess: requestClose });
+    if (pool) {
+      update.mutate({ id: pool.id, body }, { onSuccess: () => {
+        showSuccessNotification(`"${body.name}" was updated.`, { title: "Pool updated" });
+        requestClose();
+      } });
+    } else {
+      create.mutate(body, { onSuccess: () => {
+        showSuccessNotification(`"${body.name}" was created.`, { title: "Pool created" });
+        requestClose();
+      } });
+    }
   };
 
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <div data-pool-modal className={`${closing ? "animate-slide-out-right" : "animate-slide-in-right"} flex h-full max-h-screen w-full max-w-md flex-col overflow-hidden bg-surface shadow-xl`}>
         <div className="shrink-0 border-b px-5 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             {pool && <Pencil size={18} className="text-accent-text" />}
             {pool ? "Edit pool" : "New pool"}
           </h2>
+          <button type="button" onClick={requestClose} aria-label="Close" className="text-muted transition-colors hover:text-heading"><X size={20} /></button>
+          </div>
         </div>
 
         <div className="no-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
@@ -114,11 +127,9 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
           <p className="text-sm text-warn">Selected {selected.length} of {poolSize} phone numbers.</p>
         )}
 
-        {mutation.isError && <p className="text-sm text-loss">{(mutation.error as Error).message}</p>}
         </div>
 
         <div data-pool-modal-footer className="flex shrink-0 justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 sm:px-6">
-          <button onClick={requestClose} className="rounded border px-4 py-2 text-sm">Cancel</button>
           <Button onClick={save} disabled={!name.trim() || mutation.isPending || selected.length !== poolSize}>
             {mutation.isPending ? "Saving..." : "Save"}
           </Button>
@@ -164,9 +175,12 @@ function ViewPoolModal({ pool, onClose }: { pool: PlivoPool; onClose: () => void
     <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <div className={`${closing ? "animate-slide-out-right" : "animate-slide-in-right"} flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl`}>
         <div className="shrink-0 border-b px-5 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Eye size={18} className="text-accent-text" /> Pool details
           </h2>
+          <button type="button" onClick={requestClose} aria-label="Close" className="text-muted transition-colors hover:text-heading"><X size={20} /></button>
+          </div>
         </div>
         <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4 sm:px-6">
           <div>
@@ -202,9 +216,6 @@ function ViewPoolModal({ pool, onClose }: { pool: PlivoPool; onClose: () => void
             </dl>
           </div>
         </div>
-        <div className="flex shrink-0 justify-end border-t border-hairline bg-raised px-5 py-4 sm:px-6">
-          <button onClick={requestClose} className="rounded border px-4 py-2 text-sm">Close</button>
-        </div>
       </div>
     </div>
   );
@@ -226,7 +237,9 @@ export function PoolsTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-end gap-2">
-        <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
+        <Button onClick={() => sync.mutate(undefined, {
+          onSuccess: () => showSuccessNotification("Plivo numbers have been synchronized.", { title: "Numbers synced" }),
+        })} disabled={sync.isPending}>
           <RefreshCw size={16} className={sync.isPending ? "animate-spin" : ""} />
           {sync.isPending ? "Syncing..." : "Sync"}
         </Button>
@@ -234,8 +247,6 @@ export function PoolsTab() {
           <Plus size={16} /> New Pool
         </Button>
       </div>
-      {sync.isError && <p className="mb-3 text-right text-sm text-loss">Failed to sync numbers: {(sync.error as Error).message}</p>}
-
       <div className="overflow-x-auto rounded-lg border border-hairline bg-surface shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-hairline bg-raised text-[11px] uppercase tracking-[0.08em] text-muted">
@@ -322,18 +333,18 @@ export function PoolsTab() {
         </div>
       </div>
 
-      {remove.isError && <p className="mt-2 text-sm text-loss">{(remove.error as Error).message}</p>}
       {modal && <PoolModal pool={modal.pool} onClose={() => setModal(null)} />}
       {viewPool && <ViewPoolModal pool={viewPool} onClose={() => setViewPool(null)} />}
       {deletePool && (
         <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-pool-title" className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-xl">
-            <h2 id="delete-pool-title" className="text-lg font-semibold text-heading">Delete pool?</h2>
+            <div className="flex items-center justify-between"><h2 id="delete-pool-title" className="text-lg font-semibold text-heading">Delete pool?</h2><button type="button" onClick={() => setDeletePool(null)} disabled={remove.isPending} aria-label="Close" className="text-muted transition-colors hover:text-heading disabled:opacity-50"><X size={20} /></button></div>
             <p className="mt-2 text-sm text-muted">Are you sure you want to delete “{deletePool.name}”? This action cannot be undone.</p>
-            {remove.isError && <p className="mt-3 text-sm text-loss">{(remove.error as Error).message}</p>}
-            <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setDeletePool(null)} disabled={remove.isPending} className="rounded-md border border-hairline px-4 py-2 text-sm text-body hover:bg-surface-hover disabled:opacity-50">Cancel</button>
-              <Button onClick={() => remove.mutate(deletePool.id, { onSuccess: () => setDeletePool(null) })} disabled={remove.isPending}>{remove.isPending ? "Deleting…" : "Delete"}</Button>
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => remove.mutate(deletePool.id, { onSuccess: () => {
+                showSuccessNotification(`"${deletePool.name}" was deleted.`, { title: "Pool deleted" });
+                setDeletePool(null);
+              } })} disabled={remove.isPending}>{remove.isPending ? "Deleting…" : "Delete"}</Button>
             </div>
           </div>
         </div>

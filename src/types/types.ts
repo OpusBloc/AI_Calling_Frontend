@@ -1,3 +1,17 @@
+import type { components } from "./api";
+
+export type Campaign = components["schemas"]["CampaignResponse"] & {
+  ended_at?: string | null;
+  concurrent_calls?: number | null;
+};
+export type CampaignCreate = components["schemas"]["CampaignCreate"];
+export type CampaignUpdate = components["schemas"]["CampaignUpdate"];
+export type LeadPool = components["schemas"]["LeadPoolResponse"];
+export type LeadPoolCreate = components["schemas"]["LeadPoolCreate"];
+export type LeadPoolUpdate = components["schemas"]["LeadPoolUpdate"];
+export type LeadImportResult = components["schemas"]["LeadImportResult"];
+export type Lead = components["schemas"]["LeadResponse"];
+
 /**
  * GET /api/plivo-numbers -> PlivoNumber[]
  * GET /api/plivo-pools -> PlivoPool[]
