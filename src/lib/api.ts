@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import { clearToken, getToken } from "@/lib/auth";
+import type { CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoNumber, PlivoPool } from "@/types/types";
 
 /**
  * Error carrying the backend's HTTP status and `detail` message
@@ -54,3 +55,23 @@ export async function api<T>(
   if (!res.ok) throw new ApiError(detailMessage(data?.detail, res.status), res.status);
   return data as T;
 }
+
+// Number Pool endpoints
+export const getPlivoNumbers = () => api<PlivoNumber[]>("/plivo-numbers");
+
+export const syncPlivoNumbers = () =>
+  api<Record<string, unknown>>("/plivo-numbers/sync", { method: "POST" });
+
+export const getPlivoPools = () => api<PlivoPool[]>("/plivo-pools");
+
+export const createPlivoPool = (body: CreatePlivoPoolBody) =>
+  api<PlivoPool>("/plivo-pools", { method: "POST", body });
+
+export const patchPlivoPool = (id: string, body: PatchPlivoPoolBody) =>
+  api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`, { method: "PATCH", body });
+
+export const deletePlivoPool = (id: string) =>
+  api<void>(`/plivo-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const getAvailablePlivoNumbers = (id: string) =>
+  api<PlivoNumber[]>(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`);

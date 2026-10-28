@@ -359,6 +359,15 @@ body {
   }
 }
 
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -372,6 +381,10 @@ body {
   animation: slide-in-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.animate-slide-out-right {
+  animation: slide-out-right 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-fadeIn,
 .animate-fade-in {
   animation: fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -379,6 +392,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-slide-in-right,
+  .animate-slide-out-right,
   .animate-fadeIn,
   .animate-fade-in {
     animation: none;
