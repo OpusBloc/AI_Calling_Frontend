@@ -7,7 +7,6 @@ import type {
   CampaignUpdate,
   CreatePlivoPoolBody,
   LeadPool,
-  Lead,
   LeadPoolCreate,
   LeadImportResult,
   LeadPoolUpdate,
@@ -134,7 +133,7 @@ export const deleteCampaign = (id: string) =>
   api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
-export const getLeads = () => api<Lead[]>("/lead-pools/leads");
+export const getLeadPool = (id: string) => api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`);
 
 export const createLeadPool = (body: LeadPoolCreate) =>
   api<LeadPool>("/lead-pools", { method: "POST", body });

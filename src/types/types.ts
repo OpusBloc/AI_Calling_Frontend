@@ -10,7 +10,6 @@ export type LeadPool = components["schemas"]["LeadPoolResponse"];
 export type LeadPoolCreate = components["schemas"]["LeadPoolCreate"];
 export type LeadPoolUpdate = components["schemas"]["LeadPoolUpdate"];
 export type LeadImportResult = components["schemas"]["LeadImportResult"];
-export type Lead = components["schemas"]["LeadResponse"];
 
 /**
  * GET /api/plivo-numbers -> PlivoNumber[]

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Eye, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
-import { useCreateLeadPool, useDeleteLeadPool, useImportLeadSheet, useLeadPools, useLeads, useUpdateLeadPool } from "@/hooks/hooks";
+import { useCreateLeadPool, useDeleteLeadPool, useImportLeadSheet, useLeadPool, useLeadPoolDetailsList, useLeadPools, useUpdateLeadPool } from "@/hooks/hooks";
 import type { LeadImportResult, LeadPool, LeadPoolCreate, LeadPoolUpdate } from "@/types/types";
 import { Button } from "../calling-agent/ui";
 
@@ -40,7 +40,7 @@ function LeadPoolForm({
   };
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <aside className="animate-slide-in-right flex h-full max-h-screen w-full max-w-md flex-col overflow-hidden bg-surface shadow-xl">
         <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6">
           <div className="flex items-center justify-between">
@@ -76,7 +76,7 @@ function LeadPoolDetails({ pool, onClose }: { pool: LeadPool; onClose: () => voi
     ["Created At", fmtDate(pool.created_at)], ["Updated At", fmtDate(pool.updated_at)],
   ];
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <aside className="animate-slide-in-right flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl">
         <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-semibold text-heading"><Eye size={18} className="text-accent-text" /> Lead pool details</h2><button type="button" onClick={onClose} aria-label="Close" className="text-muted transition-colors hover:text-heading"><X size={20} /></button></div></div>
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
@@ -96,7 +96,6 @@ export function LeadPoolsTab() {
   const update = useUpdateLeadPool();
   const remove = useDeleteLeadPool();
   const importSheet = useImportLeadSheet();
-  const { data: leads = [], isLoading: leadsLoading, isError: leadsError, error: leadsQueryError } = useLeads();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<LeadPool | null | undefined>(undefined);
   const [viewing, setViewing] = useState<LeadPool | null>(null);
@@ -105,12 +104,23 @@ export function LeadPoolsTab() {
   const [showImportResult, setShowImportResult] = useState(false);
   const [leadSearch, setLeadSearch] = useState("");
   const [numbersPool, setNumbersPool] = useState<LeadPool | null>(null);
+  const { data: selectedPoolDetails, isLoading: selectedPoolLoading, isError: selectedPoolError, error: selectedPoolQueryError } = useLeadPool(numbersPool?.id ?? "");
+  const poolDetailsQueries = useLeadPoolDetailsList(pools.map((pool) => pool.id), showImportResult);
+  const poolDetails = poolDetailsQueries.flatMap((query) => query.data ? [query.data] : []);
+  const leads = poolDetails.flatMap((pool) => pool.numbers.map((phone, index) => ({
+    id: `${pool.id}-${index}`,
+    full_name: null as string | null,
+    phone_e164: phone,
+    lead_number: index + 1,
+    pool_ids: [pool.id],
+  })));
+  const leadsLoading = showImportResult && poolDetailsQueries.some((query) => query.isLoading);
+  const leadsQueryError = poolDetailsQueries.find((query) => query.isError)?.error;
+  const leadsError = Boolean(leadsQueryError);
   const filteredLeads = leads.filter((lead) =>
     [lead.full_name ?? "", lead.phone_e164, String(lead.lead_number), ...lead.pool_ids]
       .some((value) => value.toLowerCase().includes(leadSearch.trim().toLowerCase())),
   );
-  const poolLeads = numbersPool ? leads.filter((lead) => lead.pool_ids.includes(numbersPool.id)) : [];
-
   const save = (createBody: LeadPoolCreate, updateBody: LeadPoolUpdate) => {
     if (editing) {
       update.mutate({ id: editing.id, body: updateBody }, { onSuccess: (saved) => {
@@ -187,7 +197,7 @@ export function LeadPoolsTab() {
       {editing !== undefined && <LeadPoolForm key={editing?.id ?? "new"} pool={editing} pending={create.isPending || update.isPending} onClose={() => setEditing(undefined)} onSave={save} />}
       {viewing && <LeadPoolDetails pool={viewing} onClose={() => setViewing(null)} />}
       {numbersPool && (
-        <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+        <div onMouseDown={(event) => { if (event.target === event.currentTarget) setNumbersPool(null); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
           <aside role="dialog" aria-modal="true" aria-labelledby="pool-numbers-title" className="animate-slide-in-right flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl">
             <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6">
               <div className="flex items-center justify-between">
@@ -196,13 +206,16 @@ export function LeadPoolsTab() {
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-              {leadsLoading && <p className="text-sm text-muted">Loading leads...</p>}
-              {leadsError && <p className="text-sm text-loss">Failed to load leads: {(leadsQueryError as Error).message}</p>}
-              {!leadsLoading && !leadsError && poolLeads.length === 0 && <p className="text-sm text-muted">No leads in this pool.</p>}
-              {!leadsLoading && !leadsError && poolLeads.length > 0 && (
+              {selectedPoolLoading && <p className="text-sm text-muted">Loading leads...</p>}
+              {selectedPoolError && <p className="text-sm text-loss">Failed to load this pool: {(selectedPoolQueryError as Error).message}</p>}
+              {!selectedPoolLoading && !selectedPoolError && (selectedPoolDetails?.numbers ?? []).length === 0 && <p className="text-sm text-muted">No leads in this pool.</p>}
+              {!selectedPoolLoading && !selectedPoolError && (selectedPoolDetails?.numbers ?? []).length > 0 && (
                 <div className="text-sm">
                   <div className="sticky top-0 grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-hairline bg-surface py-2 font-medium text-muted"><span>S.No</span><span>Name</span><span>Number</span></div>
-                  <div className="divide-y divide-hairline">{poolLeads.map((lead, index) => <div key={lead.id} className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-4 py-3"><span className="text-muted">{index + 1}</span><span className="break-words text-heading">{lead.full_name || "—"}</span><span className="break-all text-heading">{lead.phone_e164}</span></div>)}</div>
+                  <div className="divide-y divide-hairline">{(selectedPoolDetails?.numbers ?? []).map((number, index) => {
+                    const lead = leads.find((item) => item.phone_e164 === number && item.pool_ids.includes(numbersPool.id));
+                    return <div key={`${number}-${index}`} className="grid grid-cols-[3rem_minmax(0,1fr)_minmax(0,1fr)] gap-4 py-3"><span className="text-muted">{index + 1}</span><span className="break-words text-heading">{lead?.full_name || "—"}</span><span className="break-all text-heading">{number}</span></div>;
+                  })}</div>
                 </div>
               )}
             </div>
@@ -210,7 +223,7 @@ export function LeadPoolsTab() {
         </div>
       )}
       {showImportResult && (
-        <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+        <div onMouseDown={(event) => { if (event.target === event.currentTarget) setShowImportResult(false); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
           <aside role="dialog" aria-modal="true" aria-labelledby="lead-import-result-title" className="animate-slide-in-right flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl">
             <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6">
               <div className="flex items-center justify-between"><h2 id="lead-import-result-title" className="text-lg font-semibold text-heading">Imported leads</h2><button type="button" onClick={() => setShowImportResult(false)} aria-label="Close" className="text-muted transition-colors hover:text-heading"><X size={20} /></button></div>
@@ -218,7 +231,7 @@ export function LeadPoolsTab() {
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
               <label className="relative mb-4 block">
                 <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} placeholder="Search leads by name, phone, or number" className={`${fieldClass} mt-0 pl-9`} />
+                <input value={leadSearch} onChange={(event) => setLeadSearch(event.target.value)} placeholder="Search leads by number" className={`${fieldClass} mt-0 pl-9`} />
               </label>
               {importResult && <>
                 <h3 className="text-sm font-semibold text-heading">Lead sheet import results</h3>
@@ -253,7 +266,7 @@ export function LeadPoolsTab() {
           </aside>
         </div>
       )}
-      {deleting && <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="delete-lead-pool-title" className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-xl"><div className="flex items-center justify-between"><h2 id="delete-lead-pool-title" className="text-lg font-semibold text-heading">Delete lead pool?</h2><button type="button" onClick={() => setDeleting(null)} disabled={remove.isPending} aria-label="Close" className="text-muted transition-colors hover:text-heading disabled:opacity-50"><X size={20} /></button></div><p className="mt-2 text-sm text-muted">Are you sure you want to delete “{deleting.name}”?</p><div className="mt-6 flex justify-end"><Button onClick={() => remove.mutate(deleting.id, { onSuccess: () => { showSuccessNotification(`"${deleting.name}" was deleted.`, { title: "Lead pool deleted" }); setDeleting(null); } })} disabled={remove.isPending}>{remove.isPending ? "Deleting..." : "Delete"}</Button></div></div></div>}
+      {deleting && <div onMouseDown={(event) => { if (event.target === event.currentTarget && !remove.isPending) setDeleting(null); }} className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="delete-lead-pool-title" className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-xl"><div className="flex items-center justify-between"><h2 id="delete-lead-pool-title" className="text-lg font-semibold text-heading">Delete lead pool?</h2><button type="button" onClick={() => setDeleting(null)} disabled={remove.isPending} aria-label="Close" className="text-muted transition-colors hover:text-heading disabled:opacity-50"><X size={20} /></button></div><p className="mt-2 text-sm text-muted">Are you sure you want to delete “{deleting.name}”?</p><div className="mt-6 flex justify-end"><Button onClick={() => remove.mutate(deleting.id, { onSuccess: () => { showSuccessNotification(`"${deleting.name}" was deleted.`, { title: "Lead pool deleted" }); setDeleting(null); } })} disabled={remove.isPending}>{remove.isPending ? "Deleting..." : "Delete"}</Button></div></div></div>}
     </section>
   );
 }

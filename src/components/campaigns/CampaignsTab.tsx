@@ -10,11 +10,10 @@ import {
   createCampaign,
   deleteCampaign,
   getLeadPools,
-  getPlivoNumbers,
   getPlivoPools,
   updateCampaign,
 } from "@/lib/api";
-import type { Campaign, CampaignCreate, CampaignUpdate, LeadPool, PlivoNumber, PlivoPool } from "@/types/types";
+import type { Campaign, CampaignCreate, CampaignUpdate, LeadPool, PlivoPool } from "@/types/types";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { Button } from "@/components/calling-agent/ui";
 
@@ -27,9 +26,7 @@ const toDateTimeInput = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? "" : new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const toIsoDateTime = (value: string) => value ? new Date(value).toISOString() : null;
-const campaignColumns = [
-  "Name", "Status", "Transfer Timeout (sec)", "Started At", "Ended At", "Concurrent Calls", "Action",
-];
+const fmtWindowTime = (value?: string | null) => value ? value.slice(0, 5) : "—";
 
 function ChoiceFieldset({
   title,
@@ -62,17 +59,8 @@ function ChoiceFieldset({
     <fieldset className="space-y-2 text-sm text-body">
       <legend>{title}</legend>
       <div ref={ref} className="relative">
-        <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-hairline-strong bg-surface-input px-2 py-1 transition-colors focus-within:border-accent-strong">
+        <div className="flex min-h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 py-1 transition-colors focus-within:border-accent-strong">
           <Search size={15} className="shrink-0 text-muted" />
-          {selected.map((id) => {
-            const option = options.find((item) => item.id === id);
-            return option ? (
-              <span key={id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-chip px-2 py-1 text-xs text-body">
-                <span className="break-all">{option.label}{option.detail ? ` ${option.detail}` : ""}</span>
-                <button type="button" aria-label={`Remove ${option.label}`} onClick={() => toggle(id)} className="shrink-0 rounded-full hover:text-heading"><X size={12} /></button>
-              </span>
-            ) : null;
-          })}
           <input
             value={search}
             onFocus={() => setOpen(true)}
@@ -88,6 +76,19 @@ function ChoiceFieldset({
             <ChevronDown size={16} className={`transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
         </div>
+        {selected.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {selected.map((id) => {
+              const option = options.find((item) => item.id === id);
+              return option ? (
+                <span key={id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-chip px-2 py-1 text-xs text-body">
+                  <span className="break-all">{option.label}{option.detail ? ` ${option.detail}` : ""}</span>
+                  <button type="button" aria-label={`Remove ${option.label}`} onClick={() => toggle(id)} className="shrink-0 rounded-full hover:text-heading"><X size={12} /></button>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
         {open && (
           <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-hairline-strong bg-surface-input p-1 shadow-md">
             {filteredOptions.length === 0 ? <p className="p-2 text-muted">{options.length === 0 ? `No ${title.toLowerCase()} available.` : "No matches found."}</p> : filteredOptions.map((option) => (
@@ -109,7 +110,6 @@ function CampaignFormDrawer({
   agents,
   representatives,
   leadPools,
-  plivoNumbers,
   plivoPools,
   pending,
   onClose,
@@ -119,7 +119,6 @@ function CampaignFormDrawer({
   agents: Agent[];
   representatives: Representative[];
   leadPools: LeadPool[];
-  plivoNumbers: PlivoNumber[];
   plivoPools: PlivoPool[];
   pending: boolean;
   onClose: () => void;
@@ -130,18 +129,25 @@ function CampaignFormDrawer({
   const [status, setStatus] = useState<Campaign["status"]>(campaign?.status ?? "draft");
   const [leadPoolIds, setLeadPoolIds] = useState<string[]>(campaign?.lead_pool_ids ?? []);
   const [representativeIds, setRepresentativeIds] = useState<string[]>(campaign?.representative_ids ?? []);
-  const [plivoNumbersSelected, setPlivoNumbersSelected] = useState<string[]>(campaign?.plivo_numbers ?? []);
+  const plivoNumbersSelected = campaign?.plivo_numbers ?? [];
   const [plivoPoolIds, setPlivoPoolIds] = useState<string[]>(campaign?.plivo_pool_ids ?? []);
-  const [transferTimeout, setTransferTimeout] = useState(campaign?.transfer_timeout_seconds ?? 30);
+  const [transferTimeout, setTransferTimeout] = useState(String(campaign?.transfer_timeout_seconds ?? 30));
   const [startAt, setStartAt] = useState(() => toDateTimeInput(campaign?.start_at));
   const [windowStart, setWindowStart] = useState(campaign?.window_start?.slice(0, 5) ?? "");
   const [windowEnd, setWindowEnd] = useState(campaign?.window_end?.slice(0, 5) ?? "");
-  const [retryInterval, setRetryInterval] = useState(campaign?.retry_interval_minutes ?? 60);
-  const [retryCount, setRetryCount] = useState(campaign?.retry_count ?? 1);
+  const [retryInterval, setRetryInterval] = useState(String(campaign?.retry_interval_minutes ?? 60));
+  const [retryCount, setRetryCount] = useState(String(campaign?.retry_count ?? 1));
   const [retryOn, setRetryOn] = useState<string[]>(campaign?.retry_on ?? ["no_answer"]);
   const [concurrencyLimit, setConcurrencyLimit] = useState(String(campaign?.concurrency_limit ?? 1));
+  const parsedTransferTimeout = Number(transferTimeout);
+  const parsedRetryInterval = Number(retryInterval);
+  const parsedRetryCount = Number(retryCount);
   const parsedConcurrencyLimit = Number(concurrencyLimit);
+  const validTransferTimeout = Number.isInteger(parsedTransferTimeout) && parsedTransferTimeout >= 1;
+  const validRetryInterval = Number.isInteger(parsedRetryInterval) && parsedRetryInterval >= 1;
+  const validRetryCount = Number.isInteger(parsedRetryCount) && parsedRetryCount >= 0;
   const validConcurrencyLimit = Number.isInteger(parsedConcurrencyLimit) && parsedConcurrencyLimit >= 1;
+  const validNumericFields = validTransferTimeout && validRetryInterval && validRetryCount && validConcurrencyLimit;
 
   useEffect(() => {
     if (!campaign && !agentId && agents.length > 0) setAgentId(agents[0].id);
@@ -152,7 +158,7 @@ function CampaignFormDrawer({
       name: name.trim(),
       agent_id: agentId,
       representative_ids: representativeIds,
-      transfer_timeout_seconds: transferTimeout,
+      transfer_timeout_seconds: parsedTransferTimeout,
       status,
       lead_pool_ids: leadPoolIds,
       plivo_numbers: plivoNumbersSelected,
@@ -161,8 +167,8 @@ function CampaignFormDrawer({
       window_start: windowStart || null,
       window_end: windowEnd || null,
       timezone: campaign?.timezone ?? "Asia/Kolkata",
-      retry_interval_minutes: retryInterval,
-      retry_count: retryCount,
+      retry_interval_minutes: parsedRetryInterval,
+      retry_count: parsedRetryCount,
       retry_on: retryOn as CampaignCreate["retry_on"],
       concurrency_limit: parsedConcurrencyLimit,
     };
@@ -170,7 +176,7 @@ function CampaignFormDrawer({
       name: name.trim(),
       agent_id: agentId,
       representative_ids: representativeIds,
-      transfer_timeout_seconds: transferTimeout,
+      transfer_timeout_seconds: parsedTransferTimeout,
       status,
       lead_pool_ids: leadPoolIds,
       plivo_numbers: plivoNumbersSelected,
@@ -178,8 +184,8 @@ function CampaignFormDrawer({
       start_at: status === "scheduled" ? toIsoDateTime(startAt) : null,
       window_start: windowStart || null,
       window_end: windowEnd || null,
-      retry_interval_minutes: retryInterval,
-      retry_count: retryCount,
+      retry_interval_minutes: parsedRetryInterval,
+      retry_count: parsedRetryCount,
       retry_on: retryOn as CampaignUpdate["retry_on"],
       concurrency_limit: parsedConcurrencyLimit,
     };
@@ -187,7 +193,7 @@ function CampaignFormDrawer({
   };
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <aside className="animate-slide-in-right flex h-full max-h-screen w-full max-w-md flex-col overflow-hidden bg-surface shadow-xl">
         <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6">
           <div className="flex items-center justify-between">
@@ -220,7 +226,7 @@ function CampaignFormDrawer({
           </label>
           <label className="block text-sm text-body">
             Transfer Timeout (seconds)
-            <input type="number" min={1} value={transferTimeout} onChange={(event) => setTransferTimeout(Math.max(1, Number(event.target.value)))} className={fieldClass} />
+            <input type="number" min={1} step={1} value={transferTimeout} onChange={(event) => setTransferTimeout(event.target.value)} className={fieldClass} />
           </label>
           {status === "scheduled" && (
             <label className="block text-sm text-body">
@@ -241,11 +247,11 @@ function CampaignFormDrawer({
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm text-body">
               Retry Interval (minutes)
-              <input type="number" min={1} value={retryInterval} onChange={(event) => setRetryInterval(Math.max(1, Number(event.target.value)))} className={fieldClass} />
+              <input type="number" min={1} step={1} value={retryInterval} onChange={(event) => setRetryInterval(event.target.value)} className={fieldClass} />
             </label>
             <label className="block text-sm text-body">
               Retry Count
-              <input type="number" min={0} value={retryCount} onChange={(event) => setRetryCount(Math.max(0, Number(event.target.value)))} className={fieldClass} />
+              <input type="number" min={0} step={1} value={retryCount} onChange={(event) => setRetryCount(event.target.value)} className={fieldClass} />
             </label>
           </div>
           <label className="block text-sm text-body">
@@ -265,12 +271,6 @@ function CampaignFormDrawer({
             onChange={setRepresentativeIds}
           />
           <ChoiceFieldset
-            title="Plivo Numbers"
-            options={plivoNumbers.map((number) => ({ id: number.phone_e164, label: number.phone_e164, detail: number.alias ?? undefined }))}
-            selected={plivoNumbersSelected}
-            onChange={setPlivoNumbersSelected}
-          />
-          <ChoiceFieldset
             title="Plivo Number Pools"
             options={plivoPools.map((pool) => ({ id: pool.id, label: pool.name, detail: `${pool.pool_size} numbers` }))}
             selected={plivoPoolIds}
@@ -284,7 +284,7 @@ function CampaignFormDrawer({
           />
         </div>
         <div className="flex shrink-0 justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 sm:px-6">
-          <Button onClick={save} disabled={pending || !name.trim() || !agentId || leadPoolIds.length === 0 || !validConcurrencyLimit}>
+          <Button onClick={save} disabled={pending || !name.trim() || !agentId || leadPoolIds.length === 0 || !validNumericFields}>
             {pending ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -315,7 +315,7 @@ function CampaignViewDrawer({
     ["Timezone", campaign.timezone],
   ];
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <aside className="animate-slide-in-right flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl">
         <div className="shrink-0 border-b border-hairline px-5 py-4 sm:px-6">
           <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-semibold text-heading"><Eye size={18} className="text-accent-text" /> Campaign details</h2><button type="button" onClick={onClose} aria-label="Close" className="text-muted transition-colors hover:text-heading"><X size={20} /></button></div>
@@ -354,7 +354,6 @@ export default function CampaignsTab({
   const agentsQuery = useQuery({ queryKey: ["agents"], queryFn: listAgents, retry: false, refetchOnMount: "always" });
   const representativesQuery = useQuery({ queryKey: ["representatives"], queryFn: listRepresentatives, retry: false });
   const leadPoolsQuery = useQuery({ queryKey: ["lead-pools"], queryFn: getLeadPools, retry: false });
-  const plivoNumbersQuery = useQuery({ queryKey: ["plivo-numbers"], queryFn: getPlivoNumbers, retry: false });
   const plivoPoolsQuery = useQuery({ queryKey: ["plivo-pools"], queryFn: getPlivoPools, retry: false });
   const [editing, setEditing] = useState<Campaign | null | undefined>(undefined);
   const [viewing, setViewing] = useState<Campaign | null>(null);
@@ -364,7 +363,6 @@ export default function CampaignsTab({
   const agents = agentsQuery.data ?? [];
   const representatives = representativesQuery.data ?? [];
   const leadPools = leadPoolsQuery.data ?? [];
-  const plivoNumbers = plivoNumbersQuery.data ?? [];
   const plivoPools = plivoPoolsQuery.data ?? [];
   const agentNames = useMemo(() => new Map(agents.map((agent) => [agent.id, agent.name])), [agents]);
   const leadPoolNames = useMemo(() => new Map(leadPools.map((pool) => [pool.id, pool.name])), [leadPools]);
@@ -398,6 +396,14 @@ export default function CampaignsTab({
   const pageCount = Math.max(1, Math.ceil(campaigns.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const visible = campaigns.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const hasScheduled = campaigns.some((campaign) => campaign.status === "scheduled");
+  const hasNonScheduled = campaigns.some((campaign) => campaign.status !== "scheduled");
+  const campaignColumns = [
+    "Name", "Status", "Transfer Timeout (sec)",
+    ...(hasScheduled ? ["Started At"] : []),
+    ...(hasNonScheduled ? ["Window Start", "Window End"] : []),
+    "Ended At", "Concurrent Calls", "Action",
+  ];
   const save = (createBody: CampaignCreate, updateBody: CampaignUpdate) => {
     if (editing) update.mutate({ id: editing.id, body: updateBody });
     else create.mutate(createBody);
@@ -430,7 +436,11 @@ export default function CampaignsTab({
                   campaign.name,
                   campaign.status,
                   `${campaign.transfer_timeout_seconds} sec`,
-                  fmtDate(campaign.start_at),
+                  ...(hasScheduled ? [campaign.status === "scheduled" ? fmtDate(campaign.start_at) : "—"] : []),
+                  ...(hasNonScheduled ? [
+                    campaign.status !== "scheduled" ? fmtWindowTime(campaign.window_start) : "—",
+                    campaign.status !== "scheduled" ? fmtWindowTime(campaign.window_end) : "—",
+                  ] : []),
                   fmtDate(campaign.ended_at),
                   String(campaign.concurrent_calls ?? campaign.concurrency_limit),
                 ].map((value, index) => (
@@ -461,10 +471,10 @@ export default function CampaignsTab({
         </div>
       </div>
 
-      {editing !== undefined && <CampaignFormDrawer key={editing?.id ?? "new"} campaign={editing} agents={agents} representatives={representatives} leadPools={leadPools} plivoNumbers={plivoNumbers} plivoPools={plivoPools} pending={create.isPending || update.isPending} onClose={() => setEditing(undefined)} onSave={save} />}
+      {editing !== undefined && <CampaignFormDrawer key={editing?.id ?? "new"} campaign={editing} agents={agents} representatives={representatives} leadPools={leadPools} plivoPools={plivoPools} pending={create.isPending || update.isPending} onClose={() => setEditing(undefined)} onSave={save} />}
       {viewing && <CampaignViewDrawer campaign={viewing} agentName={agentNames.get(viewing.agent_id) ?? viewing.agent_id} leadPoolNames={(viewing.lead_pool_ids ?? []).map((id) => leadPoolNames.get(id) ?? id)} onClose={() => setViewing(null)} />}
       {deleting && (
-        <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div onMouseDown={(event) => { if (event.target === event.currentTarget && !remove.isPending) setDeleting(null); }} className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-campaign-title" className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-xl">
             <div className="flex items-center justify-between"><h2 id="delete-campaign-title" className="text-lg font-semibold text-heading">Delete campaign?</h2><button type="button" onClick={() => setDeleting(null)} disabled={remove.isPending} aria-label="Close" className="text-muted transition-colors hover:text-heading disabled:opacity-50"><X size={20} /></button></div>
             <p className="mt-2 text-sm text-muted">Are you sure you want to delete “{deleting.name}”? This action cannot be undone.</p>

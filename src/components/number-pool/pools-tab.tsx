@@ -20,7 +20,7 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
   const [status, setStatus] = useState<PlivoPool["status"]>(pool?.status ?? "active");
   const concurrencyLimit = pool?.concurrency_limit ?? 1;
   const [selected, setSelected] = useState<string[]>(pool?.phone_numbers ?? []);
-  const [poolSize, setPoolSize] = useState(pool?.pool_size ?? pool?.phone_numbers.length ?? 0);
+  const [poolSize, setPoolSize] = useState(String(pool?.pool_size ?? pool?.phone_numbers.length ?? 0));
   const onCloseRef = useRef(onClose);
   const closeRequestRef = useRef<() => void>(() => {});
   onCloseRef.current = onClose;
@@ -50,6 +50,8 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
 
   // Show numbers with no pool, plus the ones already in this pool
   const choices = numbers.filter((n) => !n.plivo_pool_id || n.plivo_pool_id === pool?.id);
+  const parsedPoolSize = Number(poolSize);
+  const validPoolSize = poolSize.trim() !== "" && Number.isInteger(parsedPoolSize) && parsedPoolSize >= 0 && parsedPoolSize <= choices.length;
 
   const mutation = pool ? update : create;
 
@@ -69,7 +71,7 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
   };
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <div data-pool-modal className={`${closing ? "animate-slide-out-right" : "animate-slide-in-right"} flex h-full max-h-screen w-full max-w-md flex-col overflow-hidden bg-surface shadow-xl`}>
         <div className="shrink-0 border-b px-5 py-4 sm:px-6">
           <div className="flex items-center justify-between">
@@ -106,10 +108,10 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
             min={0}
             max={choices.length}
             value={poolSize}
-            onChange={(event) => setPoolSize(Math.min(choices.length, Math.max(0, Number(event.target.value))))}
+            onChange={(event) => setPoolSize(event.target.value)}
             className={formFieldClass}
           />
-          <span className="mt-1 block text-xs text-muted">Select exactly {poolSize} phone number{poolSize === 1 ? "" : "s"} below.</span>
+          <span className="mt-1 block text-xs text-muted">Select exactly {poolSize || 0} phone number{poolSize === "1" ? "" : "s"} below.</span>
         </label>
 
         <label className="block text-sm">
@@ -119,18 +121,18 @@ function PoolModal({ pool, onClose }: { pool: PlivoPool | null; onClose: () => v
             selected={selected}
             onChange={setSelected}
             isLoading={numbersLoading}
-            maxSelections={poolSize}
+            maxSelections={validPoolSize ? parsedPoolSize : 0}
         />
         </label>
 
-        {selected.length !== poolSize && (
-          <p className="text-sm text-warn">Selected {selected.length} of {poolSize} phone numbers.</p>
+        {(!validPoolSize || selected.length !== parsedPoolSize) && (
+          <p className="text-sm text-warn">Selected {selected.length} of {poolSize || 0} phone numbers.</p>
         )}
 
         </div>
 
         <div data-pool-modal-footer className="flex shrink-0 justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 sm:px-6">
-          <Button onClick={save} disabled={!name.trim() || mutation.isPending || selected.length !== poolSize}>
+          <Button onClick={save} disabled={!name.trim() || mutation.isPending || !validPoolSize || selected.length !== parsedPoolSize}>
             {mutation.isPending ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -172,7 +174,7 @@ function ViewPoolModal({ pool, onClose }: { pool: PlivoPool; onClose: () => void
   }, []);
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }} className="animate-fade-in fixed inset-0 z-50 flex justify-end bg-black/40">
       <div className={`${closing ? "animate-slide-out-right" : "animate-slide-in-right"} flex h-full max-h-screen w-full max-w-lg flex-col overflow-hidden bg-surface shadow-xl`}>
         <div className="shrink-0 border-b px-5 py-4 sm:px-6">
           <div className="flex items-center justify-between">
@@ -336,7 +338,7 @@ export function PoolsTab() {
       {modal && <PoolModal pool={modal.pool} onClose={() => setModal(null)} />}
       {viewPool && <ViewPoolModal pool={viewPool} onClose={() => setViewPool(null)} />}
       {deletePool && (
-        <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div onMouseDown={(event) => { if (event.target === event.currentTarget && !remove.isPending) setDeletePool(null); }} className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div role="alertdialog" aria-modal="true" aria-labelledby="delete-pool-title" className="w-full max-w-sm rounded-xl bg-surface p-6 shadow-xl">
             <div className="flex items-center justify-between"><h2 id="delete-pool-title" className="text-lg font-semibold text-heading">Delete pool?</h2><button type="button" onClick={() => setDeletePool(null)} disabled={remove.isPending} aria-label="Close" className="text-muted transition-colors hover:text-heading disabled:opacity-50"><X size={20} /></button></div>
             <p className="mt-2 text-sm text-muted">Are you sure you want to delete “{deletePool.name}”? This action cannot be undone.</p>
