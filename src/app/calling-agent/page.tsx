@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { Bot, PhoneForwarded } from "lucide-react";
+import { Bot, PhoneCall, PhoneForwarded } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import AgentsTab from "@/components/calling-agent/AgentsTab";
 import RepresentativesTab from "@/components/calling-agent/RepresentativesTab";
+import TestCallDrawer from "@/components/calling-agent/TestCallDrawer";
+import { Button } from "@/components/calling-agent/ui";
 
 const TABS = [
   { id: "agents", label: "Agents", icon: Bot, component: AgentsTab },
@@ -54,12 +56,20 @@ function CallingAgentTabs() {
 }
 
 export default function CallingAgentPage() {
+  const [testing, setTesting] = useState(false);
+
   return (
     <div>
       <PageHeader
         title="Calling Agent"
         description="Manage the AI voice agents your campaigns use, and the representatives live calls are transferred to."
+        actions={
+          <Button variant="secondary" onClick={() => setTesting(true)}>
+            <PhoneCall size={16} /> Test call
+          </Button>
+        }
       />
+      {testing && <TestCallDrawer onClose={() => setTesting(false)} />}
       <Suspense>
         <CallingAgentTabs />
       </Suspense>

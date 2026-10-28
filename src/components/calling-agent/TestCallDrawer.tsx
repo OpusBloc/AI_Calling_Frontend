@@ -1,0 +1,119 @@
+"use client";
+
+import { useState } from "react";
+import { PhoneCall } from "lucide-react";
+
+import { TestCallResult, listAgents, testCallAgent } from "@/lib/callingAgentApi";
+import { showSuccessNotification } from "@/hooks/useNotification";
+import { Button, Drawer, ErrorBanner, Field, Select, TextInput, errorMessage, useLoad } from "./ui";
+
+// Same rule as the backend: digits, optionally starting with "+"
+const PHONE_RE = /^\+?[0-9]{6,15}$/;
+const cleanPhone = (value: string) => value.trim().replace(/[\s-]/g, "");
+
+/**
+ * Right-side panel that rings a number with the chosen agent
+ */
+export default function TestCallDrawer({
+  agentId: fixedAgentId,
+  onClose,
+}: {
+  /** Lock the drawer to one agent (agent page); omit to pick from the list */
+  agentId?: string;
+  onClose: () => void;
+}) {
+  const { data: agents, error: loadError, loading } = useLoad(listAgents);
+  const [agentId, setAgentId] = useState(fixedAgentId ?? "");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [calling, setCalling] = useState(false);
+  const [result, setResult] = useState<TestCallResult | null>(null);
+
+  const selectedId = agentId || agents?.[0]?.id || "";
+  const fixedAgent = fixedAgentId ? agents?.find((a) => a.id === fixedAgentId) : null;
+
+  const handleCall = async () => {
+    const number = cleanPhone(phone);
+    if (!selectedId) return setError("Choose an agent to test.");
+    if (!PHONE_RE.test(number)) return setError("Enter a phone number of 6–15 digits, optionally starting with +.");
+    setCalling(true);
+    setError(null);
+    try {
+      const res = await testCallAgent(selectedId, { phone: number, name: name.trim() || undefined });
+      setResult(res);
+      showSuccessNotification(`Calling ${res.to} from ${res.from}.`, { title: "Test call started" });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setCalling(false);
+    }
+  };
+
+  return (
+    <Drawer
+      title="Test call"
+      description="Ring a phone now and hear how the agent sounds on a real call."
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {result ? "Close" : "Cancel"}
+          </Button>
+          <Button onClick={handleCall} disabled={calling || loading || !agents?.length}>
+            <PhoneCall size={16} /> {calling ? "Calling…" : result ? "Call again" : "Start call"}
+          </Button>
+        </>
+      }
+    >
+      <ErrorBanner message={loadError ?? error} />
+
+      {fixedAgentId ? (
+        <Field label="Agent">
+          <TextInput value={fixedAgent?.name ?? (loading ? "Loading…" : "")} disabled readOnly />
+        </Field>
+      ) : (
+        <Field label="Agent">
+          <Select value={selectedId} onChange={(e) => setAgentId(e.target.value)} disabled={loading || !agents?.length}>
+            {loading && <option>Loading…</option>}
+            {!loading && !agents?.length && <option value="">No agents yet</option>}
+            {agents?.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+
+      <Field label="Phone number" hint="Include the country code, e.g. +919812345678.">
+        <TextInput
+          type="tel"
+          autoFocus
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !calling && handleCall()}
+          placeholder="+919812345678"
+        />
+      </Field>
+
+      <Field label="Customer name" hint="Optional. The agent may address the person by this name.">
+        <TextInput value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rahul" />
+      </Field>
+
+      {result && (
+        <div className="rounded-md border border-hairline bg-gain-bg px-3 py-3 text-sm">
+          <p className="font-medium text-gain">Calling {result.to}</p>
+          <p className="mt-1 text-muted">
+            From {result.from}
+            {result.request_uuid && (
+              <>
+                {" · "}Request <span className="font-mono text-xs">{result.request_uuid}</span>
+              </>
+            )}
+          </p>
+        </div>
+      )}
+    </Drawer>
+  );
+}

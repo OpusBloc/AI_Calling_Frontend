@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 
 import AuthGuard from "@/components/auth/AuthGuard";
 import { ClientOnly } from "@/components/ClientOnly";
+import { ConfirmHost } from "@/components/ConfirmDialog";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AuthGuard>{children}</AuthGuard>
       </QueryClientProvider>
+      <ConfirmHost />
       <Toaster
         position="top-right"
         // Above the drawer (z-50) and its backdrop so errors raised from inside it stay visible

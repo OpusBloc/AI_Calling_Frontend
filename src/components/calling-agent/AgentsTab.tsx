@@ -7,6 +7,7 @@ import { PenLine, Plus, Trash2 } from "lucide-react";
 import { loadDraft } from "@/lib/agentDraft";
 import { Agent, deleteAgent, listAgents } from "@/lib/callingAgentApi";
 import { showSuccessNotification } from "@/hooks/useNotification";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import {
   Badge,
   Button,
@@ -34,7 +35,12 @@ export default function AgentsTab() {
   const newAgentLabel = newDraft ? "Continue draft" : "New agent";
 
   const handleDelete = async (agent: Agent) => {
-    if (!window.confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) return;
+    const ok = await confirmDialog({
+      title: "Delete agent?",
+      message: `"${agent.name}" will be permanently deleted. This cannot be undone.`,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setActionError(null);
     try {
       await deleteAgent(agent.id);

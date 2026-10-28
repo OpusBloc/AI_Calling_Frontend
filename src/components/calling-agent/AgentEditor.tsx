@@ -11,6 +11,7 @@ import {
   CircleAlert,
   FileText,
   PenLine,
+  PhoneCall,
   Trash2,
   Upload,
   X,
@@ -33,7 +34,9 @@ import {
 } from "@/lib/agentDraft";
 import { AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
 import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { Button, ErrorBanner, Field, TextArea, TextInput, errorMessage, formatDate } from "./ui";
+import TestCallDrawer from "./TestCallDrawer";
 
 const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
   intro: {
@@ -86,6 +89,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   const [storageOk, setStorageOk] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const dirty = comparable(draft) !== comparable(baseline);
   const missing = missingRequired(draft);
@@ -112,9 +116,13 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   const tabDone = (id: string) =>
     id === "details" ? !!draft.name.trim() : id === "review" ? false : isPartFilled(draft.parts[id as AgentPart]);
 
-  const handleDiscard = () => {
-    const message = isNew ? "Discard this draft and start over?" : "Discard your unsaved changes?";
-    if (!window.confirm(message)) return;
+  const handleDiscard = async () => {
+    const ok = await confirmDialog({
+      title: isNew ? "Discard draft?" : "Discard changes?",
+      message: isNew ? "This draft will be cleared and you'll start over." : "Your unsaved changes will be lost.",
+      confirmLabel: "Discard",
+    });
+    if (!ok) return;
     clearDraft(agentId);
     setDraft({ ...baseline, tab: draft.tab });
     setShowRestored(false);
@@ -159,7 +167,13 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   };
 
   const handleDelete = async () => {
-    if (!agent || !window.confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) return;
+    if (!agent) return;
+    const ok = await confirmDialog({
+      title: "Delete agent?",
+      message: `"${agent.name}" will be permanently deleted. This cannot be undone.`,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     setError(null);
     try {
@@ -204,12 +218,19 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             </Button>
           )}
           {!isNew && (
+            <Button variant="secondary" onClick={() => setTesting(true)} disabled={saving}>
+              <PhoneCall size={16} /> Test call
+            </Button>
+          )}
+          {!isNew && (
             <Button variant="secondary" onClick={handleDelete} disabled={saving} className="text-loss">
               <Trash2 size={16} /> Delete
             </Button>
           )}
         </div>
       </div>
+
+      {testing && agent && <TestCallDrawer agentId={agent.id} onClose={() => setTesting(false)} />}
 
       {showRestored && dirty && (
         <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-hairline bg-accent-bg px-3 py-2 text-sm text-heading">
@@ -359,14 +380,23 @@ function PartEditor({
   const mode = value.source;
   const hasFile = mode === "file" && !!value.fileName;
 
-  const switchMode = (next: "text" | "file") => {
+  const switchMode = async (next: "text" | "file") => {
     if (next === mode) return;
     setFileError(null);
     if (next === "text") {
       // Keep a loaded file's contents so it can be edited as text
       onChange({ source: "text", text: value.text });
     } else {
-      if (value.text.trim() && !window.confirm("Replace the typed text with an uploaded file?")) return;
+      if (
+        value.text.trim() &&
+        !(await confirmDialog({
+          title: "Replace typed text?",
+          message: "Switching to upload clears the text you typed for this section.",
+          confirmLabel: "Replace",
+          tone: "warning",
+        }))
+      )
+        return;
       onChange({ source: "file", text: "" });
     }
   };

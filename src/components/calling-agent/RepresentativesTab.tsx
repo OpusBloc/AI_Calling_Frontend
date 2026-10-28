@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import {
   Representative,
   RepresentativeInput,
@@ -59,8 +60,13 @@ export default function RepresentativesTab() {
     }
   };
 
-  const handleDelete = (rep: Representative) => {
-    if (!window.confirm(`Delete representative "${rep.name}"? This cannot be undone.`)) return;
+  const handleDelete = async (rep: Representative) => {
+    const ok = await confirmDialog({
+      title: "Delete representative?",
+      message: `"${rep.name}" will be permanently deleted. This cannot be undone.`,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     run(rep.id, () => deleteRepresentative(rep.id), ["Representative deleted", `"${rep.name}" was deleted.`]);
   };
 

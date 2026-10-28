@@ -29,6 +29,25 @@ export const updateAgent = (id: string, form: FormData) =>
   api<Agent>(`/agents/${id}`, { method: "PATCH", body: form });
 export const deleteAgent = (id: string) => api<void>(`/agents/${id}`, { method: "DELETE" });
 
+export interface TestCallInput {
+  /** Digits, optionally starting with "+" */
+  phone: string;
+  /** Customer name the agent may use */
+  name?: string;
+}
+
+export interface TestCallResult {
+  status: "calling";
+  to: string;
+  from: string;
+  agent_id: string;
+  request_uuid: string | null;
+}
+
+/** Ring `phone` right now with this agent */
+export const testCallAgent = (id: string, body: TestCallInput) =>
+  api<TestCallResult>(`/agents/${id}/test-call`, { method: "POST", body });
+
 /* ----------------------------- Representatives ---------------------------- */
 
 export interface Representative {
