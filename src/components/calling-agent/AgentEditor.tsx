@@ -32,6 +32,7 @@ import {
   toUpdateForm,
 } from "@/lib/agentDraft";
 import { AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
+import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { Button, ErrorBanner, Field, TextArea, TextInput, errorMessage, formatDate } from "./ui";
 
 const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
@@ -124,6 +125,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     if (missing.length) {
       goTo(missing[0]);
       setError("Fill in every required section before saving.");
+      showErrorNotification("Fill in every required section before saving.", { title: "Agent not saved" });
       return;
     }
     setSaving(true);
@@ -132,6 +134,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       if (isNew) {
         const created = await createAgent(toCreateForm(draft));
         clearDraft(null);
+        showSuccessNotification(`"${created.name}" was created.`, { title: "Agent created" });
         router.replace(`/calling-agent/agents/${created.id}`);
         return;
       }
@@ -141,6 +144,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       setAgent(updated);
       setDraft({ ...draftFromAgent(updated), tab: draft.tab });
       setShowRestored(false);
+      showSuccessNotification(form ? `"${updated.name}" was updated.` : "There were no changes to save.", {
+        title: form ? "Agent saved" : "Nothing to save",
+      });
     } catch (err) {
       const message = errorMessage(err);
       setError(message);
@@ -159,6 +165,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     try {
       await deleteAgent(agent.id);
       clearDraft(agentId);
+      showSuccessNotification(`"${agent.name}" was deleted.`, { title: "Agent deleted" });
       router.replace("/calling-agent?tab=agents");
     } catch (err) {
       setError(errorMessage(err));

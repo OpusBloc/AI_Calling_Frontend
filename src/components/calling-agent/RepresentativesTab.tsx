@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
+import { showSuccessNotification } from "@/hooks/useNotification";
 import {
   Representative,
   RepresentativeInput,
@@ -44,11 +45,12 @@ export default function RepresentativesTab() {
   const reps = data ?? [];
   const pagination = usePagination(reps);
 
-  const run = async (id: string, action: () => Promise<unknown>) => {
+  const run = async (id: string, action: () => Promise<unknown>, success: [title: string, message: string]) => {
     setBusyId(id);
     setActionError(null);
     try {
       await action();
+      showSuccessNotification(success[1], { title: success[0] });
       await reload();
     } catch (err) {
       setActionError(errorMessage(err));
@@ -59,7 +61,7 @@ export default function RepresentativesTab() {
 
   const handleDelete = (rep: Representative) => {
     if (!window.confirm(`Delete representative "${rep.name}"? This cannot be undone.`)) return;
-    run(rep.id, () => deleteRepresentative(rep.id));
+    run(rep.id, () => deleteRepresentative(rep.id), ["Representative deleted", `"${rep.name}" was deleted.`]);
   };
 
   return (
@@ -104,7 +106,12 @@ export default function RepresentativesTab() {
                         label={`${rep.name} active`}
                         checked={rep.active}
                         disabled={busyId === rep.id}
-                        onChange={(active) => run(rep.id, () => updateRepresentative(rep.id, { active }))}
+                        onChange={(active) =>
+                          run(rep.id, () => updateRepresentative(rep.id, { active }), [
+                            active ? "Representative activated" : "Representative deactivated",
+                            `"${rep.name}" ${active ? "will now" : "will no longer"} receive transferred calls.`,
+                          ])
+                        }
                       />
                       <Badge tone={rep.active ? "gain" : "neutral"}>{rep.active ? "Active" : "Inactive"}</Badge>
                     </div>
@@ -171,6 +178,9 @@ function RepresentativeForm({
     try {
       if (rep) await updateRepresentative(rep.id, body);
       else await createRepresentative(body);
+      showSuccessNotification(`"${body.name}" was ${rep ? "updated" : "added"}.`, {
+        title: rep ? "Representative saved" : "Representative added",
+      });
       onSaved();
     } catch (err) {
       setError(errorMessage(err));

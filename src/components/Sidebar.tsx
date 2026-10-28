@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { LogOut, X } from "lucide-react";
 
 import UserAvatar from "@/components/UserAvatar";
+import { showSuccessNotification } from "@/hooks/useNotification";
 import { CurrentUser, clearToken, getUser, onAuthChange } from "@/lib/auth";
 import { navItems } from "./navItems";
 
@@ -28,6 +29,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
   const handleLogout = () => {
     clearToken();
+    showSuccessNotification("You have been signed out.", { title: "Signed out" });
     router.replace("/auth/login");
   };
 

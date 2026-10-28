@@ -6,6 +6,7 @@ import { PenLine, Plus, Trash2 } from "lucide-react";
 
 import { loadDraft } from "@/lib/agentDraft";
 import { Agent, deleteAgent, listAgents } from "@/lib/callingAgentApi";
+import { showSuccessNotification } from "@/hooks/useNotification";
 import {
   Badge,
   Button,
@@ -37,6 +38,7 @@ export default function AgentsTab() {
     setActionError(null);
     try {
       await deleteAgent(agent.id);
+      showSuccessNotification(`"${agent.name}" was deleted.`, { title: "Agent deleted" });
       await reload();
     } catch (err) {
       setActionError(errorMessage(err));

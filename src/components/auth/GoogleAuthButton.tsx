@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { setToken, setUser } from "@/lib/auth";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
@@ -77,9 +78,14 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
         }
         setUser(data.user);
         setToken(data.access_token);
+        showSuccessNotification(`Signed in as ${data.user?.email ?? "your Google account"}.`, {
+          title: mode === "signup" ? "Account created" : "Welcome back",
+        });
         router.replace("/dashboard");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
+        const message = err instanceof Error ? err.message : "Something went wrong.";
+        setError(message);
+        showErrorNotification(message, { title: mode === "signup" ? "Sign-up failed" : "Sign-in failed" });
         setLoading(false);
       }
     };
