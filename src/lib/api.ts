@@ -39,8 +39,11 @@ const detailMessage = (detail: unknown, status: number): string => {
   return `Request failed (${status})`;
 };
 
+// Requests go straight to the backend (it must allow this origin via CORS)
+export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/+$/, "")}/api`;
+
 /**
- * Call the backend through the Next.js `/api` proxy with the saved JWT
+ * Call the backend with the saved JWT
  */
 export async function api<T>(
   path: string,
@@ -56,7 +59,7 @@ export async function api<T>(
 
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),

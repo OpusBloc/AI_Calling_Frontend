@@ -10,16 +10,6 @@ const nextConfig = {
     ],
   },
 
-  // Proxy backend calls so the browser stays same-origin (the backend has no CORS).
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/:path*`,
-      },
-    ];
-  },
-
   async headers() {
     return [
       {

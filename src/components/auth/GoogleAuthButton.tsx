@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
+import { API_BASE } from "@/lib/api";
 import { setToken, setUser } from "@/lib/auth";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
@@ -67,7 +68,7 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
       setError(null);
       setLoading(true);
       try {
-        const res = await fetch(`/api/auth/google/${mode}`, {
+        const res = await fetch(`${API_BASE}/auth/google/${mode}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id_token: credential }),
