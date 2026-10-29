@@ -9,6 +9,8 @@ import type {
   CallOutcomeResult,
   ScheduledCampaignCall,
   CampaignUpdate,
+  DispatchStatus,
+  DispatchControlResponse,
   CreatePlivoPoolBody,
   Lead,
   LeadPool,
@@ -51,7 +53,7 @@ export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/
  */
 export async function api<T>(
   path: string,
-  { method = "GET", body }: { method?: string; body?: unknown } = {},
+  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -82,15 +84,17 @@ export async function api<T>(
     throw new ApiError("Session expired", 401);
   }
 
-  if (res.status === 204) return undefined as T;
-
-  const data = await res.json().catch(() => null);
   if (!res.ok) {
+    const data = await res.json().catch(() => null);
     // Every failed endpoint call surfaces as a notification; callers still get the error
     const error = new ApiError(detailMessage(data?.detail, res.status), res.status);
     showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }
+  if (res.status === 204) return undefined as T;
+  if (responseType === "blob") return (await res.blob()) as T;
+
+  const data = await res.json().catch(() => null);
   return data as T;
 }
 
@@ -153,6 +157,14 @@ export const updateCampaign = (id: string, body: CampaignUpdate) =>
 
 export const deleteCampaign = (id: string) =>
   api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+// Dispatch control
+export const getDispatchStatus = () => api<DispatchStatus>("/dispatch/status");
+export const patchDispatchControl = (enabled: boolean) =>
+  api<DispatchControlResponse>("/dispatch/control", {
+    method: "PATCH",
+    body: { enabled },
+  });
 
 export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
 export const getLeadPool = (id: string) => api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`);

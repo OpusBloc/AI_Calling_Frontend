@@ -3,17 +3,19 @@
 import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { Bot, PhoneCall, PhoneForwarded } from "lucide-react";
+import { AudioLines, Bot, PhoneCall, PhoneForwarded } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import AgentsTab from "@/components/calling-agent/AgentsTab";
 import RepresentativesTab from "@/components/calling-agent/RepresentativesTab";
+import AgentVoiceTab from "@/components/calling-agent/AgentVoiceTab";
 import TestCallDrawer from "@/components/calling-agent/TestCallDrawer";
 import { Button } from "@/components/calling-agent/ui";
 
 const TABS = [
   { id: "agents", label: "Agents", icon: Bot, component: AgentsTab },
-  { id: "representatives", label: "Representatives", icon: PhoneForwarded, component: RepresentativesTab },
+  { id: "voice", label: "Agent Voice", icon: AudioLines, component: AgentVoiceTab },
+  { id: "representatives", label: "Call Transfer", icon: PhoneForwarded, component: RepresentativesTab },
 ] as const;
 
 function CallingAgentTabs() {
@@ -62,7 +64,7 @@ export default function CallingAgentPage() {
     <div>
       <PageHeader
         title="Calling Agent"
-        description="Manage the AI voice agents your campaigns use, and the representatives live calls are transferred to."
+        description="Manage the AI voice agents your campaigns use and configure call transfer settings for live calls."
         actions={
           <Button variant="secondary" onClick={() => setTesting(true)}>
             <PhoneCall size={16} /> Test call

@@ -62,22 +62,22 @@ export default function RepresentativesTab() {
 
   const handleDelete = async (rep: Representative) => {
     const ok = await confirmDialog({
-      title: "Delete representative?",
+      title: "Delete Transfer Agent?",
       message: `"${rep.name}" will be permanently deleted. This cannot be undone.`,
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    run(rep.id, () => deleteRepresentative(rep.id), ["Representative deleted", `"${rep.name}" was deleted.`]);
+    run(rep.id, () => deleteRepresentative(rep.id), ["Call Transfer Agent deleted", `"${rep.name}" was deleted.`]);
   };
 
   return (
     <section>
       <SectionHeader
-        title="Representatives"
-        description="People a live call can be transferred to. Campaigns ring active representatives in turn."
+        title="Call Transfer"
+        description="People a live call can be transferred to. Campaigns ring active Call Transfer Agent in turn."
         action={
           <Button onClick={() => setEditing("new")} disabled={loading}>
-            <Plus size={16} /> New representative
+            <Plus size={16} /> Add Transfer Agent
           </Button>
         }
       />
@@ -86,7 +86,7 @@ export default function RepresentativesTab() {
         <ErrorBanner
           message={
             error === "Not Found"
-              ? "The backend doesn't have the representatives API yet. Pull the latest backend code and restart it."
+              ? "The backend doesn't have the Call Transfer Agent API yet. Pull the latest backend code and restart it."
               : (error ?? actionError)
           }
         />
@@ -95,9 +95,9 @@ export default function RepresentativesTab() {
           <Loading />
         ) : reps.length === 0 && !error ? (
           <EmptyState
-            title="No representatives yet"
+            title="No Transfer Agent yet"
             text="Add the people who should take transferred calls."
-            action={<Button onClick={() => setEditing("new")}>New representative</Button>}
+            action={<Button onClick={() => setEditing("new")}>Add Transfer</Button>}
           />
         ) : reps.length > 0 ? (
           <>
@@ -114,7 +114,7 @@ export default function RepresentativesTab() {
                         disabled={busyId === rep.id}
                         onChange={(active) =>
                           run(rep.id, () => updateRepresentative(rep.id, { active }), [
-                            active ? "Representative activated" : "Representative deactivated",
+                            active ? "Transfer activated" : "Transfer deactivated",
                             `"${rep.name}" ${active ? "will now" : "will no longer"} receive transferred calls.`,
                           ])
                         }
@@ -125,11 +125,11 @@ export default function RepresentativesTab() {
                   <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(rep.updated_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <IconButton label="Edit representative" onClick={() => setEditing(rep)}>
+                      <IconButton label="Edit Transfer" onClick={() => setEditing(rep)}>
                         <Pencil size={16} />
                       </IconButton>
                       <IconButton
-                        label="Delete representative"
+                        label="Delete Transfer"
                         tone="danger"
                         disabled={busyId === rep.id}
                         onClick={() => handleDelete(rep)}
@@ -185,7 +185,7 @@ function RepresentativeForm({
       if (rep) await updateRepresentative(rep.id, body);
       else await createRepresentative(body);
       showSuccessNotification(`"${body.name}" was ${rep ? "updated" : "added"}.`, {
-        title: rep ? "Representative saved" : "Representative added",
+        title: rep ? "Transfer saved" : "Transfer added",
       });
       onSaved();
     } catch (err) {
@@ -196,13 +196,13 @@ function RepresentativeForm({
 
   return (
     <Drawer
-      title={rep ? "Edit representative" : "New representative"}
-      description="Transferred calls ring active representatives in turn."
+      title={rep ? "Edit Transfer" : "Add Transfer"}
+      description="Transferred calls ring active Transfer in turn."
       onClose={onClose}
       footer={
         <>
           <Button onClick={handleSave} disabled={!complete || saving}>
-            {saving ? "Saving…" : rep ? "Save changes" : "Add representative"}
+            {saving ? "Saving…" : rep ? "Save changes" : "Add Transfer"}
           </Button>
         </>
       }
@@ -235,7 +235,7 @@ function RepresentativeForm({
       <div className="flex items-center justify-between rounded-md bg-raised px-3 py-2.5">
         <div>
           <p className="text-sm font-medium text-heading">Active</p>
-          <p className="text-xs text-muted">Only active representatives receive transferred calls.</p>
+          <p className="text-xs text-muted">Only active Call Transfer Agent receive's transferred calls.</p>
         </div>
         <Toggle label="Active" checked={form.active} onChange={(active) => setForm((f) => ({ ...f, active }))} />
       </div>

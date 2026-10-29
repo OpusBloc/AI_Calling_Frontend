@@ -6,6 +6,8 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
 };
 export type CampaignCreate = components["schemas"]["CampaignCreate"];
 export type CampaignUpdate = components["schemas"]["CampaignUpdate"];
+export type DispatchStatus = components["schemas"]["DispatchStatus"];
+export type DispatchControlResponse = components["schemas"]["DispatchControlResponse"];
 export type CampaignScheduleResult = components["schemas"]["ScheduleResult"];
 export type ScheduledCampaignCall = components["schemas"]["ScheduledCallResponse"];
 export type CallOutcome = components["schemas"]["CallOutcome"];

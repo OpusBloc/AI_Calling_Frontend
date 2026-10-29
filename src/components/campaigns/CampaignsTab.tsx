@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Pause, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 
 import { listAgents, listRepresentatives } from "@/lib/callingAgentApi";
 import type { Agent, Representative } from "@/lib/callingAgentApi";
@@ -12,10 +12,12 @@ import {
   deleteCampaign,
   getLeadPools,
   getPlivoPools,
+  getDispatchStatus,
+  patchDispatchControl,
   updateCampaign,
 } from "@/lib/api";
-import type { Campaign, CampaignCreate, CampaignUpdate, LeadPool, PlivoPool } from "@/types/types";
-import { showSuccessNotification } from "@/hooks/useNotification";
+import type { Campaign, CampaignCreate, CampaignUpdate, DispatchStatus, LeadPool, PlivoPool } from "@/types/types";
+import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { Button } from "@/components/calling-agent/ui";
 
 const fieldClass = "mt-1 w-full min-w-0 rounded-md border border-hairline-strong bg-surface-input px-3 py-2 text-heading transition-colors hover:border-accent-strong focus:border-accent-strong focus:outline-none";
@@ -309,6 +311,12 @@ export default function CampaignsTab({
   const representativesQuery = useQuery({ queryKey: ["representatives"], queryFn: listRepresentatives, retry: false });
   const leadPoolsQuery = useQuery({ queryKey: ["lead-pools"], queryFn: getLeadPools, retry: false });
   const plivoPoolsQuery = useQuery({ queryKey: ["plivo-pools"], queryFn: getPlivoPools, retry: false });
+  const dispatchQuery = useQuery<DispatchStatus>({
+    queryKey: ["dispatch-status"],
+    queryFn: getDispatchStatus,
+    retry: false,
+    refetchOnWindowFocus: true,
+  });
   const [editing, setEditing] = useState<Campaign | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<Campaign | null>(null);
   const [page, setPage] = useState(1);
@@ -346,6 +354,23 @@ export default function CampaignsTab({
       setDeleting(null);
     },
   });
+  const dispatchControl = useMutation({
+    mutationFn: patchDispatchControl,
+    onSuccess: async (result) => {
+      queryClient.setQueryData<DispatchStatus>(["dispatch-status"], (current) => current ? {
+        ...current,
+        enabled: result.enabled,
+        live_calls_enabled: result.live_calls_enabled,
+        updated_at: result.updated_at,
+      } : current);
+      await queryClient.invalidateQueries({ queryKey: ["dispatch-status"] });
+      showSuccessNotification(
+        result.enabled ? "Campaign dispatch is enabled." : "Campaign dispatch is off.",
+        { title: result.enabled ? "Dispatch enabled" : "Dispatch off" },
+      );
+    },
+    onError: (error) => showErrorNotification(error.message, { title: "Could not update dispatch" }),
+  });
 
   const pageCount = Math.max(1, Math.ceil(campaigns.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -372,9 +397,52 @@ export default function CampaignsTab({
 
   return (
     <section>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        {dispatchQuery.data && (
+          <span className={`mr-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${dispatchQuery.data.enabled ? "bg-gain-bg text-gain" : "bg-warn-bg text-warn"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${dispatchQuery.data.enabled ? "bg-gain" : "bg-warn"}`} />
+            Dispatch {dispatchQuery.data.enabled ? "On" : "Off"}
+          </span>
+        )}
+        <Button
+          variant="secondary"
+          onClick={() => dispatchQuery.data && dispatchControl.mutate(!dispatchQuery.data.enabled)}
+          disabled={!dispatchQuery.data || dispatchQuery.isLoading || dispatchControl.isPending || dispatchQuery.isError}
+          title={dispatchQuery.data?.enabled ? "Turn campaign dispatch off" : "Turn campaign dispatch on"}
+        >
+          {dispatchControl.isPending ? <LoaderCircle size={16} className="animate-spin" /> : dispatchQuery.data?.enabled ? <Pause size={16} /> : <Play size={16} />}
+          {dispatchControl.isPending ? "Updating…" : dispatchQuery.data?.enabled ? "Turn Dispatch Off" : "Turn Dispatch On"}
+        </Button>
         <Button onClick={() => { void agentsQuery.refetch(); setEditing(null); }}><Plus size={16} /> New Campaign</Button>
       </div>
+      <section className="mb-4 rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-heading">Dispatch status</h2>
+          {dispatchQuery.data && <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${dispatchQuery.data.enabled ? "bg-gain-bg text-gain" : "bg-warn-bg text-warn"}`}>
+            {dispatchQuery.data.enabled ? "Dispatch On" : "Dispatch Off"}
+          </span>}
+        </div>
+        {dispatchQuery.isLoading && <p className="text-sm text-muted">Loading dispatch status…</p>}
+        {dispatchQuery.isError && <p className="text-sm text-loss">Failed to load dispatch status: {dispatchQuery.error.message}</p>}
+        {dispatchQuery.data && <>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              ["Live calls", dispatchQuery.data.live_calls_enabled ? "Enabled" : "Disabled", dispatchQuery.data.live_calls_enabled ? "text-gain" : "text-warn"],
+              ["Redis", dispatchQuery.data.redis_connected ? "Connected" : "Disconnected", dispatchQuery.data.redis_connected ? "text-gain" : "text-loss"],
+              ["Ready outbox", String(dispatchQuery.data.ready_outbox), "text-heading"],
+              ["Queued calls", String(dispatchQuery.data.queued_calls), "text-heading"],
+              ["Active calls", String(dispatchQuery.data.active_calls), "text-heading"],
+              ["Uncertain attempts", String(dispatchQuery.data.uncertain_attempts), "text-heading"],
+            ].map(([label, value, color]) => (
+              <div key={label} className="rounded-md bg-raised px-3 py-2">
+                <dt className="text-xs text-muted">{label}</dt>
+                <dd className={`mt-1 text-sm font-semibold ${color}`}>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-xs text-muted">Updated {fmtDate(dispatchQuery.data.updated_at)}</p>
+        </>}
+      </section>
       <div className="overflow-x-auto rounded-lg border border-hairline bg-surface shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-hairline bg-raised text-[11px] uppercase tracking-[0.08em] text-muted">
