@@ -84,6 +84,7 @@ export interface Representative {
 export type RepresentativeInput = Pick<Representative, "name" | "phone_e164" | "active">;
 
 export const listRepresentatives = () => api<Representative[]>("/representatives");
+export const getRepresentative = (id: string) => api<Representative>(`/representatives/${id}`);
 export const createRepresentative = (body: RepresentativeInput) =>
   api<Representative>("/representatives", { method: "POST", body });
 export const updateRepresentative = (id: string, body: Partial<RepresentativeInput>) =>

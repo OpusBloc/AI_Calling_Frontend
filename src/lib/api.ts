@@ -12,11 +12,6 @@ import type {
   DispatchStatus,
   DispatchControlResponse,
   CreatePlivoPoolBody,
-  Lead,
-  LeadPool,
-  LeadPoolCreate,
-  LeadImportResult,
-  LeadPoolUpdate,
   PatchPlivoPoolBody,
   PlivoNumber,
   PlivoPool,
@@ -106,6 +101,8 @@ export const syncPlivoNumbers = () =>
 
 export const getPlivoPools = () => api<PlivoPool[]>("/plivo-pools");
 
+export const getPlivoPool = (id: string) => api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`);
+
 export const createPlivoPool = (body: CreatePlivoPoolBody) =>
   api<PlivoPool>("/plivo-pools", { method: "POST", body });
 
@@ -149,8 +146,13 @@ export const postCampaignCallOutcome = (campaignId: string, callId: string, outc
     body: { outcome },
   });
 
-export const createCampaign = (body: CampaignCreate) =>
-  api<Campaign>("/campaigns", { method: "POST", body });
+/** Multipart: the leads sheet plus the campaign fields as a JSON `payload` */
+export const createCampaign = (body: CampaignCreate, leadsFile: File) => {
+  const form = new FormData();
+  form.append("file", leadsFile);
+  form.append("payload", JSON.stringify(body));
+  return api<Campaign>("/campaigns", { method: "POST", body: form });
+};
 
 export const updateCampaign = (id: string, body: CampaignUpdate) =>
   api<Campaign>(`/campaigns/${encodeURIComponent(id)}`, { method: "PATCH", body });

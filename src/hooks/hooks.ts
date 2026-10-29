@@ -15,6 +15,7 @@ import {
   getPlivoNumbers,
   syncPlivoNumbers,
   getPlivoPools,
+  getPlivoPool,
   createPlivoPool,
   patchPlivoPool,
   deletePlivoPool,
@@ -25,16 +26,9 @@ import {
   getCampaignCalls,
   scheduleCampaign,
   postCampaignCallOutcome,
-  getLeadPools,
-  getLeadPool,
-  getLeads,
-  deleteLeads,
-  createLeadPool,
-  updateLeadPool,
-  deleteLeadPool,
-  importLeadSheet,
 } from "@/lib/api";
-import type { CallOutcome, Campaign, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, Lead, LeadPool, LeadPoolCreate, LeadPoolUpdate, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
+import { listAgents, listRepresentatives } from "@/lib/callingAgentApi";
+import type { CallOutcome, Campaign, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
@@ -43,8 +37,6 @@ const POOLS_KEY = ["plivo-pools"];
 const CAMPAIGNS_KEY = ["campaigns"];
 const CAMPAIGN_IDS_KEY = ["campaign-ids"];
 const CAMPAIGN_CALLS_KEY = ["campaign-calls"];
-const LEAD_POOLS_KEY = ["lead-pools"];
-const LEADS_KEY = ["leads"];
 
 export const useCampaigns = () =>
   useQuery<Campaign[]>({ queryKey: CAMPAIGNS_KEY, queryFn: getCampaigns, retry: false });
@@ -80,58 +72,6 @@ export const usePostCampaignCallOutcome = () => {
   });
 };
 
-export const useLeadPools = () =>
-  useQuery<LeadPool[]>({ queryKey: LEAD_POOLS_KEY, queryFn: getLeadPools, retry: false });
-
-export const useLeads = () =>
-  useQuery<Lead[]>({ queryKey: LEADS_KEY, queryFn: getLeads, retry: false });
-
-export const useDeleteLeads = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: deleteLeads,
-    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
-  });
-};
-
-export const useLeadPool = (id: string) =>
-  useQuery<LeadPool>({ queryKey: [...LEAD_POOLS_KEY, id], queryFn: () => getLeadPool(id), enabled: Boolean(id), retry: false });
-
-export const useCreateLeadPool = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: LeadPoolCreate) => createLeadPool(body),
-    onSuccess: (created) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools ? [...pools, created] : [created]),
-  });
-};
-
-export const useUpdateLeadPool = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: LeadPoolUpdate }) => updateLeadPool(id, body),
-    onSuccess: (updated) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools?.map((pool) => pool.id === updated.id ? updated : pool)),
-  });
-};
-
-export const useDeleteLeadPool = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: deleteLeadPool,
-    onSuccess: (_result, id) => qc.setQueryData<LeadPool[]>(LEAD_POOLS_KEY, (pools) => pools?.filter((pool) => pool.id !== id)),
-  });
-};
-
-export const useImportLeadSheet = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: importLeadSheet,
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: LEAD_POOLS_KEY });
-      await qc.invalidateQueries({ queryKey: LEADS_KEY });
-    },
-  });
-};
-
 
 // GET list of numbers -> { data, isLoading, isError }
 export const usePlivoNumbers = () =>
@@ -148,6 +88,14 @@ export const useSyncPlivoNumbers = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }), // refetch table
   });
 };
+
+export const usePlivoPool = (id: string) =>
+  useQuery<PlivoPool>({ queryKey: [...POOLS_KEY, id], queryFn: () => getPlivoPool(id), enabled: Boolean(id), retry: false });
+
+// Shared with the campaign form, which uses the same keys
+export const useAgents = () => useQuery({ queryKey: ["agents"], queryFn: listAgents, retry: false });
+export const useRepresentatives = () =>
+  useQuery({ queryKey: ["representatives"], queryFn: listRepresentatives, retry: false });
 
 // GET list of pools
 export const usePlivoPools = () =>
@@ -172,6 +120,7 @@ export const useUpdatePlivoPool = () => {
       qc.setQueryData<PlivoPool[]>(POOLS_KEY, (pools) =>
         pools?.map((pool) => pool.id === updated.id ? updated : pool),
       );
+      qc.setQueryData([...POOLS_KEY, updated.id], updated);
       void qc.invalidateQueries({ queryKey: KEY, refetchType: "none" });
     },
   });

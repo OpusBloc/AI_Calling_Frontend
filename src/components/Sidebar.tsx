@@ -66,14 +66,14 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             type="button"
             aria-label="Close menu"
             onClick={onClose}
-            className="rounded-md p-1.5 text-muted hover:bg-surface-hover hover:text-heading md:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading md:hidden"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 pt-4">
+        <nav aria-label="Main" className="nav-scroll flex flex-1 flex-col overflow-y-auto px-3 pt-4">
           <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">Menu</p>
           <ul className="space-y-0.5">
             {navItems.map(({ href, label, icon: Icon }) => {
@@ -84,14 +84,14 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={clsx(
-                      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                      "relative flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors",
                       active
                         ? "bg-accent-bg font-semibold text-heading"
                         : "font-medium text-body hover:bg-surface-hover hover:text-heading",
                     )}
                   >
                     {active && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-accent" />}
-                    <Icon size={18} className={active ? "text-accent-text" : "text-muted"} />
+                    <Icon size={18} aria-hidden className={active ? "text-accent-text" : "text-muted"} />
                     {label}
                   </Link>
                 </li>
@@ -113,7 +113,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               onClick={handleLogout}
               title="Log out"
               aria-label="Log out"
-              className="rounded-md p-2 text-muted transition-colors hover:bg-loss-bg hover:text-loss"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-loss-bg hover:text-loss"
             >
               <LogOut size={17} />
             </button>

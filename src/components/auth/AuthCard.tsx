@@ -23,7 +23,7 @@ export function AuthCard({
   return (
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[1.05fr_1fr]">
       {/* Brand panel */}
-      <aside className="relative hidden overflow-hidden bg-[#0d1126] p-12 text-[#f5f2e8] lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden overflow-hidden bg-black p-12 text-[#f5f2e8] lg:flex lg:flex-col lg:justify-between">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#d8c68d]/15 blur-3xl"

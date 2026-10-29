@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
@@ -35,7 +34,7 @@ import {
 import { AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
 import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { Button, ErrorBanner, Field, TextArea, TextInput, errorMessage, formatDate } from "./ui";
+import { Button, PageTopBar, ErrorBanner, Field, TextArea, TextInput, errorMessage, formatDate } from "@/components/ui";
 import TestCallDrawer from "./TestCallDrawer";
 
 const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
@@ -192,16 +191,16 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   return (
     <div className="mx-auto max-w-5xl">
       {/* Header */}
-      <Link
-        href="/calling-agent?tab=agents"
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-heading"
-      >
-        <ArrowLeft size={16} /> Agents
-      </Link>
+      <PageTopBar
+        breadcrumbs={[
+          { label: "Calling Agent", href: "/calling-agent?tab=agents" },
+          { label: isNew ? "New agent" : agent!.name },
+        ]}
+      />
 
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-heading">
+          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
             {isNew ? "New agent" : agent!.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -223,7 +222,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             </Button>
           )}
           {!isNew && (
-            <Button variant="secondary" onClick={handleDelete} disabled={saving} className="text-loss">
+            <Button variant="secondary" onClick={handleDelete} disabled={saving} className="text-loss hover:bg-loss-bg">
               <Trash2 size={16} /> Delete
             </Button>
           )}

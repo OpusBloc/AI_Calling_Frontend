@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Pencil, PhoneForwarded, Plus, Trash2 } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import {
   Representative,
-  RepresentativeInput,
-  createRepresentative,
   deleteRepresentative,
   listRepresentatives,
   updateRepresentative,
@@ -18,28 +17,22 @@ import {
   Button,
   EmptyState,
   ErrorBanner,
-  Field,
+  ErrorState,
   IconButton,
-  Loading,
-  Drawer,
+  SkeletonRows,
   Pagination,
   SectionHeader,
   Table,
-  TextInput,
   Toggle,
   errorMessage,
   formatDate,
   useLoad,
   usePagination,
-} from "./ui";
-
-const EMPTY: RepresentativeInput = { name: "", phone_e164: "", active: true };
-// Mirrors the backend check: digits only, optional leading "+", 6–15 digits
-const PHONE = /^\+?[0-9]{6,15}$/;
+} from "@/components/ui";
 
 export default function RepresentativesTab() {
   const { data, error, loading, reload } = useLoad(listRepresentatives);
-  const [editing, setEditing] = useState<Representative | "new" | null>(null);
+  const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -92,8 +85,12 @@ export default function RepresentativesTab() {
         />
 
         {loading && !data ? (
-          <Loading />
-        ) : reps.length === 0 && !error ? (
+          <Table head={["Name", "Phone", "Status", "Updated", ""]}>
+            <SkeletonRows cols={5} />
+          </Table>
+        ) : error && !data ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : reps.length === 0 ? (
           <EmptyState
             title="No Transfer Agent yet"
             text="Add the people who should take transferred calls."
@@ -101,11 +98,11 @@ export default function RepresentativesTab() {
           />
         ) : reps.length > 0 ? (
           <>
-            <Table head={["Name", "Phone", "Status", "Updated", ""]}>
+            <Table head={["Name", "Phone", "Status", "Updated", ""]} label="Representatives">
               {pagination.pageItems.map((rep) => (
                 <tr key={rep.id}>
                   <td className="px-4 py-3 font-medium text-heading">{rep.name}</td>
-                  <td className="px-4 py-3 font-mono text-body">{rep.phone_e164}</td>
+                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">{rep.phone_e164}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Toggle
@@ -145,17 +142,6 @@ export default function RepresentativesTab() {
           </>
         ) : null}
       </div>
-
-      {editing && (
-        <RepresentativeForm
-          rep={editing === "new" ? null : editing}
-          onClose={() => setEditing(null)}
-          onSaved={async () => {
-            setEditing(null);
-            await reload();
-          }}
-        />
-      )}
     </section>
   );
 }
