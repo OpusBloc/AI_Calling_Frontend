@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
-import { PlivoNumber } from "../types";
+import type { PlivoNumber } from "@/types/types";
 
 type Props = {
   options: PlivoNumber[];
@@ -37,10 +37,11 @@ export function NumberMultiSelect({ options, selected, onChange, isLoading, maxS
   useEffect(() => {
     if (!open) return;
     const updatePosition = () => {
-      const rect = ref.current?.getBoundingClientRect();
-      if (!rect) return;
+      const el = ref.current;
+      const rect = el?.getBoundingClientRect();
+      if (!el || !rect) return;
       const margin = 8;
-      const footer = ref.current.closest("[data-pool-modal]")?.querySelector("[data-pool-modal-footer]");
+      const footer = el.closest("[data-pool-modal]")?.querySelector("[data-pool-modal-footer]");
       const footerTop = footer?.getBoundingClientRect().top ?? window.innerHeight;
       const availableBelow = Math.min(window.innerHeight - rect.bottom - margin, footerTop - rect.bottom - margin);
       const maxHeight = Math.max(0, Math.min(280, availableBelow));
