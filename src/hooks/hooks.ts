@@ -10,7 +10,7 @@
 */
 
 
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getPlivoNumbers,
   syncPlivoNumbers,
@@ -20,40 +20,82 @@ import {
   deletePlivoPool,
   getAvailablePlivoNumbers,
   getCampaigns,
+  getCampaignIds,
+  getCampaign,
+  getCampaignCalls,
+  scheduleCampaign,
+  postCampaignCallOutcome,
   getLeadPools,
   getLeadPool,
+  getLeads,
+  deleteLeads,
   createLeadPool,
   updateLeadPool,
   deleteLeadPool,
   importLeadSheet,
 } from "@/lib/api";
-import type { Campaign, CreatePlivoPoolBody, LeadPool, LeadPoolCreate, LeadPoolUpdate, PatchPlivoPoolBody, PlivoPool } from "@/types/types";
+import type { CallOutcome, Campaign, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, Lead, LeadPool, LeadPoolCreate, LeadPoolUpdate, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
 
 const POOLS_KEY = ["plivo-pools"];
 const CAMPAIGNS_KEY = ["campaigns"];
+const CAMPAIGN_IDS_KEY = ["campaign-ids"];
+const CAMPAIGN_CALLS_KEY = ["campaign-calls"];
 const LEAD_POOLS_KEY = ["lead-pools"];
+const LEADS_KEY = ["leads"];
 
 export const useCampaigns = () =>
   useQuery<Campaign[]>({ queryKey: CAMPAIGNS_KEY, queryFn: getCampaigns, retry: false });
 
+export const useCampaignIds = () =>
+  useQuery<string[]>({ queryKey: CAMPAIGN_IDS_KEY, queryFn: getCampaignIds, retry: false });
+
+export const useCampaign = (id: string, enabled = true) =>
+  useQuery<Campaign>({ queryKey: [...CAMPAIGNS_KEY, id], queryFn: () => getCampaign(id), enabled: Boolean(id) && enabled, retry: false });
+
+export const useCampaignCalls = (id: string, enabled = true) =>
+  useQuery<ScheduledCampaignCall[]>({ queryKey: [...CAMPAIGN_CALLS_KEY, id], queryFn: () => getCampaignCalls(id), enabled: Boolean(id) && enabled, retry: false });
+
+export const useScheduleCampaign = () => {
+  const qc = useQueryClient();
+  return useMutation<CampaignScheduleResult, Error, string>({
+    mutationFn: scheduleCampaign,
+    onSuccess: async (result) => {
+      await qc.invalidateQueries({ queryKey: [...CAMPAIGN_CALLS_KEY, result.campaign_id] });
+      await qc.invalidateQueries({ queryKey: [...CAMPAIGNS_KEY, result.campaign_id] });
+      await qc.invalidateQueries({ queryKey: CAMPAIGNS_KEY });
+    },
+  });
+};
+
+export const usePostCampaignCallOutcome = () => {
+  const qc = useQueryClient();
+  return useMutation<CallOutcomeResult, Error, { campaignId: string; callId: string; outcome: CallOutcome }>({
+    mutationFn: ({ campaignId, callId, outcome }) => postCampaignCallOutcome(campaignId, callId, outcome),
+    onSuccess: async (_result, variables) => {
+      await qc.invalidateQueries({ queryKey: [...CAMPAIGN_CALLS_KEY, variables.campaignId] });
+    },
+  });
+};
+
 export const useLeadPools = () =>
   useQuery<LeadPool[]>({ queryKey: LEAD_POOLS_KEY, queryFn: getLeadPools, retry: false });
 
+export const useLeads = () =>
+  useQuery<Lead[]>({ queryKey: LEADS_KEY, queryFn: getLeads, retry: false });
+
+export const useDeleteLeads = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLeads,
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+};
+
 export const useLeadPool = (id: string) =>
   useQuery<LeadPool>({ queryKey: [...LEAD_POOLS_KEY, id], queryFn: () => getLeadPool(id), enabled: Boolean(id), retry: false });
-
-export const useLeadPoolDetailsList = (ids: string[], enabled = true) =>
-  useQueries({
-    queries: ids.map((id) => ({
-      queryKey: [...LEAD_POOLS_KEY, id],
-      queryFn: () => getLeadPool(id),
-      enabled: enabled && Boolean(id),
-      retry: false,
-    })),
-  });
 
 export const useCreateLeadPool = () => {
   const qc = useQueryClient();
@@ -85,6 +127,7 @@ export const useImportLeadSheet = () => {
     mutationFn: importLeadSheet,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: LEAD_POOLS_KEY });
+      await qc.invalidateQueries({ queryKey: LEADS_KEY });
     },
   });
 };

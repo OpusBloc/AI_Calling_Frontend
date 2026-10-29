@@ -4,8 +4,13 @@ import { clearToken, getToken } from "@/lib/auth";
 import type {
   Campaign,
   CampaignCreate,
+  CampaignScheduleResult,
+  CallOutcome,
+  CallOutcomeResult,
+  ScheduledCampaignCall,
   CampaignUpdate,
   CreatePlivoPoolBody,
+  Lead,
   LeadPool,
   LeadPoolCreate,
   LeadImportResult,
@@ -123,6 +128,23 @@ export const getCampaigns = async (): Promise<Campaign[]> => {
   }));
 };
 
+export const getCampaignIds = () => api<string[]>("/campaigns/ids");
+
+export const getCampaign = (id: string) =>
+  api<Campaign>(`/campaigns/${encodeURIComponent(id)}`);
+
+export const scheduleCampaign = (id: string) =>
+  api<CampaignScheduleResult>(`/campaigns/${encodeURIComponent(id)}/schedule`, { method: "POST" });
+
+export const getCampaignCalls = (id: string) =>
+  api<ScheduledCampaignCall[]>(`/campaigns/${encodeURIComponent(id)}/calls`);
+
+export const postCampaignCallOutcome = (campaignId: string, callId: string, outcome: CallOutcome) =>
+  api<CallOutcomeResult>(`/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}/outcome`, {
+    method: "POST",
+    body: { outcome },
+  });
+
 export const createCampaign = (body: CampaignCreate) =>
   api<Campaign>("/campaigns", { method: "POST", body });
 
@@ -134,6 +156,9 @@ export const deleteCampaign = (id: string) =>
 
 export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
 export const getLeadPool = (id: string) => api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`);
+export const getLeads = () => api<Lead[]>("/leads");
+export const deleteLeads = (range: string) =>
+  api<Record<string, unknown>>(`/leads?range=${encodeURIComponent(range)}`, { method: "DELETE" });
 
 export const createLeadPool = (body: LeadPoolCreate) =>
   api<LeadPool>("/lead-pools", { method: "POST", body });
