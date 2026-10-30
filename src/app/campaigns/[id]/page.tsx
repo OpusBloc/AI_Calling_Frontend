@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  IndianRupee,
   LayoutDashboard,
   Pause,
   Pencil,
@@ -39,6 +40,7 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 import PageHeader from "@/components/PageHeader";
 import { formatWindow } from "@/components/campaigns/CampaignsTab";
 import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/DispatchPanel";
+import CampaignCosts from "@/components/campaigns/CampaignCosts";
 import {
   Badge,
   Button,
@@ -75,6 +77,7 @@ const ACTIVE = new Set(["dialing", "ringing", "in_progress"]);
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "calls", label: "Calls", icon: PhoneCall },
+  { id: "costs", label: "Costs", icon: IndianRupee },
   { id: "settings", label: "Settings", icon: Settings2 },
 ] as const;
 
@@ -222,6 +225,7 @@ function CampaignDetails() {
               onRetry={() => report.refetch()}
             />
           )}
+          {tab === "costs" && <CampaignCosts calls={report.data?.calls} callsLoading={report.isLoading} />}
           {tab === "settings" && <SettingsTab campaign={campaign} />}
         </div>
       </div>

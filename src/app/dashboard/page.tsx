@@ -6,8 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Megaphone, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
 
-import { getCallCostSummary, getCallCosts } from "@/lib/api";
-import type { CallCostSummary } from "@/types/types";
+import { getCallCostSummary } from "@/lib/api";
+import CostSplit, { rupees } from "@/components/CostSplit";
 import { useAgents, useCampaigns, usePlivoNumbers, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import PageHeader from "@/components/PageHeader";
 import { formatWindow } from "@/components/campaigns/CampaignsTab";
@@ -15,27 +15,20 @@ import {
   Card,
   ErrorState,
   LinkRow,
-  Skeleton,
   SkeletonRows,
   StatTile,
   StatusBadge,
   Table,
-  TableMessage,
   formatDate,
   formatDuration,
-  formatMoney,
 } from "@/components/ui";
 
 const RECENT_HEAD = ["Campaign", "Status", "Calling hours", "Updated"];
-const COST_HEAD = ["When", "Agent", "Duration", "Turns", "Speech-to-text", "AI model", "Text-to-speech", "Total"];
 const PERIODS = [
   { days: 7, label: "7 days" },
   { days: 30, label: "30 days" },
   { days: 0, label: "All time" },
 ] as const;
-const COST_PAGE = 10;
-
-const rupees = (n: number | undefined, digits = 2) => (n === undefined ? "—" : `₹${formatMoney(n, digits)}`);
 
 export default function DashboardPage() {
   const campaigns = useCampaigns();
@@ -164,17 +157,8 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     queryFn: () => getCallCostSummary(days || undefined),
     retry: false,
   });
-  const [page, setPage] = useState(1);
-  const list = useQuery({
-    queryKey: ["call-costs", "list", page],
-    queryFn: () => getCallCosts(page, COST_PAGE),
-    retry: false,
-    placeholderData: (prev) => prev,
-  });
   const s = summary.data;
   const v = (n: React.ReactNode) => (summary.isLoading || !s ? "—" : n);
-  const total = list.data?.total ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / COST_PAGE));
 
   return (
     <section aria-labelledby="cost-heading" className="space-y-4">
@@ -230,126 +214,14 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
             />
           </div>
 
-          <CostSplit summary={s} loading={summary.isLoading} />
+          <CostSplit
+            loading={summary.isLoading}
+            parts={s ? { stt: s.stt_cost, llm: s.llm_cost, tts: s.tts_cost, models: { stt: s.rates.stt_model, llm: s.rates.llm_model, tts: s.rates.tts_model } } : undefined}
+          />
+          <p className="text-xs text-muted">Per-call costs are on each campaign&apos;s Costs tab.</p>
         </>
       )}
 
-      <Card flush title="Cost per call" description="Newest first. Each call's AI charges, split by service.">
-        {list.isError ? (
-          <div className="p-5">
-            <ErrorState message={(list.error as Error).message} onRetry={() => list.refetch()} />
-          </div>
-        ) : (
-          <div className="space-y-3 pb-3">
-            <Table bare head={COST_HEAD} label="Cost per call">
-              {list.isLoading ? (
-                <SkeletonRows rows={5} cols={COST_HEAD.length} />
-              ) : !list.data?.items.length ? (
-                <TableMessage cols={COST_HEAD.length}>No calls have been costed yet.</TableMessage>
-              ) : (
-                list.data.items.map((c) => (
-                  <tr key={c.call_uuid}>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.started_at ?? c.created_at)}</td>
-                    <td className="px-4 py-3 text-heading">{c.agent_name || <span className="text-faint">—</span>}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(c.duration_seconds)}</td>
-                    <td className="tnum px-4 py-3 text-body">{c.turns}</td>
-                    <td className="tnum px-4 py-3 text-body">{rupees(c.stt_cost, 3)}</td>
-                    <td className="tnum px-4 py-3 text-body">{rupees(c.llm_cost, 3)}</td>
-                    <td className="tnum px-4 py-3 text-body">{rupees(c.tts_cost, 3)}</td>
-                    <td className="tnum px-4 py-3 font-semibold text-heading">{rupees(c.total_cost, 3)}</td>
-                  </tr>
-                ))
-              )}
-            </Table>
-            {total > COST_PAGE && (
-              <nav aria-label="Cost pages" className="flex items-center justify-between gap-3 px-4 text-sm text-muted">
-                <span className="tnum">
-                  {(page - 1) * COST_PAGE + 1}–{Math.min(page * COST_PAGE, total)} of {total} calls
-                </span>
-                <span className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                    className="h-9 rounded-md border border-hairline px-3 hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Newer
-                  </button>
-                  <button
-                    type="button"
-                    disabled={page >= pageCount}
-                    onClick={() => setPage(page + 1)}
-                    className="h-9 rounded-md border border-hairline px-3 hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Older
-                  </button>
-                </span>
-              </nav>
-            )}
-          </div>
-        )}
-      </Card>
     </section>
-  );
-}
-
-/**
- * Where the AI money goes: one stacked bar (parts of a whole) with a labelled legend,
- * so the split never relies on colour alone. Hover a segment for its exact value.
- */
-function CostSplit({ summary, loading }: { summary: CallCostSummary | undefined; loading: boolean }) {
-  const parts = summary
-    ? [
-        { key: "stt", label: "Speech-to-text", detail: summary.rates.stt_model, value: summary.stt_cost, color: "var(--series-1)" },
-        { key: "llm", label: "AI model", detail: summary.rates.llm_model, value: summary.llm_cost, color: "var(--series-2)" },
-        { key: "tts", label: "Text-to-speech", detail: summary.rates.tts_model, value: summary.tts_cost, color: "var(--series-3)" },
-      ]
-    : [];
-  const total = parts.reduce((sum, p) => sum + p.value, 0);
-  const share = (n: number) => (total ? Math.round((n / total) * 100) : 0);
-
-  return (
-    <Card title="Where the cost goes" description="Share of AI spend in the selected period.">
-      {loading ? (
-        <Skeleton className="h-24 rounded-md" />
-      ) : !total ? (
-        <p className="py-4 text-center text-sm text-muted">No spend in this period.</p>
-      ) : (
-        <div className="space-y-4">
-          <div
-            className="flex h-4 w-full gap-[2px] overflow-hidden rounded"
-            role="img"
-            aria-label={parts.map((p) => `${p.label} ${share(p.value)}%`).join(", ")}
-          >
-            {parts
-              .filter((p) => p.value > 0)
-              .map((p) => (
-                <div
-                  key={p.key}
-                  title={`${p.label}: ${rupees(p.value)} (${share(p.value)}%)`}
-                  className="h-full transition-opacity first:rounded-l last:rounded-r hover:opacity-80"
-                  style={{ width: `${(p.value / total) * 100}%`, background: p.color, minWidth: 4 }}
-                />
-              ))}
-          </div>
-          <dl className="grid gap-3 sm:grid-cols-3">
-            {parts.map((p) => (
-              <div key={p.key} className="flex items-start gap-2.5">
-                <span aria-hidden className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: p.color }} />
-                <div className="min-w-0">
-                  <dt className="text-sm font-medium text-heading">{p.label}</dt>
-                  <dd className="tnum text-sm text-body">
-                    {rupees(p.value)} <span className="text-muted">· {share(p.value)}%</span>
-                  </dd>
-                  <dd className="truncate text-xs text-muted" title={p.detail}>
-                    {p.detail}
-                  </dd>
-                </div>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-    </Card>
   );
 }

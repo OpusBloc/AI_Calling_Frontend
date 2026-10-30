@@ -107,6 +107,8 @@ export interface CallCostSummary {
 /** One call's AI cost — GET /call-costs */
 export interface CallCost {
   call_uuid: string;
+  /** Campaign dispatch attempt this cost belongs to; null for test calls */
+  attempt_id: string | null;
   agent_id: string | null;
   agent_name: string | null;
   started_at: string | null;
