@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
-import type { Campaign } from "@/types/types";
+import type { Campaign, Weekday } from "@/types/types";
 import { useAgents, useCampaigns } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -33,6 +33,27 @@ const HEAD = ["Campaign", "Status", "Agent", "Calling window", "Concurrency", "S
 
 export const formatWindow = (start?: string | null, end?: string | null) =>
   start || end ? `${start?.slice(0, 5) ?? "—"} – ${end?.slice(0, 5) ?? "—"}` : "Any time";
+
+export const WEEKDAYS: { id: Weekday; short: string }[] = [
+  { id: "monday", short: "Mon" },
+  { id: "tuesday", short: "Tue" },
+  { id: "wednesday", short: "Wed" },
+  { id: "thursday", short: "Thu" },
+  { id: "friday", short: "Fri" },
+  { id: "saturday", short: "Sat" },
+  { id: "sunday", short: "Sun" },
+];
+
+/** ["monday", …, "friday"] → "Mon–Fri"; empty or all seven → "Every day" */
+export const formatDays = (days?: Weekday[] | null) => {
+  const set = new Set(days ?? []);
+  const on = WEEKDAYS.filter((d) => set.has(d.id));
+  if (on.length === 0 || on.length === 7) return "Every day";
+  const key = on.map((d) => d.short).join(",");
+  if (key === "Mon,Tue,Wed,Thu,Fri") return "Mon–Fri";
+  if (key === "Sat,Sun") return "Weekends";
+  return on.map((d) => d.short).join(", ");
+};
 
 export default function CampaignsTab() {
   const router = useRouter();
@@ -137,7 +158,10 @@ export default function CampaignsTab() {
                 <StatusBadge status={c.status} />
               </td>
               <td className="px-4 py-3 text-body">{agentName.get(c.agent_id) ?? <span className="text-faint">—</span>}</td>
-              <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatWindow(c.window_start, c.window_end)}</td>
+              <td className="whitespace-nowrap px-4 py-3">
+                <span className="tnum block text-body">{formatWindow(c.window_start, c.window_end)}</span>
+                <span className="text-xs text-muted">{formatDays(c.call_days)}</span>
+              </td>
               <td className="tnum px-4 py-3 text-body">{c.concurrent_calls ?? c.concurrency_limit}</td>
               <td className="whitespace-nowrap px-4 py-3 text-muted">{c.status === "scheduled" ? formatDate(c.start_at) : "—"}</td>
               <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.updated_at)}</td>

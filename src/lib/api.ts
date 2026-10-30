@@ -41,6 +41,10 @@ const detailMessage = (detail: unknown, status: number): string => {
       .map((d) => [d?.loc?.slice(1).join("."), d?.msg].filter(Boolean).join(": "))
       .join("; ");
   }
+  // Proxied provider errors: { message, request_id }
+  if (detail && typeof detail === "object" && typeof (detail as { message?: unknown }).message === "string") {
+    return (detail as { message: string }).message;
+  }
   return `Request failed (${status})`;
 };
 
@@ -52,7 +56,7 @@ export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/
  */
 export async function api<T>(
   path: string,
-  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" } = {},
+  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" | "response" } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -90,6 +94,7 @@ export async function api<T>(
     showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }
+  if (responseType === "response") return res as T;
   if (res.status === 204) return undefined as T;
   if (responseType === "blob") return (await res.blob()) as T;
 

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createCampaign, updateCampaign } from "@/lib/api";
-import type { Campaign, CampaignCreate, CampaignUpdate } from "@/types/types";
+import type { Campaign, CampaignCreate, CampaignUpdate, Weekday } from "@/types/types";
 import { useAgents, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import MultiSelect from "@/components/MultiSelect";
+import { WEEKDAYS, formatDays } from "@/components/campaigns/CampaignsTab";
 import { Button, Field, FileDrop, FormPage, FormSection, Select, TextInput, humanize } from "@/components/ui";
 
 export const CAMPAIGN_STATUSES: Campaign["status"][] = ["draft", "scheduled", "running", "paused", "completed", "cancelled"];
@@ -74,6 +75,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [startAt, setStartAt] = useState(() => toDateTimeInput(campaign?.start_at));
   const [windowStart, setWindowStart] = useState(campaign?.window_start?.slice(0, 5) ?? "");
   const [windowEnd, setWindowEnd] = useState(campaign?.window_end?.slice(0, 5) ?? "");
+  const [callDays, setCallDays] = useState<Weekday[]>(campaign?.call_days ?? []);
   const [retryInterval, setRetryInterval] = useState(String(campaign?.retry_interval_minutes ?? 60));
   const [retryCount, setRetryCount] = useState(String(campaign?.retry_count ?? 1));
   const [retryOn, setRetryOn] = useState<string[]>(campaign?.retry_on ?? ["no_answer"]);
@@ -132,6 +134,8 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         plivo_pool_ids: plivoPoolIds,
         window_start: windowStart || null,
         window_end: windowEnd || null,
+        // All seven is the same as no restriction
+        call_days: callDays.length === 7 ? [] : WEEKDAYS.map((d) => d.id).filter((d) => callDays.includes(d)),
         retry_interval_minutes: Number(retryInterval),
         retry_count: Number(retryCount),
         concurrency_limit: Number(concurrencyLimit),
@@ -294,6 +298,47 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
             <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} />
           </Field>
         </div>
+        <fieldset>
+          <legend className="text-sm font-medium text-heading">Call days</legend>
+          <p className="mt-0.5 text-xs text-muted">
+            Calls go out only on these days, within the calling hours, week after week until every lead is done. Pick none to call
+            every day.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {WEEKDAYS.map((d) => {
+              const on = callDays.includes(d.id);
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setCallDays((days) => (on ? days.filter((x) => x !== d.id) : [...days, d.id]))}
+                  className={
+                    on
+                      ? "h-9 min-w-12 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-on-accent transition-colors"
+                      : "h-9 min-w-12 rounded-md border border-hairline-strong bg-surface px-3 text-sm font-medium text-heading transition-colors hover:bg-surface-hover"
+                  }
+                >
+                  {d.short}
+                </button>
+              );
+            })}
+            <span className="ml-1 text-sm text-muted">{formatDays(callDays)}</span>
+          </div>
+          <div className="mt-2 flex gap-3 text-sm">
+            {(
+              [
+                ["Every day", [] as Weekday[]],
+                ["Mon–Fri", WEEKDAYS.slice(0, 5).map((d) => d.id)],
+                ["Weekends", WEEKDAYS.slice(5).map((d) => d.id)],
+              ] as const
+            ).map(([label, days]) => (
+              <button key={label} type="button" onClick={() => setCallDays([...days])} className="font-medium text-accent-text hover:underline">
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Parallel calls" error={show(errors.concurrency)} hint="How many leads are dialled at once. Can be changed while running.">
             <TextInput type="number" inputMode="numeric" min={1} step={1} value={concurrencyLimit} onChange={(e) => setConcurrencyLimit(e.target.value)} aria-invalid={!!show(errors.concurrency)} />

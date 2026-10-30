@@ -38,7 +38,7 @@ import {
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import PageHeader from "@/components/PageHeader";
-import { formatWindow } from "@/components/campaigns/CampaignsTab";
+import { formatDays, formatWindow } from "@/components/campaigns/CampaignsTab";
 import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/DispatchPanel";
 import CampaignCosts from "@/components/campaigns/CampaignCosts";
 import {
@@ -604,6 +604,7 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
           items={[
             { label: "Start", value: formatDate(campaign.start_at) },
             { label: "Calling hours", value: <span className="tnum">{formatWindow(campaign.window_start, campaign.window_end)}</span> },
+            { label: "Call days", value: formatDays(campaign.call_days) },
             { label: "Timezone", value: campaign.timezone },
             { label: "Parallel calls", value: <span className="tnum">{campaign.concurrency_limit}</span> },
             ...(campaign.max_live_calls !== undefined ? [{ label: "Max live calls", value: <span className="tnum">{campaign.max_live_calls}</span> }] : []),

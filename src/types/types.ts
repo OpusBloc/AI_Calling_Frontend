@@ -1,6 +1,10 @@
 import type { components } from "./api";
 
+export type Weekday = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
 export type Campaign = components["schemas"]["CampaignResponse"] & {
+  /** Weekdays calls may go out on; empty = every day */
+  call_days?: Weekday[];
   ended_at?: string | null;
   concurrent_calls?: number | null;
   /** Safety ceiling on simultaneous live calls (newer backend; not in api.d.ts yet) */
@@ -12,10 +16,12 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
 export type CampaignCreate = Omit<components["schemas"]["CampaignCreate"], "lead_pool_ids"> & {
   max_live_calls?: number;
   calls_per_second?: number;
+  call_days?: Weekday[];
 };
 export type CampaignUpdate = components["schemas"]["CampaignUpdate"] & {
   max_live_calls?: number | null;
   calls_per_second?: number | null;
+  call_days?: Weekday[] | null;
 };
 export type CampaignScheduleResult = components["schemas"]["ScheduleResult"];
 

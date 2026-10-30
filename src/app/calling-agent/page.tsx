@@ -1,18 +1,16 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { AudioLines, Bot, PhoneCall, PhoneForwarded } from "lucide-react";
+import { Bot, PhoneCall, PhoneForwarded } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import AgentsTab from "@/components/calling-agent/AgentsTab";
 import RepresentativesTab from "@/components/calling-agent/RepresentativesTab";
-import AgentVoiceTab from "@/components/calling-agent/AgentVoiceTab";
 import TestCallDrawer from "@/components/calling-agent/TestCallDrawer";
 import { Button, Tabs, useTabParam } from "@/components/ui";
 
 const TABS = [
   { id: "agents", label: "Agents", icon: Bot, component: AgentsTab },
-  { id: "voice", label: "Agent Voice", icon: AudioLines, component: AgentVoiceTab },
   { id: "representatives", label: "Call Transfer", icon: PhoneForwarded, component: RepresentativesTab },
 ] as const;
 

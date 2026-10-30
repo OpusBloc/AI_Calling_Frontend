@@ -14,6 +14,10 @@ export interface PartDraft {
 export interface AgentDraft {
   name: string;
   greeting: string;
+  /** Stock voice id; empty = system default */
+  voice: string;
+  primaryLanguage: string;
+  secondaryLanguage: string;
   parts: Record<AgentPart, PartDraft>;
   tab: string;
   savedAt?: number;
@@ -27,6 +31,9 @@ const blankPart = (): PartDraft => ({ source: "text", text: "" });
 export const emptyDraft = (): AgentDraft => ({
   name: "",
   greeting: "",
+  voice: "",
+  primaryLanguage: "",
+  secondaryLanguage: "",
   parts: Object.fromEntries(AGENT_PARTS.map((p) => [p, blankPart()])) as AgentDraft["parts"],
   tab: "details",
 });
@@ -34,6 +41,9 @@ export const emptyDraft = (): AgentDraft => ({
 export const draftFromAgent = (agent: Agent): AgentDraft => ({
   name: agent.name,
   greeting: agent.greeting ?? "",
+  voice: agent.voice ?? "",
+  primaryLanguage: agent.primary_language ?? "",
+  secondaryLanguage: agent.secondary_language ?? "",
   parts: Object.fromEntries(
     AGENT_PARTS.map((p) => [p, { source: "text", text: agent[p] ?? "" }]),
   ) as AgentDraft["parts"],
@@ -47,7 +57,8 @@ const storageKey = (agentId: string | null) => `calling-agent:draft:${agentId ??
 export const loadDraft = (agentId: string | null): AgentDraft | null => {
   try {
     const raw = localStorage.getItem(storageKey(agentId));
-    return raw ? (JSON.parse(raw) as AgentDraft) : null;
+    // Drafts saved before a field existed get its default
+    return raw ? { ...emptyDraft(), ...(JSON.parse(raw) as AgentDraft) } : null;
   } catch {
     return null;
   }
@@ -113,6 +124,9 @@ export function toCreateForm(draft: AgentDraft): FormData {
   const form = new FormData();
   form.append("name", draft.name.trim());
   if (draft.greeting.trim()) form.append("greeting", draft.greeting.trim());
+  if (draft.voice) form.append("voice", draft.voice);
+  if (draft.primaryLanguage) form.append("primary_language", draft.primaryLanguage);
+  if (draft.secondaryLanguage) form.append("secondary_language", draft.secondaryLanguage);
   for (const part of AGENT_PARTS) {
     if (isPartFilled(draft.parts[part])) appendPart(form, part, draft.parts[part]);
   }
@@ -124,6 +138,12 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   const form = new FormData();
   if (draft.name.trim() !== agent.name) form.append("name", draft.name.trim());
   if (draft.greeting.trim() !== (agent.greeting ?? "")) form.append("greeting", draft.greeting.trim());
+  if (draft.voice !== (agent.voice ?? "")) form.append("voice", draft.voice);
+  // Sent as a pair: the backend checks them together (secondary needs a primary)
+  if (draft.primaryLanguage !== (agent.primary_language ?? "") || draft.secondaryLanguage !== (agent.secondary_language ?? "")) {
+    form.append("primary_language", draft.primaryLanguage);
+    form.append("secondary_language", draft.secondaryLanguage);
+  }
   for (const part of AGENT_PARTS) {
     const p = draft.parts[part];
     // The backend ignores empty parts on PATCH, so a cleared part can't be sent
