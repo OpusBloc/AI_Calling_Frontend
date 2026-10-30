@@ -51,6 +51,37 @@ export const synthesizeSarvamVoice = (form: FormData) =>
 export const deleteSarvamVoice = (id: string) =>
   api<void>(`/voices/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+export const uploadSarvamVoiceCatalog = (form: FormData) =>
+  api<unknown>("/voices/catalog", { method: "POST", body: form });
+export const listSarvamVoiceCatalog = (params: Record<string, string> = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return api<unknown>(`/voices/catalog${query ? `?${query}` : ""}`);
+};
+export const deleteSarvamVoiceCatalogEntry = (id: string) =>
+  api<void>(`/voices/catalog/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const deleteSarvamVoiceCatalog = () => api<void>("/voices/catalog", { method: "DELETE" });
+export interface SarvamSpeakInput {
+  text: string;
+  speaker: string;
+  target_language_code: string;
+  model: string;
+  pace: number;
+  speech_sample_rate: number;
+  output_audio_codec: string;
+}
+export const createSarvamSpeakSample = (body: SarvamSpeakInput) =>
+  api<unknown>("/voices/speak", { method: "POST", body });
+export const listSarvamSpeakSamples = (params: Record<string, string> = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return api<unknown>(`/voices/speak${query ? `?${query}` : ""}`);
+};
+export const getSarvamSpeakSample = (id: string) =>
+  api<unknown>(`/voices/speak/${encodeURIComponent(id)}`);
+export const getSarvamSpeakAudio = (id: string) =>
+  api<Blob>(`/voices/speak/${encodeURIComponent(id)}/audio`, { responseType: "blob" });
+export const deleteSarvamSpeakSample = (id: string) =>
+  api<void>(`/voices/speak/${encodeURIComponent(id)}`, { method: "DELETE" });
+
 export interface TestCallInput {
   /** Digits, optionally starting with "+" */
   phone: string;
