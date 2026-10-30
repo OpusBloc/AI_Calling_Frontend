@@ -4,12 +4,15 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
   ended_at?: string | null;
   concurrent_calls?: number | null;
 };
-export type CampaignCreate = components["schemas"]["CampaignCreate"];
+/** Leads now come from an uploaded sheet, so there are no lead pools on create */
+export type CampaignCreate = Omit<components["schemas"]["CampaignCreate"], "lead_pool_ids">;
 export type CampaignUpdate = components["schemas"]["CampaignUpdate"];
-export type LeadPool = components["schemas"]["LeadPoolResponse"];
-export type LeadPoolCreate = components["schemas"]["LeadPoolCreate"];
-export type LeadPoolUpdate = components["schemas"]["LeadPoolUpdate"];
-export type LeadImportResult = components["schemas"]["LeadImportResult"];
+export type DispatchStatus = components["schemas"]["DispatchStatus"];
+export type DispatchControlResponse = components["schemas"]["DispatchControlResponse"];
+export type CampaignScheduleResult = components["schemas"]["ScheduleResult"];
+export type ScheduledCampaignCall = components["schemas"]["ScheduledCallResponse"];
+export type CallOutcome = components["schemas"]["CallOutcome"];
+export type CallOutcomeResult = components["schemas"]["CallOutcomeResult"];
 
 /**
  * GET /api/plivo-numbers -> PlivoNumber[]

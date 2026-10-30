@@ -5,11 +5,7 @@ import { PhoneCall } from "lucide-react";
 
 import { TestCallResult, listAgents, testCallAgent } from "@/lib/callingAgentApi";
 import { showSuccessNotification } from "@/hooks/useNotification";
-import { Button, Drawer, ErrorBanner, Field, Select, TextInput, errorMessage, useLoad } from "./ui";
-
-// Same rule as the backend: digits, optionally starting with "+"
-const PHONE_RE = /^\+?[0-9]{6,15}$/;
-const cleanPhone = (value: string) => value.trim().replace(/[\s-]/g, "");
+import { Button, Drawer, ErrorBanner, Field, PhoneInput, Select, TextInput, errorMessage, isValidLocalNumber, toE164, useLoad } from "./ui";
 
 /**
  * Right-side panel that rings a number with the chosen agent
@@ -34,9 +30,9 @@ export default function TestCallDrawer({
   const fixedAgent = fixedAgentId ? agents?.find((a) => a.id === fixedAgentId) : null;
 
   const handleCall = async () => {
-    const number = cleanPhone(phone);
+    const number = toE164(phone);
     if (!selectedId) return setError("Choose an agent to test.");
-    if (!PHONE_RE.test(number)) return setError("Enter a phone number of 6–15 digits, optionally starting with +.");
+    if (!isValidLocalNumber(phone)) return setError("Enter the 10-digit mobile number.");
     setCalling(true);
     setError(null);
     try {
@@ -86,14 +82,12 @@ export default function TestCallDrawer({
         </Field>
       )}
 
-      <Field label="Phone number" hint="Include the country code, e.g. +919812345678.">
-        <TextInput
-          type="tel"
+      <Field label="Phone number" required hint="10-digit mobile number. +91 is added for you.">
+        <PhoneInput
           autoFocus
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={setPhone}
           onKeyDown={(e) => e.key === "Enter" && !calling && handleCall()}
-          placeholder="+919812345678"
         />
       </Field>
 

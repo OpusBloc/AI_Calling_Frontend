@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
+import { IBM_Plex_Mono, Syne } from "next/font/google";
 
 import "./globals.css";
 import { Providers } from "./providers";
 import LayoutShell from "@/components/LayoutShell";
 
-// Exposed as the CSS variables globals.css already reads (--font-manrope, --font-plex-mono)
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
+// Exposed as the CSS variables globals.css reads (--font-syne, --font-plex-mono)
+const syne = Syne({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-syne", display: "swap" });
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
@@ -24,7 +24,7 @@ const themeScript = `try{if(localStorage.getItem("theme")==="dark")document.docu
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${plexMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${syne.variable} ${plexMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

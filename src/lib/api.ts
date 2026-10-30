@@ -4,12 +4,14 @@ import { clearToken, getToken } from "@/lib/auth";
 import type {
   Campaign,
   CampaignCreate,
+  CampaignScheduleResult,
+  CallOutcome,
+  CallOutcomeResult,
+  ScheduledCampaignCall,
   CampaignUpdate,
+  DispatchStatus,
+  DispatchControlResponse,
   CreatePlivoPoolBody,
-  LeadPool,
-  LeadPoolCreate,
-  LeadImportResult,
-  LeadPoolUpdate,
   PatchPlivoPoolBody,
   PlivoNumber,
   PlivoPool,
@@ -46,7 +48,7 @@ export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/
  */
 export async function api<T>(
   path: string,
-  { method = "GET", body }: { method?: string; body?: unknown } = {},
+  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -77,15 +79,17 @@ export async function api<T>(
     throw new ApiError("Session expired", 401);
   }
 
-  if (res.status === 204) return undefined as T;
-
-  const data = await res.json().catch(() => null);
   if (!res.ok) {
+    const data = await res.json().catch(() => null);
     // Every failed endpoint call surfaces as a notification; callers still get the error
     const error = new ApiError(detailMessage(data?.detail, res.status), res.status);
     showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }
+  if (res.status === 204) return undefined as T;
+  if (responseType === "blob") return (await res.blob()) as T;
+
+  const data = await res.json().catch(() => null);
   return data as T;
 }
 
@@ -96,6 +100,8 @@ export const syncPlivoNumbers = () =>
   api<Record<string, unknown>>("/plivo-numbers/sync", { method: "POST" });
 
 export const getPlivoPools = () => api<PlivoPool[]>("/plivo-pools");
+
+export const getPlivoPool = (id: string) => api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`);
 
 export const createPlivoPool = (body: CreatePlivoPoolBody) =>
   api<PlivoPool>("/plivo-pools", { method: "POST", body });
@@ -123,8 +129,30 @@ export const getCampaigns = async (): Promise<Campaign[]> => {
   }));
 };
 
-export const createCampaign = (body: CampaignCreate) =>
-  api<Campaign>("/campaigns", { method: "POST", body });
+export const getCampaignIds = () => api<string[]>("/campaigns/ids");
+
+export const getCampaign = (id: string) =>
+  api<Campaign>(`/campaigns/${encodeURIComponent(id)}`);
+
+export const scheduleCampaign = (id: string) =>
+  api<CampaignScheduleResult>(`/campaigns/${encodeURIComponent(id)}/schedule`, { method: "POST" });
+
+export const getCampaignCalls = (id: string) =>
+  api<ScheduledCampaignCall[]>(`/campaigns/${encodeURIComponent(id)}/calls`);
+
+export const postCampaignCallOutcome = (campaignId: string, callId: string, outcome: CallOutcome) =>
+  api<CallOutcomeResult>(`/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}/outcome`, {
+    method: "POST",
+    body: { outcome },
+  });
+
+/** Multipart: the leads sheet plus the campaign fields as a JSON `payload` */
+export const createCampaign = (body: CampaignCreate, leadsFile: File) => {
+  const form = new FormData();
+  form.append("file", leadsFile);
+  form.append("payload", JSON.stringify(body));
+  return api<Campaign>("/campaigns", { method: "POST", body: form });
+};
 
 export const updateCampaign = (id: string, body: CampaignUpdate) =>
   api<Campaign>(`/campaigns/${encodeURIComponent(id)}`, { method: "PATCH", body });
@@ -132,20 +160,10 @@ export const updateCampaign = (id: string, body: CampaignUpdate) =>
 export const deleteCampaign = (id: string) =>
   api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
-export const getLeadPool = (id: string) => api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`);
-
-export const createLeadPool = (body: LeadPoolCreate) =>
-  api<LeadPool>("/lead-pools", { method: "POST", body });
-
-export const updateLeadPool = (id: string, body: LeadPoolUpdate) =>
-  api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`, { method: "PATCH", body });
-
-export const deleteLeadPool = (id: string) =>
-  api<void>(`/lead-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
-
-export const importLeadSheet = (file: File) => {
-  const body = new FormData();
-  body.append("file", file);
-  return api<LeadImportResult>("/lead-pools/import", { method: "POST", body });
-};
+// Dispatch control
+export const getDispatchStatus = () => api<DispatchStatus>("/dispatch/status");
+export const patchDispatchControl = (enabled: boolean) =>
+  api<DispatchControlResponse>("/dispatch/control", {
+    method: "PATCH",
+    body: { enabled },
+  });

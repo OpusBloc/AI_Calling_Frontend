@@ -29,6 +29,28 @@ export const updateAgent = (id: string, form: FormData) =>
   api<Agent>(`/agents/${id}`, { method: "PATCH", body: form });
 export const deleteAgent = (id: string) => api<void>(`/agents/${id}`, { method: "DELETE" });
 
+/* --------------------------------- Voices --------------------------------- */
+
+export interface SarvamVoice {
+  id: string;
+  name: string;
+  language?: string | null;
+  gender?: string | null;
+  accent?: string | null;
+  style?: string | null;
+  reference_text?: string | null;
+  [key: string]: unknown;
+}
+
+export const listSarvamVoices = () => api<unknown>("/voices?limit=200");
+export const getSarvamVoice = (id: string) => api<unknown>(`/voices/${encodeURIComponent(id)}`);
+export const createSarvamVoice = (form: FormData) =>
+  api<unknown>("/voices", { method: "POST", body: form });
+export const synthesizeSarvamVoice = (form: FormData) =>
+  api<Blob>("/voices/clone", { method: "POST", body: form, responseType: "blob" });
+export const deleteSarvamVoice = (id: string) =>
+  api<void>(`/voices/${encodeURIComponent(id)}`, { method: "DELETE" });
+
 export interface TestCallInput {
   /** Digits, optionally starting with "+" */
   phone: string;
@@ -62,6 +84,7 @@ export interface Representative {
 export type RepresentativeInput = Pick<Representative, "name" | "phone_e164" | "active">;
 
 export const listRepresentatives = () => api<Representative[]>("/representatives");
+export const getRepresentative = (id: string) => api<Representative>(`/representatives/${id}`);
 export const createRepresentative = (body: RepresentativeInput) =>
   api<Representative>("/representatives", { method: "POST", body });
 export const updateRepresentative = (id: string, body: Partial<RepresentativeInput>) =>

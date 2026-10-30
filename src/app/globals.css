@@ -8,7 +8,7 @@
 
    The admin is LIGHT-FIRST: `:root` carries the design system's
    [data-theme="light"] values (warm ivory canvas, deep antique gold).
-   `.dark` carries its dark scope (deep navy canvas, champagne gold).
+   `.dark` is true black (neutral greys up from #000) with the light theme's gold.
    `.dark` is toggled on <html> by Navbar.tsx.
 
    Only semantic tokens flip between themes — the brand scales below do not.
@@ -110,29 +110,33 @@
 
 /* ========================== DARK THEME ========================== */
 .dark {
-  --canvas: var(--ink-700);
-  --surface: var(--ink-600);
-  --raised: var(--ink-500);
-  --surface-hover: var(--ink-400);
-  --surface-input: var(--ink-800);
+  /* True black, not navy: neutral greys stepping up from #000 */
+  --canvas: #000000;
+  --surface: #0b0b0b;
+  --raised: #111111;
+  --surface-hover: #1a1a1a;
+  --surface-input: #0f0f0f;
   --surface-inverse: var(--cream-50);
 
-  --hairline: rgba(216, 198, 141, 0.16);
-  --hairline-strong: rgba(216, 198, 141, 0.34);
+  --hairline: rgba(255, 255, 255, 0.09);
+  --hairline-strong: rgba(255, 255, 255, 0.18);
 
-  --text-heading: #f5f2e8;
-  --text-body: #c7c5b4;
-  --text-muted: #908e7c;
-  --text-faint: #5e5d52;
+  --text-heading: #f5f5f4;
+  --text-body: #c9c9c6;
+  --text-muted: #8f8f8a;
+  --text-faint: #5c5c58;
 
+  /* Same gold as the light theme. Only --accent-text is one step lighter
+     (antique #A8915A vs #816C3C): the light theme's text gold is ~3.9:1 on
+     black, under the 4.5:1 needed for small text; this is ~6.6:1. */
   --accent: var(--gold-400);
-  --accent-strong: var(--gold-300);
-  --accent-text: var(--gold-300);
-  --accent-bg: rgba(216, 198, 141, 0.1);
+  --accent-strong: var(--gold-500);
+  --accent-text: var(--gold-600);
+  --accent-bg: rgba(216, 198, 141, 0.22);
   --on-accent: #000000;
 
-  --chip-neutral-bg: rgba(245, 242, 232, 0.06);
-  --focus-ring: rgba(216, 198, 141, 0.55);
+  --chip-neutral-bg: rgba(255, 255, 255, 0.07);
+  --focus-ring: rgba(216, 198, 141, 0.7);
 
   /* Dark theme restores the design system's published semantic values — these
      are the ones intended to sit on the navy canvas. */
@@ -145,11 +149,12 @@
   --info-bg: rgba(127, 168, 201, 0.14);
   --warn-bg: rgba(215, 178, 94, 0.16);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+  /* On black, depth comes from a faint top highlight rather than a dark drop shadow */
+  --shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 1px 2px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 12px 32px -8px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -18px rgba(0, 0, 0, 0.95);
   --glow-gold:
-    0 0 0 1px rgba(216, 198, 141, 0.35), 0 10px 40px -10px rgba(216, 198, 141, 0.32);
+    0 0 0 1px rgba(168, 145, 90, 0.4), 0 12px 32px -10px rgba(168, 145, 90, 0.42);
   --inner-lit: inset 0 1px 0 rgba(245, 242, 232, 0.05);
 
   --series-1: #3987e5;
@@ -158,8 +163,8 @@
   --series-4: #c98500;
   --series-5: #d55181;
   --series-6: #008300;
-  --series-other: #5e5d52;
-  --chart-grid: rgba(216, 198, 141, 0.1);
+  --series-other: #5c5c58;
+  --chart-grid: rgba(255, 255, 255, 0.08);
 }
 
 /* ---- Expose the semantic tokens as Tailwind utilities ----
@@ -196,7 +201,7 @@
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
 
-  --font-sans: var(--font-manrope, "Segoe UI"), system-ui, sans-serif;
+  --font-sans: var(--font-syne, "Segoe UI"), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
   --font-display: var(--font-cormorant, Georgia), serif;
 
@@ -220,7 +225,7 @@ body {
   background: var(--canvas);
   color: var(--text-body);
   font-family:
-    var(--font-manrope, "Segoe UI"),
+    var(--font-syne, "Segoe UI"),
     "Noto Naskh Arabic",
     "Noto Sans Devanagari",
     "Noto Sans Telugu",
@@ -489,4 +494,141 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .nav-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
+}
+
+/* ---- Interaction basics ---------------------------------------------------
+   Tailwind v4's preflight gives buttons `cursor: default`; anything clickable
+   should read as clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"],
+select:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+/* Skeleton placeholder shown while data loads — a slow sheen, not a spinner */
+.skeleton {
+  background: linear-gradient(90deg, var(--chip-neutral-bg) 0%, var(--surface-hover) 50%, var(--chip-neutral-bg) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-sheen 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Input glow ------------------------------------------------------------
+   A light that travels around a field's border, with a soft halo under it.
+   Faint on hover, full on focus. Wrap the control in `.glow-field` (the
+   TextInput/Select/TextArea/PhoneInput/SearchInput components already do).
+   Change --input-glow to recolour it, e.g. #3b82f6 for blue. */
+:root {
+  --input-glow: #b8962e;
+}
+
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.glow-field {
+  position: relative;
+  isolation: isolate;
+  /* Same as Tailwind's rounded-md in this theme (--radius-md is inlined, not a CSS var) */
+  border-radius: 10px;
+}
+
+.glow-field::before,
+.glow-field::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 0deg,
+    transparent 210deg,
+    var(--input-glow) 285deg,
+    transparent 345deg,
+    transparent 360deg
+  );
+  opacity: 0;
+  transition: opacity 250ms ease;
+  animation: glow-orbit 3.2s linear infinite;
+  animation-play-state: paused;
+}
+
+/* The moving light: the gradient clipped to a thin ring on the border */
+.glow-field::before {
+  inset: -1px;
+  padding: 1.5px;
+  z-index: 1;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* The halo: the same light, blurred, behind the field */
+.glow-field::after {
+  inset: 2px;
+  z-index: -1;
+  filter: blur(12px);
+}
+
+.glow-field:hover::before {
+  opacity: 0.45;
+  animation-play-state: running;
+}
+
+.glow-field:focus-within::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.glow-field:focus-within::after {
+  opacity: 0.6;
+  animation-play-state: running;
+}
+
+@keyframes glow-orbit {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+/* No travelling light: a still, even glow so focus is still obvious */
+@media (prefers-reduced-motion: reduce) {
+  .glow-field::before,
+  .glow-field::after {
+    animation: none;
+    background: var(--input-glow);
+  }
+  .glow-field:hover::before {
+    opacity: 0.25;
+  }
+  .glow-field:focus-within::after {
+    opacity: 0.25;
+  }
 }

@@ -29,13 +29,13 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
   };
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface/80 px-4 backdrop-blur sm:px-8">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface/80 px-4 backdrop-blur sm:px-8">
       <div className="flex items-center gap-2">
         <button
           type="button"
           aria-label="Open menu"
           onClick={onMenuClick}
-          className="-ml-1.5 rounded-md p-1.5 text-muted hover:bg-surface-hover hover:text-heading md:hidden"
+          className="-ml-2 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading md:hidden"
         >
           <Menu size={20} />
         </button>
@@ -52,7 +52,7 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
         onClick={toggleTheme}
         aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
         title={dark ? "Light theme" : "Dark theme"}
-        className="rounded-md border border-hairline p-2 text-muted transition-colors hover:bg-surface-hover hover:text-heading"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-hairline text-muted transition-colors hover:bg-surface-hover hover:text-heading"
       >
         {dark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
