@@ -87,6 +87,10 @@ export interface TestCallInput {
   phone: string;
   /** Customer name the agent may use */
   name?: string;
+  /** Plivo number to call from; omitted = picked automatically */
+  from_number?: string;
+  /** Transfer agent to ring; omitted = every active one */
+  representative_id?: string;
 }
 
 export interface TestCallResult {
@@ -94,8 +98,22 @@ export interface TestCallResult {
   to: string;
   from: string;
   agent_id: string;
+  representative_id: string | null;
   request_uuid: string | null;
 }
+
+/** Choices for the test call's "call from" and "transfer to" dropdowns */
+export interface TestCallNumber {
+  phone_e164: string;
+  alias: string | null;
+}
+export interface TestCallRepresentative {
+  id: string;
+  name: string;
+  phone_e164: string;
+}
+export const listTestCallNumbers = () => api<TestCallNumber[]>("/agents/test-call/plivo-numbers");
+export const listTestCallRepresentatives = () => api<TestCallRepresentative[]>("/agents/test-call/representatives");
 
 /** Ring `phone` right now with this agent */
 export const testCallAgent = (id: string, body: TestCallInput) =>

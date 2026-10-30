@@ -24,11 +24,12 @@ import {
   getCampaignIds,
   getCampaign,
   getCampaignCalls,
+  getCampaignReport,
   scheduleCampaign,
   postCampaignCallOutcome,
 } from "@/lib/api";
 import { listAgents, listRepresentatives } from "@/lib/callingAgentApi";
-import type { CallOutcome, Campaign, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
+import type { CallOutcome, Campaign, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
@@ -47,6 +48,9 @@ export const useCampaignIds = () =>
 export const useCampaign = (id: string, enabled = true) =>
   useQuery<Campaign>({ queryKey: [...CAMPAIGNS_KEY, id], queryFn: () => getCampaign(id), enabled: Boolean(id) && enabled, retry: false });
 
+export const useCampaignReport = (id: string, enabled = true) =>
+  useQuery<CampaignReport>({ queryKey: ["campaign-report", id], queryFn: () => getCampaignReport(id), enabled: Boolean(id) && enabled, retry: false });
+
 export const useCampaignCalls = (id: string, enabled = true) =>
   useQuery<ScheduledCampaignCall[]>({ queryKey: [...CAMPAIGN_CALLS_KEY, id], queryFn: () => getCampaignCalls(id), enabled: Boolean(id) && enabled, retry: false });
 
@@ -56,6 +60,7 @@ export const useScheduleCampaign = () => {
     mutationFn: scheduleCampaign,
     onSuccess: async (result) => {
       await qc.invalidateQueries({ queryKey: [...CAMPAIGN_CALLS_KEY, result.campaign_id] });
+      await qc.invalidateQueries({ queryKey: ["campaign-report", result.campaign_id] });
       await qc.invalidateQueries({ queryKey: [...CAMPAIGNS_KEY, result.campaign_id] });
       await qc.invalidateQueries({ queryKey: CAMPAIGNS_KEY });
     },
@@ -68,6 +73,7 @@ export const usePostCampaignCallOutcome = () => {
     mutationFn: ({ campaignId, callId, outcome }) => postCampaignCallOutcome(campaignId, callId, outcome),
     onSuccess: async (_result, variables) => {
       await qc.invalidateQueries({ queryKey: [...CAMPAIGN_CALLS_KEY, variables.campaignId] });
+      await qc.invalidateQueries({ queryKey: ["campaign-report", variables.campaignId] });
     },
   });
 };

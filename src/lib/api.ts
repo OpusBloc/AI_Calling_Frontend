@@ -9,8 +9,12 @@ import type {
   CallOutcomeResult,
   ScheduledCampaignCall,
   CampaignUpdate,
+  CallCost,
+  CallCostSummary,
+  CampaignReport,
   DispatchStatus,
   DispatchControlResponse,
+  Paged,
   CreatePlivoPoolBody,
   PatchPlivoPoolBody,
   PlivoNumber,
@@ -160,10 +164,21 @@ export const updateCampaign = (id: string, body: CampaignUpdate) =>
 export const deleteCampaign = (id: string) =>
   api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-// Dispatch control
-export const getDispatchStatus = () => api<DispatchStatus>("/dispatch/status");
-export const patchDispatchControl = (enabled: boolean) =>
-  api<DispatchControlResponse>("/dispatch/control", {
+// Dispatch is per campaign: on = the campaign is scheduled/running, off = paused
+export const getCampaignDispatch = (campaignId: string) =>
+  api<DispatchStatus>(`/dispatch/campaigns/${encodeURIComponent(campaignId)}/status`);
+export const setCampaignDispatch = (campaignId: string, enabled: boolean) =>
+  api<DispatchControlResponse>(`/dispatch/campaigns/${encodeURIComponent(campaignId)}/control`, {
     method: "PATCH",
     body: { enabled },
   });
+
+/** Totals plus every call with all its attempts */
+export const getCampaignReport = (id: string) =>
+  api<CampaignReport>(`/campaigns/${encodeURIComponent(id)}/report`);
+
+// AI usage cost (INR)
+export const getCallCostSummary = (days?: number) =>
+  api<CallCostSummary>(`/call-costs/summary${days ? `?days=${days}` : ""}`);
+export const getCallCosts = (page = 1, pageSize = 10) =>
+  api<Paged<CallCost>>(`/call-costs?page=${page}&page_size=${pageSize}`);

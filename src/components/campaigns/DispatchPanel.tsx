@@ -1,59 +1,72 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pause, Play } from "lucide-react";
 import clsx from "clsx";
 
-import { getDispatchStatus, patchDispatchControl } from "@/lib/api";
+import { getCampaignDispatch, setCampaignDispatch } from "@/lib/api";
 import type { DispatchStatus } from "@/types/types";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { Button, Card, ErrorState, Skeleton, StatusBadge, formatDate } from "@/components/ui";
+import { Card, ErrorState, Skeleton, StatusBadge, formatDate } from "@/components/ui";
 
-const KEY = ["dispatch-status"];
+export const dispatchKey = (campaignId: string) => ["dispatch-status", campaignId];
 
-/**
- * The global switch that lets scheduled campaign calls go out, plus live queue counts
- */
-export default function DispatchPanel() {
-  const queryClient = useQueryClient();
-  const status = useQuery<DispatchStatus>({
-    queryKey: KEY,
-    queryFn: getDispatchStatus,
+/** Live dispatch state for one campaign; polls while calls may be going out */
+export function useCampaignDispatch(campaignId: string) {
+  return useQuery<DispatchStatus>({
+    queryKey: dispatchKey(campaignId),
+    queryFn: () => getCampaignDispatch(campaignId),
     retry: false,
     refetchOnWindowFocus: true,
+    refetchInterval: (q) => (q.state.data?.enabled ? 10_000 : false),
   });
+}
 
-  const control = useMutation({
-    mutationFn: patchDispatchControl,
+/**
+ * Pause/resume a campaign's calls. Pausing asks first, since it stops new calls.
+ */
+export function useToggleDispatch(campaignId: string, campaignName: string) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (enabled: boolean) => setCampaignDispatch(campaignId, enabled),
     onSuccess: async (result) => {
-      queryClient.setQueryData<DispatchStatus>(KEY, (current) =>
-        current
-          ? { ...current, enabled: result.enabled, live_calls_enabled: result.live_calls_enabled, updated_at: result.updated_at }
-          : current,
+      queryClient.setQueryData<DispatchStatus>(dispatchKey(campaignId), (current) =>
+        current ? { ...current, enabled: result.enabled, status: result.status, updated_at: result.updated_at } : current,
       );
-      await queryClient.invalidateQueries({ queryKey: KEY });
-      showSuccessNotification(result.enabled ? "Scheduled calls will go out again." : "No new campaign calls will be placed.", {
-        title: result.enabled ? "Dispatch on" : "Dispatch off",
+      // The campaign's own status changes too (paused ↔ scheduled)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: dispatchKey(campaignId) }),
+        queryClient.invalidateQueries({ queryKey: ["campaigns"] }),
+        queryClient.invalidateQueries({ queryKey: ["campaign-report", campaignId] }),
+      ]);
+      showSuccessNotification(result.enabled ? `"${campaignName}" will place calls again.` : `"${campaignName}" won't place new calls.`, {
+        title: result.enabled ? "Calls resumed" : "Calls paused",
       });
     },
   });
 
-  const data = status.data;
-
-  const toggle = async () => {
-    if (!data) return;
-    if (data.enabled) {
+  const toggle = async (enable: boolean) => {
+    if (!enable) {
       const ok = await confirmDialog({
-        title: "Turn dispatch off?",
-        message: "No new calls will be placed for any campaign until you turn it back on. Calls already in progress finish normally.",
-        confirmLabel: "Turn off",
+        title: "Pause this campaign?",
+        message: "No new calls will be placed until you resume it. Calls already in progress finish normally.",
+        confirmLabel: "Pause calls",
         tone: "warning",
       });
       if (!ok) return;
     }
-    control.mutate(!data.enabled);
+    mutation.mutate(enable);
   };
+
+  return { toggle, pending: mutation.isPending };
+}
+
+/**
+ * Queue depth and health for one campaign's dispatch
+ */
+export default function DispatchPanel({ campaignId }: { campaignId: string }) {
+  const status = useCampaignDispatch(campaignId);
+  const data = status.data;
 
   if (status.isError) {
     return <ErrorState title="Couldn't load dispatch status" message={(status.error as Error).message} onRetry={() => status.refetch()} />;
@@ -61,12 +74,12 @@ export default function DispatchPanel() {
 
   const stats: Array<{ label: string; value: React.ReactNode; tone?: "good" | "bad" }> = data
     ? [
-        { label: "Live calls", value: data.live_calls_enabled ? "Enabled" : "Disabled", tone: data.live_calls_enabled ? "good" : "bad" },
-        { label: "Redis", value: data.redis_connected ? "Connected" : "Disconnected", tone: data.redis_connected ? "good" : "bad" },
         { label: "Active calls", value: data.active_calls },
         { label: "Queued calls", value: data.queued_calls },
         { label: "Ready to send", value: data.ready_outbox },
-        { label: "Uncertain attempts", value: data.uncertain_attempts },
+        { label: "Uncertain attempts", value: data.uncertain_attempts, tone: data.uncertain_attempts > 0 ? "bad" : undefined },
+        { label: "Live calling", value: data.live_calls_enabled ? "Enabled" : "Disabled", tone: data.live_calls_enabled ? "good" : "bad" },
+        { label: "Queue (Redis)", value: data.redis_connected ? "Connected" : "Disconnected", tone: data.redis_connected ? "good" : "bad" },
       ]
     : [];
 
@@ -74,17 +87,11 @@ export default function DispatchPanel() {
     <Card
       title={
         <span className="flex items-center gap-3">
-          Call dispatch
-          {data && <StatusBadge status={data.enabled ? "active" : "paused"} label={data.enabled ? "On" : "Off"} />}
+          Dispatch
+          {data && <StatusBadge status={data.enabled ? "active" : "paused"} label={data.enabled ? "Placing calls" : "Not placing calls"} />}
         </span>
       }
-      description={data ? `Updated ${formatDate(data.updated_at)}` : "Whether scheduled campaign calls are being placed."}
-      actions={
-        <Button variant={data?.enabled ? "secondary" : "primary"} onClick={toggle} disabled={!data} loading={control.isPending}>
-          {!control.isPending && (data?.enabled ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />)}
-          {data?.enabled ? "Turn dispatch off" : "Turn dispatch on"}
-        </Button>
-      }
+      description={data ? `Refreshes every 10 seconds while on · updated ${formatDate(data.updated_at)}` : "Whether this campaign is placing calls."}
     >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {status.isLoading

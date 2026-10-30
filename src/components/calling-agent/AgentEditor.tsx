@@ -297,11 +297,19 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 placeholder="e.g. Poonam"
               />
             </Field>
-            <Field label="Greeting" hint="Optional. The first sentence spoken on the call; a default is used when empty.">
+            <Field
+              label="Greeting"
+              hint={
+                <>
+                  Optional. The first sentence spoken on the call; a default is used when empty. Type{" "}
+                  <code className="tnum">{"{{name}}"}</code> to say the lead&apos;s name — if a lead has no name, that sentence is skipped.
+                </>
+              }
+            >
               <TextInput
                 value={draft.greeting}
                 onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
-                placeholder="Hello, this is Poonam from Opus Bloc."
+                placeholder="Hello, this is Poonam from Opus Bloc. Am I speaking with {{name}}?"
               />
             </Field>
           </div>
