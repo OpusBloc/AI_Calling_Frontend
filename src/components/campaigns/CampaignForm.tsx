@@ -259,12 +259,12 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
           hint="Calls use the numbers in these pools as caller ID."
         />
         <MultiSelect
-          label="Representatives"
+          label="Call transfer agents"
           loading={representatives.isLoading}
           options={(representatives.data ?? []).map((r) => ({ id: r.id, label: r.name, detail: r.phone_e164 }))}
           selected={representativeIds}
           onChange={setRepresentativeIds}
-          hint="Leave empty to ring every active representative."
+          hint="Leave empty to ring every active transfer agent."
         />
         <Field label="Transfer ring time (seconds)" error={show(errors.transferTimeout)} hint="How long each representative's phone rings, 5–120.">
           <TextInput type="number" inputMode="numeric" min={5} max={120} step={1} value={transferTimeout} onChange={(e) => setTransferTimeout(e.target.value)} aria-invalid={!!show(errors.transferTimeout)} className="sm:max-w-[12rem]" />

@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const steps = [
     { done: !!agents.data?.length, label: "Create a calling agent", href: "/calling-agent/agents/new" },
     { done: !!plivoPools.data?.length, label: "Group Plivo numbers into a Plivo pool", href: "/number-pool" },
-    { done: activeReps > 0, label: "Add a representative to take transfers", href: "/calling-agent?tab=representatives" },
+    { done: activeReps > 0, label: "Add a transfer agent to take interested leads", href: "/calling-agent?tab=representatives" },
     { done: !!campaigns.data?.length, label: "Create a campaign and upload its leads sheet", href: "/campaigns/new" },
   ];
   const loaded = [agents, plivoPools, representatives, campaigns].every((q) => q.isSuccess);
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         />
         <StatTile label="Agents" value={count(agents)} icon={<Bot size={16} />} href="/calling-agent?tab=agents" />
         <StatTile
-          label="Representatives"
+          label="Transfer agents"
           value={count(representatives)}
           hint={representatives.data ? `${activeReps} active` : undefined}
           icon={<PhoneForwarded size={16} />}

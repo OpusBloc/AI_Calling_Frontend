@@ -55,22 +55,22 @@ export default function RepresentativesTab() {
 
   const handleDelete = async (rep: Representative) => {
     const ok = await confirmDialog({
-      title: "Delete Transfer Agent?",
-      message: `"${rep.name}" will be permanently deleted. This cannot be undone.`,
+      title: "Delete transfer agent?",
+      message: `"${rep.name}" will be permanently deleted and will stop receiving transferred calls. This cannot be undone.`,
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    run(rep.id, () => deleteRepresentative(rep.id), ["Call Transfer Agent deleted", `"${rep.name}" was deleted.`]);
+    run(rep.id, () => deleteRepresentative(rep.id), ["Transfer agent deleted", `"${rep.name}" was deleted.`]);
   };
 
   return (
     <section>
       <SectionHeader
         title="Call Transfer"
-        description="People a live call can be transferred to. Campaigns ring active Call Transfer Agent in turn."
+        description="People a live call can be transferred to. Campaigns ring active transfer agents in turn."
         action={
-          <Button onClick={() => setEditing("new")} disabled={loading}>
-            <Plus size={16} /> Add Transfer Agent
+          <Button onClick={() => router.push("/calling-agent/representatives/new")} disabled={loading}>
+            <Plus size={16} aria-hidden /> Add transfer agent
           </Button>
         }
       />
@@ -79,7 +79,7 @@ export default function RepresentativesTab() {
         <ErrorBanner
           message={
             error === "Not Found"
-              ? "The backend doesn't have the Call Transfer Agent API yet. Pull the latest backend code and restart it."
+              ? "The backend doesn't have the call transfer API yet. Pull the latest backend code and restart it."
               : (error ?? actionError)
           }
         />
@@ -92,13 +92,14 @@ export default function RepresentativesTab() {
           <ErrorState message={error} onRetry={reload} />
         ) : reps.length === 0 ? (
           <EmptyState
-            title="No Transfer Agent yet"
-            text="Add the people who should take transferred calls."
-            action={<Button onClick={() => setEditing("new")}>Add Transfer</Button>}
+            icon={<PhoneForwarded size={20} />}
+            title="No transfer agents yet"
+            text="Add the people who should take a call when a lead is interested."
+            action={<Button onClick={() => router.push("/calling-agent/representatives/new")}>Add transfer agent</Button>}
           />
         ) : reps.length > 0 ? (
           <>
-            <Table head={["Name", "Phone", "Status", "Updated", ""]} label="Representatives">
+            <Table head={["Name", "Phone", "Status", "Updated", ""]} label="Transfer agents">
               {pagination.pageItems.map((rep) => (
                 <tr key={rep.id}>
                   <td className="px-4 py-3 font-medium text-heading">{rep.name}</td>
@@ -120,13 +121,13 @@ export default function RepresentativesTab() {
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(rep.updated_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      <IconButton label="Edit Transfer" onClick={() => setEditing(rep)}>
+                  <td className="px-4 py-2">
+                    <div className="flex justify-end gap-1">
+                      <IconButton label={`Edit ${rep.name}`} onClick={() => router.push(`/calling-agent/representatives/${rep.id}/edit`)}>
                         <Pencil size={16} />
                       </IconButton>
                       <IconButton
-                        label="Delete Transfer"
+                        label={`Delete ${rep.name}`}
                         tone="danger"
                         disabled={busyId === rep.id}
                         onClick={() => handleDelete(rep)}
@@ -138,93 +139,10 @@ export default function RepresentativesTab() {
                 </tr>
               ))}
             </Table>
-            <Pagination {...pagination} noun="representatives" />
+            <Pagination {...pagination} noun="transfer agents" />
           </>
         ) : null}
       </div>
     </section>
-  );
-}
-
-function RepresentativeForm({
-  rep,
-  onClose,
-  onSaved,
-}: {
-  rep: Representative | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [form, setForm] = useState<RepresentativeInput>(rep ?? EMPTY);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const phone = form.phone_e164.replace(/[\s()-]/g, "");
-  const phoneValid = PHONE.test(phone);
-  const complete = form.name.trim() && phoneValid;
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    const body = { ...form, name: form.name.trim(), phone_e164: phone };
-    try {
-      if (rep) await updateRepresentative(rep.id, body);
-      else await createRepresentative(body);
-      showSuccessNotification(`"${body.name}" was ${rep ? "updated" : "added"}.`, {
-        title: rep ? "Transfer saved" : "Transfer added",
-      });
-      onSaved();
-    } catch (err) {
-      setError(errorMessage(err));
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Drawer
-      title={rep ? "Edit Transfer" : "Add Transfer"}
-      description="Transferred calls ring active Transfer in turn."
-      onClose={onClose}
-      footer={
-        <>
-          <Button onClick={handleSave} disabled={!complete || saving}>
-            {saving ? "Saving…" : rep ? "Save changes" : "Add Transfer"}
-          </Button>
-        </>
-      }
-    >
-      <ErrorBanner message={error} />
-
-      <Field label="Name">
-        <TextInput
-          value={form.name}
-          maxLength={255}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="e.g. Priya Sharma"
-        />
-      </Field>
-      <Field
-        label="Phone number"
-        hint={
-          form.phone_e164 && !phoneValid
-            ? "Enter 6–15 digits, optionally starting with +, e.g. +919876543210."
-            : "Include the country code, e.g. +919876543210."
-        }
-      >
-        <TextInput
-          type="tel"
-          value={form.phone_e164}
-          onChange={(e) => setForm((f) => ({ ...f, phone_e164: e.target.value }))}
-          placeholder="+919876543210"
-        />
-      </Field>
-      <div className="flex items-center justify-between rounded-md bg-raised px-3 py-2.5">
-        <div>
-          <p className="text-sm font-medium text-heading">Active</p>
-          <p className="text-xs text-muted">Only active Call Transfer Agent receive's transferred calls.</p>
-        </div>
-        <Toggle label="Active" checked={form.active} onChange={(active) => setForm((f) => ({ ...f, active }))} />
-      </div>
-    </Drawer>
   );
 }

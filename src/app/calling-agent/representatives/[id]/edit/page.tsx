@@ -14,10 +14,10 @@ export default function EditRepresentativePage() {
     return (
       <EditLoadState
         query={rep}
-        noun="representative"
+        noun="transfer agent"
         breadcrumbs={[
           { label: "Calling Agent", href: "/calling-agent" },
-          { label: "Representatives", href: "/calling-agent?tab=representatives" },
+          { label: "Call Transfer", href: "/calling-agent?tab=representatives" },
           { label: "Edit" },
         ]}
         backHref="/calling-agent?tab=representatives"

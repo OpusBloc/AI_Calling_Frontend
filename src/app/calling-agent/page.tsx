@@ -1,8 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import clsx from "clsx";
 import { AudioLines, Bot, PhoneCall, PhoneForwarded } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
@@ -20,11 +18,12 @@ const TABS = [
 
 function CallingAgentTabs() {
   const [active, setActive] = useTabParam(TABS.map((t) => t.id));
+  const ActiveTab = TABS.find((t) => t.id === active)!.component;
   return (
     <>
       <Tabs label="Calling agent sections" tabs={TABS} active={active} onChange={setActive} />
       <div role="tabpanel" className="pt-6">
-        {active === "agents" ? <AgentsTab /> : <RepresentativesTab />}
+        <ActiveTab />
       </div>
     </>
   );

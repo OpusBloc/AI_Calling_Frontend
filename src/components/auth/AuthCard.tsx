@@ -6,7 +6,7 @@ import { Bot, Megaphone, PhoneForwarded } from "lucide-react";
 const HIGHLIGHTS = [
   { icon: Bot, text: "Configure AI calling agents and their scripts" },
   { icon: Megaphone, text: "Plan and schedule outbound campaigns" },
-  { icon: PhoneForwarded, text: "Hand live calls to your representatives" },
+  { icon: PhoneForwarded, text: "Hand live calls to your transfer agents" },
 ];
 
 export function AuthCard({

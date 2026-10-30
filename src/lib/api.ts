@@ -167,24 +167,3 @@ export const patchDispatchControl = (enabled: boolean) =>
     method: "PATCH",
     body: { enabled },
   });
-
-export const getLeadPools = () => api<LeadPool[]>("/lead-pools");
-export const getLeadPool = (id: string) => api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`);
-export const getLeads = () => api<Lead[]>("/leads");
-export const deleteLeads = (range: string) =>
-  api<Record<string, unknown>>(`/leads?range=${encodeURIComponent(range)}`, { method: "DELETE" });
-
-export const createLeadPool = (body: LeadPoolCreate) =>
-  api<LeadPool>("/lead-pools", { method: "POST", body });
-
-export const updateLeadPool = (id: string, body: LeadPoolUpdate) =>
-  api<LeadPool>(`/lead-pools/${encodeURIComponent(id)}`, { method: "PATCH", body });
-
-export const deleteLeadPool = (id: string) =>
-  api<void>(`/lead-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
-
-export const importLeadSheet = (file: File) => {
-  const body = new FormData();
-  body.append("file", file);
-  return api<LeadImportResult>("/lead-pools/import", { method: "POST", body });
-};

@@ -44,7 +44,7 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
       if (rep) await updateRepresentative(rep.id, body);
       else await createRepresentative(body);
       showSuccessNotification(`"${body.name}" was ${rep ? "updated" : "added"}.`, {
-        title: rep ? "Representative saved" : "Representative added",
+        title: rep ? "Transfer agent saved" : "Transfer agent added",
       });
       router.replace(backHref);
     } catch (err) {
@@ -57,18 +57,18 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
     <FormPage
       breadcrumbs={[
         { label: "Calling Agent", href: "/calling-agent" },
-        { label: "Representatives", href: backHref },
-        { label: rep ? rep.name : "New representative" },
+        { label: "Call Transfer", href: backHref },
+        { label: rep ? rep.name : "New transfer agent" },
       ]}
-      title={rep ? `Edit ${rep.name}` : "New representative"}
-      description="Transferred calls ring active representatives in turn."
+      title={rep ? `Edit ${rep.name}` : "Add transfer agent"}
+      description="When a lead is interested, the call rings active transfer agents in turn."
       footer={
         <>
           <Button variant="secondary" onClick={() => router.replace(backHref)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!complete} loading={saving}>
-            {rep ? "Save changes" : "Add representative"}
+            {rep ? "Save changes" : "Add transfer agent"}
           </Button>
         </>
       }
@@ -96,7 +96,7 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-heading">Active</p>
-            <p className="text-xs text-muted">Only active representatives receive transferred calls.</p>
+            <p className="text-xs text-muted">Only active transfer agents receive transferred calls.</p>
           </div>
           <Toggle label="Active" checked={form.active} onChange={(active) => setForm((f) => ({ ...f, active }))} />
         </div>

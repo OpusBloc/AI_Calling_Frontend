@@ -1057,7 +1057,7 @@ export function Drawer({
             <X size={18} />
           </IconButton>
         </div>
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
           <div className="flex flex-wrap justify-end gap-2 border-t border-hairline bg-raised px-6 py-4">{footer}</div>
         )}

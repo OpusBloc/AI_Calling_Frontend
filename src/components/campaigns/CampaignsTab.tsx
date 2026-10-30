@@ -2,28 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronLeft, ChevronRight, LoaderCircle, Pause, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
-
-import { listAgents, listRepresentatives } from "@/lib/callingAgentApi";
-import type { Agent, Representative } from "@/lib/callingAgentApi";
-import {
-  createCampaign,
-  deleteCampaign,
-  getLeadPools,
-  getPlivoPools,
-  getDispatchStatus,
-  patchDispatchControl,
-  updateCampaign,
-} from "@/lib/api";
-import type { Campaign, CampaignCreate, CampaignUpdate, DispatchStatus, PlivoPool } from "@/types/types";
-import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
-import { Button } from "@/components/calling-agent/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Megaphone } from "lucide-react";
-import { useAgents, useCampaigns } from "@/hooks/hooks";
+import { Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 
+import { deleteCampaign } from "@/lib/api";
+import type { Campaign } from "@/types/types";
+import { useAgents, useCampaigns } from "@/hooks/hooks";
+import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import {
+  Button,
   EmptyState,
   ErrorState,
   IconButton,
@@ -70,24 +58,6 @@ export default function CampaignsTab() {
       showSuccessNotification(`"${campaign.name}" was deleted.`, { title: "Campaign deleted" });
     },
   });
-  const dispatchControl = useMutation({
-    mutationFn: patchDispatchControl,
-    onSuccess: async (result) => {
-      queryClient.setQueryData<DispatchStatus>(["dispatch-status"], (current) => current ? {
-        ...current,
-        enabled: result.enabled,
-        live_calls_enabled: result.live_calls_enabled,
-        updated_at: result.updated_at,
-      } : current);
-      await queryClient.invalidateQueries({ queryKey: ["dispatch-status"] });
-      showSuccessNotification(
-        result.enabled ? "Campaign dispatch is enabled." : "Campaign dispatch is off.",
-        { title: result.enabled ? "Dispatch enabled" : "Dispatch off" },
-      );
-    },
-    onError: (error) => showErrorNotification(error.message, { title: "Could not update dispatch" }),
-  });
-
   const handleDelete = async (campaign: Campaign) => {
     const ok = await confirmDialog({
       title: "Delete campaign?",
