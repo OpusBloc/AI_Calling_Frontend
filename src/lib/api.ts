@@ -9,8 +9,12 @@ import type {
   CallOutcomeResult,
   ScheduledCampaignCall,
   CampaignUpdate,
+  CallCost,
+  CallCostSummary,
+  CampaignReport,
   DispatchStatus,
   DispatchControlResponse,
+  Paged,
   CreatePlivoPoolBody,
   PatchPlivoPoolBody,
   PlivoNumber,
@@ -37,6 +41,10 @@ const detailMessage = (detail: unknown, status: number): string => {
       .map((d) => [d?.loc?.slice(1).join("."), d?.msg].filter(Boolean).join(": "))
       .join("; ");
   }
+  // Proxied provider errors: { message, request_id }
+  if (detail && typeof detail === "object" && typeof (detail as { message?: unknown }).message === "string") {
+    return (detail as { message: string }).message;
+  }
   return `Request failed (${status})`;
 };
 
@@ -48,7 +56,7 @@ export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/
  */
 export async function api<T>(
   path: string,
-  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" } = {},
+  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" | "response" } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -86,6 +94,7 @@ export async function api<T>(
     showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }
+  if (responseType === "response") return res as T;
   if (res.status === 204) return undefined as T;
   if (responseType === "blob") return (await res.blob()) as T;
 
@@ -160,10 +169,21 @@ export const updateCampaign = (id: string, body: CampaignUpdate) =>
 export const deleteCampaign = (id: string) =>
   api<void>(`/campaigns/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-// Dispatch control
-export const getDispatchStatus = () => api<DispatchStatus>("/dispatch/status");
-export const patchDispatchControl = (enabled: boolean) =>
-  api<DispatchControlResponse>("/dispatch/control", {
+// Dispatch is per campaign: on = the campaign is scheduled/running, off = paused
+export const getCampaignDispatch = (campaignId: string) =>
+  api<DispatchStatus>(`/dispatch/campaigns/${encodeURIComponent(campaignId)}/status`);
+export const setCampaignDispatch = (campaignId: string, enabled: boolean) =>
+  api<DispatchControlResponse>(`/dispatch/campaigns/${encodeURIComponent(campaignId)}/control`, {
     method: "PATCH",
     body: { enabled },
   });
+
+/** Totals plus every call with all its attempts */
+export const getCampaignReport = (id: string) =>
+  api<CampaignReport>(`/campaigns/${encodeURIComponent(id)}/report`);
+
+// AI usage cost (INR)
+export const getCallCostSummary = (days?: number) =>
+  api<CallCostSummary>(`/call-costs/summary${days ? `?days=${days}` : ""}`);
+export const getCallCosts = (page = 1, pageSize = 10) =>
+  api<Paged<CallCost>>(`/call-costs?page=${page}&page_size=${pageSize}`);

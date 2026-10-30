@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createCampaign, updateCampaign } from "@/lib/api";
-import type { Campaign, CampaignCreate, CampaignUpdate } from "@/types/types";
+import type { Campaign, CampaignCreate, CampaignUpdate, Weekday } from "@/types/types";
 import { useAgents, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import MultiSelect from "@/components/MultiSelect";
+import { WEEKDAYS, formatDays } from "@/components/campaigns/CampaignsTab";
 import { Button, Field, FileDrop, FormPage, FormSection, Select, TextInput, humanize } from "@/components/ui";
 
 export const CAMPAIGN_STATUSES: Campaign["status"][] = ["draft", "scheduled", "running", "paused", "completed", "cancelled"];
@@ -65,7 +66,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
 
   const [name, setName] = useState(campaign?.name ?? "");
   const [agentId, setAgentId] = useState(campaign?.agent_id ?? "");
-  const [status, setStatus] = useState<Campaign["status"]>(campaign?.status ?? "draft");
+  const [status, setStatus] = useState<Campaign["status"]>(campaign?.status ?? "scheduled");
   const [leadsFile, setLeadsFile] = useState<File | null>(null);
   const [sheet, setSheet] = useState<SheetCheck>(null);
   const [representativeIds, setRepresentativeIds] = useState<string[]>(campaign?.representative_ids ?? []);
@@ -74,10 +75,13 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [startAt, setStartAt] = useState(() => toDateTimeInput(campaign?.start_at));
   const [windowStart, setWindowStart] = useState(campaign?.window_start?.slice(0, 5) ?? "");
   const [windowEnd, setWindowEnd] = useState(campaign?.window_end?.slice(0, 5) ?? "");
+  const [callDays, setCallDays] = useState<Weekday[]>(campaign?.call_days ?? []);
   const [retryInterval, setRetryInterval] = useState(String(campaign?.retry_interval_minutes ?? 60));
   const [retryCount, setRetryCount] = useState(String(campaign?.retry_count ?? 1));
   const [retryOn, setRetryOn] = useState<string[]>(campaign?.retry_on ?? ["no_answer"]);
-  const [concurrencyLimit, setConcurrencyLimit] = useState(String(campaign?.concurrency_limit ?? 1));
+  const [concurrencyLimit, setConcurrencyLimit] = useState(String(campaign?.concurrency_limit ?? 2));
+  const [maxLiveCalls, setMaxLiveCalls] = useState(String(campaign?.max_live_calls ?? 50));
+  const [callsPerSecond, setCallsPerSecond] = useState(String(campaign?.calls_per_second ?? 2));
   const [submitted, setSubmitted] = useState(false);
 
   // Default a new campaign to the first agent once they load
@@ -101,7 +105,12 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
     retryInterval: !intBetween(retryInterval, 0) ? "Whole number of minutes, 0 or more." : null,
     retryCount: !intBetween(retryCount, 0) ? "Whole number, 0 or more." : null,
     concurrency: !intBetween(concurrencyLimit, 1) ? "Whole number, 1 or more." : null,
-    startAt: status === "scheduled" && !startAt ? "Scheduled campaigns need a start time." : null,
+    callsPerSecond: !intBetween(callsPerSecond, 1) ? "Whole number, 1 or more." : null,
+    maxLive: !intBetween(maxLiveCalls, 1)
+      ? "Whole number, 1 or more."
+      : Number(maxLiveCalls) < Number(concurrencyLimit)
+        ? "Should be at least the number of parallel calls."
+        : null,
     window:
       !!windowStart !== !!windowEnd
         ? "Set both a start and an end, or leave both empty."
@@ -125,14 +134,18 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         plivo_pool_ids: plivoPoolIds,
         window_start: windowStart || null,
         window_end: windowEnd || null,
+        // All seven is the same as no restriction
+        call_days: callDays.length === 7 ? [] : WEEKDAYS.map((d) => d.id).filter((d) => callDays.includes(d)),
         retry_interval_minutes: Number(retryInterval),
         retry_count: Number(retryCount),
         concurrency_limit: Number(concurrencyLimit),
+        max_live_calls: Number(maxLiveCalls),
+        calls_per_second: Number(callsPerSecond),
       };
       if (campaign) {
         const body: CampaignUpdate = {
           ...shared,
-          start_at: status === "scheduled" ? toIsoDateTime(startAt) : null,
+          start_at: status === "scheduled" && startAt ? toIsoDateTime(startAt) : undefined,
           retry_on: retryOn as CampaignUpdate["retry_on"],
         };
         return updateCampaign(campaign.id, body);
@@ -199,7 +212,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
               ))}
             </Select>
           </Field>
-          <Field label="Status" hint="Drafts don't call anyone until scheduled.">
+          <Field label="Status" hint="Scheduled starts calling straight away (or at the start time). A draft waits until you schedule it.">
             <Select value={status} onChange={(e) => setStatus(e.target.value as Campaign["status"])}>
               {CAMPAIGN_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -273,8 +286,8 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
 
       <FormSection title="Timing" description="When calls may go out. Times are India Standard Time.">
         {status === "scheduled" && (
-          <Field label="Start at" required error={show(errors.startAt)}>
-            <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} aria-invalid={!!show(errors.startAt)} className="sm:max-w-xs" />
+          <Field label="Start at" hint="Leave empty to start as soon as the campaign is saved.">
+            <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="sm:max-w-xs" />
           </Field>
         )}
         <div className="grid gap-5 sm:grid-cols-2">
@@ -285,9 +298,58 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
             <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} />
           </Field>
         </div>
-        <Field label="Calls at the same time" error={show(errors.concurrency)} hint="How many leads are dialled in parallel.">
-          <TextInput type="number" inputMode="numeric" min={1} step={1} value={concurrencyLimit} onChange={(e) => setConcurrencyLimit(e.target.value)} aria-invalid={!!show(errors.concurrency)} className="sm:max-w-[12rem]" />
-        </Field>
+        <fieldset>
+          <legend className="text-sm font-medium text-heading">Call days</legend>
+          <p className="mt-0.5 text-xs text-muted">
+            Calls go out only on these days, within the calling hours, week after week until every lead is done. Pick none to call
+            every day.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {WEEKDAYS.map((d) => {
+              const on = callDays.includes(d.id);
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setCallDays((days) => (on ? days.filter((x) => x !== d.id) : [...days, d.id]))}
+                  className={
+                    on
+                      ? "h-9 min-w-12 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-on-accent transition-colors"
+                      : "h-9 min-w-12 rounded-md border border-hairline-strong bg-surface px-3 text-sm font-medium text-heading transition-colors hover:bg-surface-hover"
+                  }
+                >
+                  {d.short}
+                </button>
+              );
+            })}
+            <span className="ml-1 text-sm text-muted">{formatDays(callDays)}</span>
+          </div>
+          <div className="mt-2 flex gap-3 text-sm">
+            {(
+              [
+                ["Every day", [] as Weekday[]],
+                ["Mon–Fri", WEEKDAYS.slice(0, 5).map((d) => d.id)],
+                ["Weekends", WEEKDAYS.slice(5).map((d) => d.id)],
+              ] as const
+            ).map(([label, days]) => (
+              <button key={label} type="button" onClick={() => setCallDays([...days])} className="font-medium text-accent-text hover:underline">
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Parallel calls" error={show(errors.concurrency)} hint="How many leads are dialled at once. Can be changed while running.">
+            <TextInput type="number" inputMode="numeric" min={1} step={1} value={concurrencyLimit} onChange={(e) => setConcurrencyLimit(e.target.value)} aria-invalid={!!show(errors.concurrency)} />
+          </Field>
+          <Field label="Max live calls" error={show(errors.maxLive)} hint="Safety ceiling on calls connected at the same moment.">
+            <TextInput type="number" inputMode="numeric" min={1} step={1} value={maxLiveCalls} onChange={(e) => setMaxLiveCalls(e.target.value)} aria-invalid={!!show(errors.maxLive)} />
+          </Field>
+          <Field label="New calls per second" error={show(errors.callsPerSecond)} hint="How fast calls are started. Keep within your Plivo account limit.">
+            <TextInput type="number" inputMode="numeric" min={1} step={1} value={callsPerSecond} onChange={(e) => setCallsPerSecond(e.target.value)} aria-invalid={!!show(errors.callsPerSecond)} />
+          </Field>
+        </div>
       </FormSection>
 
       <FormSection title="Retries" description="What happens when a lead doesn't pick up.">

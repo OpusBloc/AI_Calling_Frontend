@@ -31,11 +31,12 @@ import {
   toCreateForm,
   toUpdateForm,
 } from "@/lib/agentDraft";
-import { AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
+import { AGENT_LANGUAGES, AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
 import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { Button, PageTopBar, ErrorBanner, Field, TextArea, TextInput, errorMessage, formatDate } from "@/components/ui";
+import { Button, PageTopBar, ErrorBanner, Field, Select, TextArea, TextInput, errorMessage, formatDate } from "@/components/ui";
 import TestCallDrawer from "./TestCallDrawer";
+import VoicePicker from "./VoicePicker";
 
 const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
   intro: {
@@ -67,11 +68,12 @@ const PART_META: Record<AgentPart, { label: string; description: string; placeho
 
 const TABS = [
   { id: "details", label: "Details" },
+  { id: "voice", label: "Voice" },
   ...AGENT_PARTS.map((p) => ({ id: p, label: PART_META[p].label })),
   { id: "review", label: "Review" },
 ];
 
-const comparable = (d: AgentDraft) => JSON.stringify({ name: d.name, greeting: d.greeting, parts: d.parts });
+const comparable = (d: AgentDraft) => JSON.stringify({ name: d.name, greeting: d.greeting, voice: d.voice, primary: d.primaryLanguage, secondary: d.secondaryLanguage, parts: d.parts });
 
 export default function AgentEditor({ agent: initialAgent }: { agent: Agent | null }) {
   const router = useRouter();
@@ -113,7 +115,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     setDraft((d) => ({ ...d, parts: { ...d.parts, [part]: value } }));
 
   const tabDone = (id: string) =>
-    id === "details" ? !!draft.name.trim() : id === "review" ? false : isPartFilled(draft.parts[id as AgentPart]);
+    id === "details" ? !!draft.name.trim() : id === "voice" ? !!draft.voice : id === "review" ? false : isPartFilled(draft.parts[id as AgentPart]);
 
   const handleDiscard = async () => {
     const ok = await confirmDialog({
@@ -297,14 +299,80 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 placeholder="e.g. Poonam"
               />
             </Field>
-            <Field label="Greeting" hint="Optional. The first sentence spoken on the call; a default is used when empty.">
+            <Field
+              label="Greeting"
+              hint={
+                <>
+                  Optional. The first sentence spoken on the call; a default is used when empty. Type{" "}
+                  <code className="tnum">{"{{name}}"}</code> to say the lead&apos;s name — if a lead has no name, that sentence is skipped.
+                </>
+              }
+            >
               <TextInput
                 value={draft.greeting}
                 onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
-                placeholder="Hello, this is Poonam from Opus Bloc."
+                placeholder="Hello, this is Poonam from Opus Bloc. Am I speaking with {{name}}?"
               />
             </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Main language" hint="The agent starts every call in this language.">
+                <Select
+                  value={draft.primaryLanguage}
+                  onChange={(e) => {
+                    const primaryLanguage = e.target.value;
+                    setDraft((d) => ({
+                      ...d,
+                      primaryLanguage,
+                      // A second language needs a main one, and can't be the same
+                      secondaryLanguage: !primaryLanguage || d.secondaryLanguage === primaryLanguage ? "" : d.secondaryLanguage,
+                    }));
+                  }}
+                >
+                  <option value="">System default</option>
+                  {Object.entries(AGENT_LANGUAGES).map(([code, label]) => (
+                    <option key={code} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Second language"
+                hint={draft.primaryLanguage ? "Optional. Used only if the caller speaks it." : "Pick a main language first."}
+              >
+                <Select
+                  value={draft.secondaryLanguage}
+                  disabled={!draft.primaryLanguage}
+                  onChange={(e) => setDraft((d) => ({ ...d, secondaryLanguage: e.target.value }))}
+                >
+                  <option value="">None</option>
+                  {Object.entries(AGENT_LANGUAGES)
+                    .filter(([code]) => code !== draft.primaryLanguage)
+                    .map(([code, label]) => (
+                      <option key={code} value={code}>
+                        {label}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+            </div>
+            {draft.primaryLanguage && (
+              <p className="-mt-1 text-xs text-muted">
+                The agent speaks only {languageList(draft)}. If a caller uses another language, it politely says so and carries on in
+                these.
+              </p>
+            )}
           </div>
+        )}
+
+        {activeTab.id === "voice" && (
+          <VoicePicker
+            value={draft.voice}
+            onChange={(voice) => setDraft((d) => ({ ...d, voice }))}
+            greeting={draft.greeting}
+            language={draft.primaryLanguage}
+            onEditGreeting={() => goTo("details")}
+          />
         )}
 
         {(AGENT_PARTS as readonly string[]).includes(activeTab.id) && (
@@ -345,6 +413,12 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     </div>
   );
 }
+
+const languageList = (d: AgentDraft) =>
+  [d.primaryLanguage, d.secondaryLanguage]
+    .filter(Boolean)
+    .map((code) => AGENT_LANGUAGES[code] ?? code)
+    .join(" and ");
 
 function DraftStatus({ dirty, storageOk }: { dirty: boolean; storageOk: boolean }) {
   if (!dirty) return null;
@@ -544,6 +618,8 @@ function Review({
   const rows: { tab: string; label: string; value: string; detail?: string; required: boolean }[] = [
     { tab: "details", label: "Name", value: draft.name.trim(), required: true },
     { tab: "details", label: "Greeting", value: draft.greeting.trim() || "Default greeting", required: false },
+    { tab: "details", label: "Languages", value: draft.primaryLanguage ? languageList(draft) : "System default", required: false },
+    { tab: "voice", label: "Voice", value: draft.voice || "Default voice", required: false },
     ...AGENT_PARTS.map((p) => {
       const part = draft.parts[p];
       return {

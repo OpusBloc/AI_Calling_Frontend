@@ -5,7 +5,6 @@ import { Plus } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import CampaignsTab from "@/components/campaigns/CampaignsTab";
-import DispatchPanel from "@/components/campaigns/DispatchPanel";
 import { Button } from "@/components/ui";
 
 export default function CampaignsPage() {
@@ -21,7 +20,6 @@ export default function CampaignsPage() {
           </Button>
         }
       />
-      <DispatchPanel />
       <CampaignsTab />
     </div>
   );
