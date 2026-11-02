@@ -1,6 +1,13 @@
 import type { components } from "./api";
 
-export type Weekday = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+export type Weekday =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
 export type Campaign = components["schemas"]["CampaignResponse"] & {
   /** Weekdays calls may go out on; empty = every day */
@@ -13,7 +20,10 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
   calls_per_second?: number;
 };
 /** Leads now come from an uploaded sheet, so there are no lead pools on create */
-export type CampaignCreate = Omit<components["schemas"]["CampaignCreate"], "lead_pool_ids"> & {
+export type CampaignCreate = Omit<
+  components["schemas"]["CampaignCreate"],
+  "lead_pool_ids"
+> & {
   max_live_calls?: number;
   calls_per_second?: number;
   call_days?: Weekday[];
@@ -47,13 +57,22 @@ export interface CallAttempt {
   transfer_reason?: string | null;
 }
 
-export type ScheduledCampaignCall = Omit<components["schemas"]["ScheduledCallResponse"], "attempt_history"> & {
+export type ScheduledCampaignCall = Omit<
+  components["schemas"]["ScheduledCallResponse"],
+  "attempt_history"
+> & {
   attempt_history?: CallAttempt[];
 };
 
 /** GET /campaigns/{id}/report */
 export interface CampaignReport {
-  campaign: { id: string; name: string; status: string; start_at: string; created_at: string };
+  campaign: {
+    id: string;
+    name: string;
+    status: string;
+    start_at: string;
+    created_at: string;
+  };
   summary: {
     total_calls: number;
     live_calls: number;
@@ -105,9 +124,23 @@ export interface CallCostSummary {
   llm_cost: number;
   tts_cost: number;
   total_cost: number;
-  average_per_call: { seconds: number; total_chars: number; tts_chars: number; stt_cost: number; llm_cost: number; tts_cost: number; total_cost: number };
+  average_per_call: {
+    seconds: number;
+    total_chars: number;
+    tts_chars: number;
+    stt_cost: number;
+    llm_cost: number;
+    tts_cost: number;
+    total_cost: number;
+  };
   days: number | null;
-  rates: { currency: string; llm_model: string; tts_model: string; stt_model: string; [key: string]: unknown };
+  rates: {
+    currency: string;
+    llm_model: string;
+    tts_model: string;
+    stt_model: string;
+    [key: string]: unknown;
+  };
 }
 
 /** One call's AI cost — GET /call-costs */

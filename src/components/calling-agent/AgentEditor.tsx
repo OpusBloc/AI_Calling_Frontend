@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   ArrowLeft,
@@ -37,6 +38,8 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 import { Button, PageTopBar, ErrorBanner, Field, Select, TextArea, TextInput, errorMessage, formatDate } from "@/components/ui";
 import TestCallDrawer from "./TestCallDrawer";
 import VoicePicker from "./VoicePicker";
+import ClassificationsStep from "./ClassificationsStep";
+import WhatsAppMessagesField from "./WhatsAppMessagesField";
 
 const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
   intro: {
@@ -70,13 +73,31 @@ const TABS = [
   { id: "details", label: "Details" },
   { id: "voice", label: "Voice" },
   ...AGENT_PARTS.map((p) => ({ id: p, label: PART_META[p].label })),
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "classifications", label: "Classifications" },
   { id: "review", label: "Review" },
 ];
 
-const comparable = (d: AgentDraft) => JSON.stringify({ name: d.name, greeting: d.greeting, voice: d.voice, primary: d.primaryLanguage, secondary: d.secondaryLanguage, parts: d.parts });
+const OPTIONAL_TABS = ["extra", "whatsapp", "classifications"];
+
+const comparable = (d: AgentDraft) =>
+  JSON.stringify({
+    name: d.name,
+    greeting: d.greeting,
+    voice: d.voice,
+    primary: d.primaryLanguage,
+    secondary: d.secondaryLanguage,
+    silenceCheck: d.silenceCheckSeconds,
+    silencePrompt: d.silencePrompt,
+    silenceHangup: d.silenceHangupSeconds,
+    whatsapp: d.whatsappMessageIds,
+    parts: d.parts,
+    classifications: d.classifications,
+  });
 
 export default function AgentEditor({ agent: initialAgent }: { agent: Agent | null }) {
   const router = useRouter();
+  const qc = useQueryClient();
   const agentId = initialAgent?.id ?? null;
   const isNew = agentId === null;
 
@@ -114,8 +135,14 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   const setPart = (part: AgentPart, value: PartDraft) =>
     setDraft((d) => ({ ...d, parts: { ...d.parts, [part]: value } }));
 
-  const tabDone = (id: string) =>
-    id === "details" ? !!draft.name.trim() : id === "voice" ? !!draft.voice : id === "review" ? false : isPartFilled(draft.parts[id as AgentPart]);
+  const tabDone = (id: string) => {
+    if (id === "details") return !!draft.name.trim();
+    if (id === "voice") return !!draft.voice;
+    if (id === "review") return false;
+    if (id === "whatsapp") return draft.whatsappMessageIds.length > 0;
+    if (id === "classifications") return (draft.classifications?.length ?? 0) > 0;
+    return isPartFilled(draft.parts[id as AgentPart]);
+  };
 
   const handleDiscard = async () => {
     const ok = await confirmDialog({
@@ -143,6 +170,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       if (isNew) {
         const created = await createAgent(toCreateForm(draft));
         clearDraft(null);
+        await qc.invalidateQueries({ queryKey: ["agents"] });
         showSuccessNotification(`"${created.name}" was created.`, { title: "Agent created" });
         router.replace(`/calling-agent/agents/${created.id}`);
         return;
@@ -150,6 +178,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       const form = toUpdateForm(draft, agent!);
       const updated = form ? await updateAgent(agent!.id, form) : agent!;
       clearDraft(agentId);
+      await qc.invalidateQueries({ queryKey: ["agents"] });
       setAgent(updated);
       setDraft({ ...draftFromAgent(updated), tab: draft.tab });
       setShowRestored(false);
@@ -180,6 +209,7 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     try {
       await deleteAgent(agent.id);
       clearDraft(agentId);
+      await qc.invalidateQueries({ queryKey: ["agents"] });
       showSuccessNotification(`"${agent.name}" was deleted.`, { title: "Agent deleted" });
       router.replace("/calling-agent?tab=agents");
     } catch (err) {
@@ -276,7 +306,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 {done ? <Check size={12} strokeWidth={3} /> : i + 1}
               </span>
               {tab.label}
-              {tab.id === "extra" && <span className="text-xs font-normal text-faint">optional</span>}
+              {OPTIONAL_TABS.includes(tab.id) && (
+                <span className="text-xs font-normal text-faint">optional</span>
+              )}
             </button>
           );
         })}
@@ -289,79 +321,145 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
         </div>
 
         {activeTab.id === "details" && (
-          <div className="max-w-xl space-y-4">
-            <Field label="Name">
-              <TextInput
-                value={draft.name}
-                maxLength={255}
-                autoFocus={isNew}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                placeholder="e.g. Poonam"
-              />
-            </Field>
-            <Field
-              label="Greeting"
-              hint={
-                <>
-                  Optional. The first sentence spoken on the call; a default is used when empty. Type{" "}
-                  <code className="tnum">{"{{name}}"}</code> to say the lead&apos;s name — if a lead has no name, that sentence is skipped.
-                </>
-              }
-            >
-              <TextInput
-                value={draft.greeting}
-                onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
-                placeholder="Hello, this is Poonam from Opus Bloc. Am I speaking with {{name}}?"
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Main language" hint="The agent starts every call in this language.">
-                <Select
-                  value={draft.primaryLanguage}
-                  onChange={(e) => {
-                    const primaryLanguage = e.target.value;
-                    setDraft((d) => ({
-                      ...d,
-                      primaryLanguage,
-                      // A second language needs a main one, and can't be the same
-                      secondaryLanguage: !primaryLanguage || d.secondaryLanguage === primaryLanguage ? "" : d.secondaryLanguage,
-                    }));
-                  }}
-                >
-                  <option value="">System default</option>
-                  {Object.entries(AGENT_LANGUAGES).map(([code, label]) => (
-                    <option key={code} value={code}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
+          <div className="max-w-xl space-y-6">
+            <div className="space-y-4">
+              <Field label="Name">
+                <TextInput
+                  value={draft.name}
+                  maxLength={255}
+                  autoFocus={isNew}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  placeholder="e.g. Poonam"
+                />
               </Field>
               <Field
-                label="Second language"
-                hint={draft.primaryLanguage ? "Optional. Used only if the caller speaks it." : "Pick a main language first."}
+                label="Greeting"
+                hint={
+                  <>
+                    Optional. The first sentence spoken on the call; a default is used when empty. Type{" "}
+                    <code className="tnum">{"{{name}}"}</code> to say the lead&apos;s name — if a lead has no name, that sentence is skipped.
+                  </>
+                }
               >
-                <Select
-                  value={draft.secondaryLanguage}
-                  disabled={!draft.primaryLanguage}
-                  onChange={(e) => setDraft((d) => ({ ...d, secondaryLanguage: e.target.value }))}
-                >
-                  <option value="">None</option>
-                  {Object.entries(AGENT_LANGUAGES)
-                    .filter(([code]) => code !== draft.primaryLanguage)
-                    .map(([code, label]) => (
+                <TextInput
+                  value={draft.greeting}
+                  onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
+                  placeholder="Hello, this is Poonam from Opus Bloc. Am I speaking with {{name}}?"
+                />
+              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Main language" hint="The agent starts every call in this language.">
+                  <Select
+                    value={draft.primaryLanguage}
+                    onChange={(e) => {
+                      const primaryLanguage = e.target.value;
+                      setDraft((d) => ({
+                        ...d,
+                        primaryLanguage,
+                        // A second language needs a main one, and can't be the same
+                        secondaryLanguage: !primaryLanguage || d.secondaryLanguage === primaryLanguage ? "" : d.secondaryLanguage,
+                      }));
+                    }}
+                  >
+                    <option value="">System default</option>
+                    {Object.entries(AGENT_LANGUAGES).map(([code, label]) => (
                       <option key={code} value={code}>
                         {label}
                       </option>
                     ))}
-                </Select>
+                  </Select>
+                </Field>
+                <Field
+                  label="Second language"
+                  hint={draft.primaryLanguage ? "Optional. Used only if the caller speaks it." : "Pick a main language first."}
+                >
+                  <Select
+                    value={draft.secondaryLanguage}
+                    disabled={!draft.primaryLanguage}
+                    onChange={(e) => setDraft((d) => ({ ...d, secondaryLanguage: e.target.value }))}
+                  >
+                    <option value="">None</option>
+                    {Object.entries(AGENT_LANGUAGES)
+                      .filter(([code]) => code !== draft.primaryLanguage)
+                      .map(([code, label]) => (
+                        <option key={code} value={code}>
+                          {label}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+              </div>
+              {draft.primaryLanguage && (
+                <p className="-mt-1 text-xs text-muted">
+                  The agent speaks only {languageList(draft)}. If a caller uses another language, it politely says so and carries on in
+                  these.
+                </p>
+              )}
+            </div>
+
+            {/* Silence Settings Section */}
+            <div className="border-t border-hairline pt-5 space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-heading">Silence Settings</h3>
+                <p className="mt-0.5 text-xs text-muted">
+                  Control how the agent responds and when calls hang up when the caller is quiet.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Silence Check Seconds"
+                  hint="Seconds of silence before agent prompts caller."
+                >
+                  <TextInput
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={draft.silenceCheckSeconds !== null ? String(draft.silenceCheckSeconds) : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDraft((d) => ({
+                        ...d,
+                        silenceCheckSeconds: val === "" ? null : Number(val),
+                      }));
+                    }}
+                    placeholder="e.g. 5"
+                  />
+                </Field>
+
+                <Field
+                  label="Silence Hangup Seconds"
+                  hint="Seconds of silence before hanging up the call."
+                >
+                  <TextInput
+                    type="number"
+                    min={1}
+                    max={600}
+                    value={draft.silenceHangupSeconds !== null ? String(draft.silenceHangupSeconds) : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDraft((d) => ({
+                        ...d,
+                        silenceHangupSeconds: val === "" ? null : Number(val),
+                      }));
+                    }}
+                    placeholder="e.g. 15"
+                  />
+                </Field>
+              </div>
+
+              <Field
+                label="Silence Prompt"
+                hint="Spoken by agent when caller is silent for the check duration."
+              >
+                <TextArea
+                  rows={2}
+                  value={draft.silencePrompt}
+                  onChange={(e) => setDraft((d) => ({ ...d, silencePrompt: e.target.value }))}
+                  placeholder="e.g. Hello, are you still there? Please let me know how I can help."
+                />
               </Field>
             </div>
-            {draft.primaryLanguage && (
-              <p className="-mt-1 text-xs text-muted">
-                The agent speaks only {languageList(draft)}. If a caller uses another language, it politely says so and carries on in
-                these.
-              </p>
-            )}
           </div>
         )}
 
@@ -382,6 +480,31 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             value={draft.parts[activeTab.id as AgentPart]}
             savedText={agent ? (agent[activeTab.id as AgentPart] ?? "") : null}
             onChange={(v) => setPart(activeTab.id as AgentPart, v)}
+          />
+        )}
+
+        {activeTab.id === "whatsapp" && (
+          <div className="max-w-xl space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-heading">
+                WhatsApp messages <span className="text-sm font-normal text-faint">optional</span>
+              </h2>
+              <p className="mt-0.5 text-sm text-muted">
+                The agent can send these template messages to the lead on WhatsApp during or after the call.
+              </p>
+            </div>
+            <WhatsAppMessagesField
+              value={draft.whatsappMessageIds}
+              onChange={(ids) => setDraft((d) => ({ ...d, whatsappMessageIds: ids }))}
+            />
+          </div>
+        )}
+
+        {activeTab.id === "classifications" && (
+          <ClassificationsStep
+            agentId={agentId}
+            items={draft.classifications}
+            onChange={(classifications) => setDraft((d) => ({ ...d, classifications }))}
           />
         )}
 
@@ -460,25 +583,17 @@ function PartEditor({
       // Keep a loaded file's contents so it can be edited as text
       onChange({ source: "text", text: value.text });
     } else {
-      if (
-        value.text.trim() &&
-        !(await confirmDialog({
-          title: "Replace typed text?",
-          message: "Switching to upload clears the text you typed for this section.",
-          confirmLabel: "Replace",
-          tone: "warning",
-        }))
-      )
-        return;
+      // Switched to upload; clear text if it wasn't from a file
       onChange({ source: "file", text: "" });
     }
   };
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = async (file?: File) => {
     if (!file) return;
     setFileError(null);
     try {
-      onChange({ source: "file", text: await readTextFile(file), fileName: file.name });
+      const text = await readTextFile(file);
+      onChange({ source: "file", text, fileName: file.name });
     } catch (err) {
       setFileError(errorMessage(err));
     }
@@ -489,58 +604,47 @@ function PartEditor({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-heading">
-            {meta.label}
-            {part === "extra" && <span className="ml-2 text-sm font-normal text-faint">optional</span>}
+            {meta.label} {part === "extra" && <span className="text-sm font-normal text-faint">optional</span>}
           </h2>
           <p className="mt-0.5 text-sm text-muted">{meta.description}</p>
         </div>
-
-        <div className="inline-flex rounded-md border border-hairline bg-surface-input p-0.5">
-          {(
-            [
-              ["text", "Write text", PenLine],
-              ["file", "Upload file", Upload],
-            ] as const
-          ).map(([id, label, Icon]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => switchMode(id)}
-              className={clsx(
-                "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors",
-                mode === id ? "bg-surface text-heading shadow-sm" : "text-muted hover:text-heading",
-              )}
-            >
-              <Icon size={14} /> {label}
-            </button>
-          ))}
+        <div className="inline-flex rounded-md border border-hairline bg-surface p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => switchMode("text")}
+            className={clsx(
+              "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
+              mode === "text" ? "bg-accent text-on-accent shadow-xs" : "text-muted hover:text-heading",
+            )}
+          >
+            <PenLine size={13} /> Type text
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("file")}
+            className={clsx(
+              "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
+              mode === "file" ? "bg-accent text-on-accent shadow-xs" : "text-muted hover:text-heading",
+            )}
+          >
+            <Upload size={13} /> Upload file
+          </button>
         </div>
       </div>
 
       {mode === "text" ? (
-        <>
-          <TextArea
-            rows={16}
-            value={value.text}
-            onChange={(e) => onChange({ source: "text", text: e.target.value })}
-            placeholder={meta.placeholder}
-            className="font-mono text-[13px]"
-          />
-          <div className="flex justify-between text-xs text-muted">
-            <span>
-              Wrap key points in <code className="rounded bg-chip px-1">**double asterisks**</code> to make
-              them stand out in the prompt.
-            </span>
-            <span className="tnum">{value.text.length.toLocaleString()} chars</span>
-          </div>
-        </>
+        <TextArea
+          rows={14}
+          value={value.text}
+          onChange={(e) => onChange({ source: "text", text: e.target.value })}
+          placeholder={meta.placeholder}
+        />
       ) : hasFile ? (
-        <div className="rounded-md border border-hairline">
-          <div className="flex items-center justify-between gap-3 border-b border-hairline bg-raised px-3 py-2">
-            <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-heading">
-              <FileText size={16} className="shrink-0 text-accent-text" />
-              <span className="truncate">{value.fileName}</span>
-              <span className="tnum shrink-0 text-xs font-normal text-muted">
+        <div className="rounded-md border border-hairline bg-surface">
+          <div className="flex items-center justify-between border-b border-hairline px-3 py-2 text-xs">
+            <span className="flex items-center gap-1.5 font-medium text-heading">
+              <FileText size={14} className="text-accent-text" /> {value.fileName}
+              <span className="text-muted">
                 {value.text.length.toLocaleString()} chars
               </span>
             </span>
@@ -619,6 +723,24 @@ function Review({
     { tab: "details", label: "Name", value: draft.name.trim(), required: true },
     { tab: "details", label: "Greeting", value: draft.greeting.trim() || "Default greeting", required: false },
     { tab: "details", label: "Languages", value: draft.primaryLanguage ? languageList(draft) : "System default", required: false },
+    {
+      tab: "details",
+      label: "Silence Check",
+      value: draft.silenceCheckSeconds !== null ? `${draft.silenceCheckSeconds}s` : "Not set",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Silence Hangup",
+      value: draft.silenceHangupSeconds !== null ? `${draft.silenceHangupSeconds}s` : "Not set",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Silence Prompt",
+      value: draft.silencePrompt.trim() || "Not set",
+      required: false,
+    },
     { tab: "voice", label: "Voice", value: draft.voice || "Default voice", required: false },
     ...AGENT_PARTS.map((p) => {
       const part = draft.parts[p];
@@ -630,6 +752,24 @@ function Review({
         required: p !== "extra",
       };
     }),
+    {
+      tab: "whatsapp",
+      label: "WhatsApp Messages",
+      value:
+        draft.whatsappMessageIds.length > 0
+          ? `${draft.whatsappMessageIds.length} message template(s) selected`
+          : "None selected",
+      required: false,
+    },
+    {
+      tab: "classifications",
+      label: "Classifications",
+      value:
+        draft.classifications && draft.classifications.length > 0
+          ? `${draft.classifications.length} configured (${draft.classifications.map((c) => c.name).join(", ")})`
+          : "None configured (optional)",
+      required: false,
+    },
   ];
 
   return (
