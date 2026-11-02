@@ -187,3 +187,31 @@ export const getCallCostSummary = (days?: number) =>
   api<CallCostSummary>(`/call-costs/summary${days ? `?days=${days}` : ""}`);
 export const getCallCosts = (page = 1, pageSize = 10) =>
   api<Paged<CallCost>>(`/call-costs?page=${page}&page_size=${pageSize}`);
+
+/* ----------------------------- Classifications ---------------------------- */
+
+export {
+  type Classification,
+  type ClassificationSummary,
+  type ClassificationInput,
+  type ClassificationCall,
+  type ClassificationCallsResponse,
+  type ClassificationCallsParams,
+  getClassifications,
+  getClassification,
+  getClassificationCalls,
+  getUnclassifiedCalls,
+  createClassification,
+  updateClassification,
+  deleteClassification,
+  getCampaignClassifications,
+  getCampaignClassificationCalls,
+  getCampaignUnclassifiedCalls,
+  type WhatsAppMessage,
+  listWhatsAppMessages,
+  type WhatsAppMessageInput,
+  getWhatsAppMessage,
+  createWhatsAppMessage,
+  updateWhatsAppMessage,
+  deleteWhatsAppMessage,
+} from "@/lib/callingAgentApi";

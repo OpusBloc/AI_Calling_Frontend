@@ -1,18 +1,21 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { Bot, PhoneCall, PhoneForwarded } from "lucide-react";
+import { Bot, PhoneCall, PhoneForwarded, Tag } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import AgentsTab from "@/components/calling-agent/AgentsTab";
 import RepresentativesTab from "@/components/calling-agent/RepresentativesTab";
+import UpdateClassificationsTab from "@/components/calling-agent/UpdateClassificationsTab";
 import TestCallDrawer from "@/components/calling-agent/TestCallDrawer";
 import { Button, Tabs, useTabParam } from "@/components/ui";
 
 const TABS = [
   { id: "agents", label: "Agents", icon: Bot, component: AgentsTab },
   { id: "representatives", label: "Call Transfer", icon: PhoneForwarded, component: RepresentativesTab },
+  { id: "classifications", label: "Update Classifications", icon: Tag, component: UpdateClassificationsTab },
 ] as const;
+
 
 function CallingAgentTabs() {
   const [active, setActive] = useTabParam(TABS.map((t) => t.id));

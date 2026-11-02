@@ -11,6 +11,12 @@ export interface PartDraft {
   fileName?: string;
 }
 
+export interface ClassificationDraftItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface AgentDraft {
   name: string;
   greeting: string;
@@ -18,7 +24,12 @@ export interface AgentDraft {
   voice: string;
   primaryLanguage: string;
   secondaryLanguage: string;
+  silenceCheckSeconds: number | null;
+  silencePrompt: string;
+  silenceHangupSeconds: number | null;
+  whatsappMessageIds: string[];
   parts: Record<AgentPart, PartDraft>;
+  classifications: ClassificationDraftItem[];
   tab: string;
   savedAt?: number;
 }
@@ -34,7 +45,12 @@ export const emptyDraft = (): AgentDraft => ({
   voice: "",
   primaryLanguage: "",
   secondaryLanguage: "",
+  silenceCheckSeconds: null,
+  silencePrompt: "",
+  silenceHangupSeconds: null,
+  whatsappMessageIds: [],
   parts: Object.fromEntries(AGENT_PARTS.map((p) => [p, blankPart()])) as AgentDraft["parts"],
+  classifications: [],
   tab: "details",
 });
 
@@ -44,9 +60,18 @@ export const draftFromAgent = (agent: Agent): AgentDraft => ({
   voice: agent.voice ?? "",
   primaryLanguage: agent.primary_language ?? "",
   secondaryLanguage: agent.secondary_language ?? "",
+  silenceCheckSeconds: agent.silence_check_seconds ?? null,
+  silencePrompt: agent.silence_prompt ?? "",
+  silenceHangupSeconds: agent.silence_hangup_seconds ?? null,
+  whatsappMessageIds: agent.whatsapp_message_ids ?? [],
   parts: Object.fromEntries(
     AGENT_PARTS.map((p) => [p, { source: "text", text: agent[p] ?? "" }]),
   ) as AgentDraft["parts"],
+  classifications: (agent.classifications ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+  })),
   tab: "details",
 });
 
@@ -57,8 +82,17 @@ const storageKey = (agentId: string | null) => `calling-agent:draft:${agentId ??
 export const loadDraft = (agentId: string | null): AgentDraft | null => {
   try {
     const raw = localStorage.getItem(storageKey(agentId));
-    // Drafts saved before a field existed get its default
-    return raw ? { ...emptyDraft(), ...(JSON.parse(raw) as AgentDraft) } : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AgentDraft>;
+    return {
+      ...emptyDraft(),
+      ...parsed,
+      silenceCheckSeconds: parsed.silenceCheckSeconds ?? null,
+      silencePrompt: parsed.silencePrompt ?? "",
+      silenceHangupSeconds: parsed.silenceHangupSeconds ?? null,
+      whatsappMessageIds: parsed.whatsappMessageIds ?? [],
+      classifications: parsed.classifications ?? [],
+    };
   } catch {
     return null;
   }
@@ -127,8 +161,34 @@ export function toCreateForm(draft: AgentDraft): FormData {
   if (draft.voice) form.append("voice", draft.voice);
   if (draft.primaryLanguage) form.append("primary_language", draft.primaryLanguage);
   if (draft.secondaryLanguage) form.append("secondary_language", draft.secondaryLanguage);
+
+  if (draft.silenceCheckSeconds !== null && draft.silenceCheckSeconds !== undefined && !isNaN(draft.silenceCheckSeconds)) {
+    form.append("silence_check_seconds", String(draft.silenceCheckSeconds));
+  }
+  if (draft.silencePrompt && draft.silencePrompt.trim()) {
+    form.append("silence_prompt", draft.silencePrompt.trim());
+  }
+  if (draft.silenceHangupSeconds !== null && draft.silenceHangupSeconds !== undefined && !isNaN(draft.silenceHangupSeconds)) {
+    form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
+  }
+
+  if (draft.whatsappMessageIds && draft.whatsappMessageIds.length > 0) {
+    form.append("whatsapp_message_ids", JSON.stringify(draft.whatsappMessageIds));
+  }
+
   for (const part of AGENT_PARTS) {
     if (isPartFilled(draft.parts[part])) appendPart(form, part, draft.parts[part]);
+  }
+  if (draft.classifications && draft.classifications.length > 0) {
+    form.append(
+      "classifications",
+      JSON.stringify(
+        draft.classifications.map((c) => ({
+          name: c.name.trim(),
+          description: c.description.trim(),
+        }))
+      )
+    );
   }
   return form;
 }
@@ -144,6 +204,25 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
     form.append("primary_language", draft.primaryLanguage);
     form.append("secondary_language", draft.secondaryLanguage);
   }
+
+  if (draft.silenceCheckSeconds !== (agent.silence_check_seconds ?? null)) {
+    if (draft.silenceCheckSeconds !== null && !isNaN(draft.silenceCheckSeconds)) {
+      form.append("silence_check_seconds", String(draft.silenceCheckSeconds));
+    }
+  }
+  if (draft.silencePrompt.trim() !== (agent.silence_prompt ?? "").trim()) {
+    form.append("silence_prompt", draft.silencePrompt.trim());
+  }
+  if (draft.silenceHangupSeconds !== (agent.silence_hangup_seconds ?? null)) {
+    if (draft.silenceHangupSeconds !== null && !isNaN(draft.silenceHangupSeconds)) {
+      form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
+    }
+  }
+
+  if (JSON.stringify(draft.whatsappMessageIds) !== JSON.stringify(agent.whatsapp_message_ids ?? [])) {
+    form.append("whatsapp_message_ids", JSON.stringify(draft.whatsappMessageIds));
+  }
+
   for (const part of AGENT_PARTS) {
     const p = draft.parts[part];
     // The backend ignores empty parts on PATCH, so a cleared part can't be sent
