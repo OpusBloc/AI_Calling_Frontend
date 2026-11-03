@@ -2,12 +2,13 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  ArrowLeft,
   IndianRupee,
   LayoutDashboard,
   Pause,
@@ -19,17 +20,22 @@ import {
   Radio,
   Receipt,
   Settings2,
+  Tags,
   Timer,
   Trash2,
 } from "lucide-react";
 
-import { deleteCampaign } from "@/lib/api";
-import type { CallAttempt, CallOutcome, Campaign, CampaignReport, ScheduledCampaignCall } from "@/types/types";
+import { deleteCampaign, getCallCosts } from "@/lib/api";
+import type { CallAttempt, CallCost, CallOutcome, Campaign, CampaignReport, ScheduledCampaignCall } from "@/types/types";
 import {
   useAgents,
   useCampaign,
+  useCampaignClassificationCalls,
+  useCampaignClassifications,
   useCampaignIds,
   useCampaignReport,
+  useCampaignUnclassifiedCalls,
+  useClassifications,
   usePlivoPools,
   usePostCampaignCallOutcome,
   useRepresentatives,
@@ -41,6 +47,8 @@ import PageHeader from "@/components/PageHeader";
 import { formatDays, formatWindow } from "@/components/campaigns/CampaignsTab";
 import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/DispatchPanel";
 import CampaignCosts from "@/components/campaigns/CampaignCosts";
+import type { ClassificationCallsResponse } from "@/lib/callingAgentApi";
+
 import {
   Badge,
   Button,
@@ -70,7 +78,13 @@ import {
 } from "@/components/ui";
 
 const OUTCOMES: CallOutcome[] = ["completed", "no_answer", "not_connected", "busy", "failed", "hung_up", "cancelled"];
-const CALL_HEAD = ["Lead", "Phone", "Status", "Last outcome", "Scheduled", "Attempts", "Talk time", ""];
+const CALL_HEAD = ["Lead", "Phone", "Status", "Talk time", "Plivo cost", "AI cost", "Total cost"];
+const CLASSIFICATION_BAR_COLORS = [
+  "#279be8",
+  "#a43be0",
+  "#20b98b",
+  "#efa512",
+] as const;
 // Must match the backend: an outcome can only be recorded while a call is live
 const ACTIVE = new Set(["dialing", "ringing", "in_progress"]);
 
@@ -78,11 +92,15 @@ const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "calls", label: "Calls", icon: PhoneCall },
   { id: "costs", label: "Costs", icon: IndianRupee },
+  { id: "classification", label: "Classification", icon: Tags },
   { id: "settings", label: "Settings", icon: Settings2 },
 ] as const;
 
 const talkSeconds = (call: ScheduledCampaignCall) =>
   (call.attempt_history ?? []).reduce((sum, a) => sum + (a.duration_seconds ?? 0), 0);
+
+const hasSentWhatsAppMessages = (call: ScheduledCampaignCall) =>
+  (call.attempt_history ?? []).some((attempt) => (attempt.whatsapp_messages?.length ?? 0) > 0);
 
 export default function CampaignDetailsPage() {
   // useTabParam reads the URL, which needs a Suspense boundary in the app router
@@ -226,9 +244,288 @@ function CampaignDetails() {
             />
           )}
           {tab === "costs" && <CampaignCosts calls={report.data?.calls} callsLoading={report.isLoading} />}
+          {tab === "classification" && (
+            <CampaignClassificationChart campaignId={id} agentId={campaign.agent_id} />
+          )}
           {tab === "settings" && <SettingsTab campaign={campaign} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CampaignClassificationChart({ campaignId, agentId }: { campaignId: string; agentId: string }) {
+  const summary = useCampaignClassifications(campaignId);
+  const configured = useClassifications(agentId, campaignId);
+  const agents = useAgents();
+  const [selected, setSelected] = useState<{ id: string | null; name: string } | null>(null);
+
+  if (selected) {
+    return selected.id ? (
+      <CampaignClassificationCalls
+        campaignId={campaignId}
+        classificationId={selected.id}
+        classificationName={selected.name}
+        onBack={() => setSelected(null)}
+      />
+    ) : (
+      <CampaignUnclassifiedCalls campaignId={campaignId} onBack={() => setSelected(null)} />
+    );
+  }
+
+  if (summary.status === "pending" || configured.isLoading || agents.isLoading) {
+    return <Loading label="Loading classifications" />;
+  }
+  if (summary.status === "error") return <ErrorState message={summary.error.message} onRetry={() => summary.refetch()} />;
+
+  const classifications = summary.data.classifications ?? [];
+  const configuredClassifications = configured.data?.classifications ?? [];
+  const agentClassifications = agents.data?.find((agent) => agent.id === agentId)?.classifications ?? [];
+  const categories = configuredClassifications.length
+    ? configuredClassifications
+    : classifications.length
+      ? classifications
+      : agentClassifications;
+  const bars: Array<{ id: string | null; name: string; calls: number }> = categories.map((classification) => ({
+    id: classification.id,
+    name: classification.name,
+    calls: classifications.find((item) => item.id === classification.id)?.calls ?? 0,
+  }));
+  if ((summary.data.unclassified_calls ?? 0) > 0 || bars.length === 0) {
+    bars.push({ id: null, name: "Unclassified", calls: summary.data.unclassified_calls ?? 0 });
+  }
+  const noCallValues = bars.every((bar) => bar.calls === 0);
+  const maxCalls = Math.max(1, ...bars.map((bar) => bar.calls));
+  const yTicks = [...new Set([maxCalls, Math.ceil(maxCalls * 0.75), Math.ceil(maxCalls * 0.5), Math.ceil(maxCalls * 0.25), 0])];
+
+  return (
+    <Card
+      title="Call classifications"
+      description={`${summary.data.total_calls} calls grouped by classification. Select a bar to inspect its calls.`}
+    >
+      <div
+        role="group"
+        aria-label="Calls by classification"
+        className="flex min-h-64 gap-2 overflow-x-auto px-2 pb-2 pt-5"
+      >
+        <div className="relative h-40 w-7 shrink-0 text-right text-xs text-muted" aria-hidden="true">
+          {yTicks.map((tick) => (
+            <span
+              key={tick}
+              className="absolute right-0 -translate-y-1/2 tnum"
+              style={{ top: `${(1 - tick / maxCalls) * 100}%` }}
+            >
+              {tick}
+            </span>
+          ))}
+        </div>
+        <div className="relative min-w-0 flex-1">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40" aria-hidden="true">
+            {yTicks.map((tick) => (
+              <span
+                key={tick}
+                className="absolute inset-x-0 border-t border-dashed border-hairline"
+                style={{ top: `${(1 - tick / maxCalls) * 100}%` }}
+              />
+            ))}
+          </div>
+          <div
+            className="relative z-10 grid h-56 w-full gap-3"
+            style={{ gridTemplateColumns: `repeat(${bars.length}, minmax(0, 1fr))` }}
+          >
+            {bars.map((bar, index) => {
+              const color = CLASSIFICATION_BAR_COLORS[index % CLASSIFICATION_BAR_COLORS.length];
+              const barHeight = noCallValues ? 28 + ((index * 37 + 19) % 58) : Math.max(5, (bar.calls / maxCalls) * 100);
+              return (
+                <button
+                  key={bar.id ?? "unclassified"}
+                  type="button"
+                  onClick={() => setSelected({ id: bar.id, name: bar.name })}
+                  aria-label={`${bar.name}: ${bar.calls} calls. View calls`}
+                  className="group grid h-56 grid-rows-[10rem_2rem] justify-items-center gap-2 rounded-md text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <span className="relative flex h-40 w-full items-end justify-center overflow-visible border-b border-hairline">
+                    <span
+                      className="tnum absolute z-10 text-xs font-semibold text-heading"
+                      style={{ bottom: `calc(${barHeight}% + 4px)` }}
+                    >
+                      {bar.calls}
+                    </span>
+                    <span
+                      className={clsx(
+                        "block w-1/2 max-w-20 rounded-t-md transition-[height,opacity] group-hover:opacity-90",
+                        noCallValues && "animate-pulse opacity-40",
+                      )}
+                      style={{
+                        height: `${barHeight}%`,
+                        backgroundColor: color,
+                        boxShadow: noCallValues ? undefined : `0 2px 8px ${color}35`,
+                      }}
+                    />
+                  </span>
+                  <span className="line-clamp-2 min-h-8 text-xs font-medium text-heading">{bar.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      {noCallValues && (
+        <p className="px-5 pb-4 text-center text-xs text-muted">
+          Placeholder bars show the available classifications. Values will appear when calls are classified.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function CampaignClassificationCalls({
+  campaignId,
+  classificationId,
+  classificationName,
+  onBack,
+}: {
+  campaignId: string;
+  classificationId: string;
+  classificationName: string;
+  onBack: () => void;
+}) {
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const calls = useCampaignClassificationCalls(campaignId, classificationId, { page, page_size: pageSize });
+
+  return (
+    <ClassificationCallsPanel
+      title={classificationName}
+      data={calls.data}
+      loading={calls.isLoading}
+      error={calls.isError ? calls.error.message : null}
+      page={page}
+      pageSize={pageSize}
+      onPageChange={setPage}
+      onBack={onBack}
+      onRetry={() => calls.refetch()}
+    />
+  );
+}
+
+function CampaignUnclassifiedCalls({ campaignId, onBack }: { campaignId: string; onBack: () => void }) {
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const calls = useCampaignUnclassifiedCalls(campaignId, { page, page_size: pageSize });
+
+  return (
+    <ClassificationCallsPanel
+      title="Unclassified calls"
+      data={calls.data}
+      loading={calls.isLoading}
+      error={calls.isError ? calls.error.message : null}
+      page={page}
+      pageSize={pageSize}
+      onPageChange={setPage}
+      onBack={onBack}
+      onRetry={() => calls.refetch()}
+    />
+  );
+}
+
+function ClassificationCallsPanel({
+  title,
+  data,
+  loading,
+  error,
+  page,
+  pageSize,
+  onPageChange,
+  onBack,
+  onRetry,
+}: {
+  title: string;
+  data: ClassificationCallsResponse | undefined;
+  loading: boolean;
+  error: string | null;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
+  const calls = data?.calls ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  return (
+    <div className="space-y-4">
+      <Button variant="secondary" onClick={onBack}>
+        <ArrowLeft size={16} aria-hidden /> All classifications
+      </Button>
+
+      <Card title={title} description={`${total} call${total === 1 ? "" : "s"} in this classification.`}>
+        {error ? (
+          <ErrorState message={error} onRetry={onRetry} />
+        ) : loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }, (_, index) => (
+              <Skeleton key={index} className="h-28 rounded-lg" />
+            ))}
+          </div>
+        ) : calls.length === 0 ? (
+          <EmptyState title="No calls in this classification" text="No call records are available yet." />
+        ) : (
+          <div className="space-y-4">
+            {calls.map((call, index) => (
+              <article
+                key={call.call_uuid ?? call.attempt_id ?? `${page}-${index}`}
+                className="space-y-3 rounded-lg border border-hairline bg-surface p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-medium text-heading">{call.name || "Unnamed caller"}</h3>
+                    <p className="tnum mt-0.5 text-sm text-muted">{call.phone || "No phone number"}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    {call.status && <StatusBadge status={call.status} />}
+                    {call.duration_seconds != null && <span>{formatDuration(call.duration_seconds)}</span>}
+                    <span>{formatDate(call.classified_at ?? call.ended_at)}</span>
+                  </div>
+                </div>
+                {call.reason && (
+                  <p className="whitespace-pre-wrap rounded-md bg-raised p-3 text-sm text-body">{call.reason}</p>
+                )}
+                {call.audio && (
+                  <audio controls preload="none" src={call.audio} className="w-full">
+                    Your browser does not support audio.
+                  </audio>
+                )}
+                {call.transcript != null && (
+                  <details>
+                    <summary className="cursor-pointer text-sm font-medium text-accent-text">View transcript</summary>
+                    <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-raised p-3 text-xs text-body">
+                      {typeof call.transcript === "string"
+                        ? call.transcript
+                        : JSON.stringify(call.transcript, null, 2) ?? ""}
+                    </pre>
+                  </details>
+                )}
+              </article>
+            ))}
+
+            {pageCount > 1 && (
+              <div className="flex items-center justify-between gap-3 border-t border-hairline pt-4 text-sm text-muted">
+                <span>Page {page} of {pageCount} · {total} calls</span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+                    Previous
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
@@ -303,15 +600,49 @@ function CallsCard({
   onRetry: () => void;
 }) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [filter, setFilter] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const costs = useQuery({
+    queryKey: ["call-costs", "list", 1, 500],
+    queryFn: () => getCallCosts(1, 500),
+    retry: false,
+  });
 
   const list = useMemo(() => calls ?? [], [calls]);
+  const costsByAttempt = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const cost of costs.data?.items ?? []) {
+      if (cost.attempt_id) map.set(cost.attempt_id, cost.total_cost);
+      map.set(cost.call_uuid, cost.total_cost);
+    }
+    return map;
+  }, [costs.data]);
+  const totalsByCall = useMemo(() => {
+    const map = new Map<string, { ai: number | null; plivo: number | null; total: number | null }>();
+    for (const call of list) {
+      const attempts = call.attempt_history ?? [];
+      const aiValues = attempts.map((attempt) =>
+        costsByAttempt.get(attempt.id) ??
+        (attempt.plivo_call_uuid ? costsByAttempt.get(attempt.plivo_call_uuid) : undefined),
+      );
+      const plivoValues = attempts.map((attempt) => {
+        const amount = attempt.total_amount == null ? Number.NaN : Number(attempt.total_amount);
+        return Number.isFinite(amount) ? amount : null;
+      });
+      const ai = aiValues.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+      const plivo = plivoValues.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+      map.set(call.id, { ai, plivo, total: ai + plivo });
+    }
+    return map;
+  }, [costsByAttempt, list]);
   const statuses = [...new Set(list.map((c) => c.status))].sort();
+  const statusFilter = filter.startsWith("status:") ? filter.slice("status:".length) : null;
   const term = search.trim().toLowerCase();
   const filtered = list.filter(
     (c) =>
-      (status === "all" || c.status === status) &&
+      (!statusFilter || c.status === statusFilter) &&
+      (filter !== "messages:sent" || hasSentWhatsAppMessages(c)) &&
+      (filter !== "messages:none" || !hasSentWhatsAppMessages(c)) &&
       (!term || `${c.lead_name ?? ""} ${c.phone_e164}`.toLowerCase().includes(term)),
   );
   const pagination = usePagination(filtered, 25);
@@ -327,13 +658,19 @@ function CallsCard({
           list.length > 0 && (
             <>
               <SearchInput value={search} onChange={setSearch} placeholder="Search name or phone" className="w-full sm:w-60" />
-              <Select aria-label="Filter calls by status" value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-40">
-                <option value="all">All statuses</option>
+              <Select
+                aria-label="Filter campaign calls"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="all">All calls</option>
                 {statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {humanize(s)}
+                  <option key={s} value={`status:${s}`}>
+                    {humanize(s)} calls
                   </option>
                 ))}
+                <option value="messages:sent">Messages sent</option>
               </Select>
             </>
           )
@@ -360,10 +697,20 @@ function CallsCard({
                 <TableMessage cols={CALL_HEAD.length}>No calls match your filters.</TableMessage>
               ) : (
                 pagination.pageItems.map((call) => (
-                  <CallRow key={call.id} call={call} onOpen={() => setOpenId(call.id)} />
+                  <CallRow
+                    key={call.id}
+                    call={call}
+                    costs={totalsByCall.get(call.id)}
+                    onOpen={() => setOpenId(call.id)}
+                  />
                 ))
               )}
             </Table>
+            {costs.isError && (
+              <p role="alert" className="px-4 text-xs text-loss">
+                Could not load AI costs: {costs.error.message}
+              </p>
+            )}
             <div className="px-4">
               <Pagination {...pagination} noun="calls" />
             </div>
@@ -376,7 +723,15 @@ function CallsCard({
   );
 }
 
-function CallRow({ call, onOpen }: { call: ScheduledCampaignCall; onOpen: () => void }) {
+function CallRow({
+  call,
+  costs,
+  onOpen,
+}: {
+  call: ScheduledCampaignCall;
+  costs: { ai: number | null; plivo: number | null; total: number | null } | undefined;
+  onOpen: () => void;
+}) {
   const live = ACTIVE.has(call.status.toLowerCase());
   return (
     <tr
@@ -397,14 +752,10 @@ function CallRow({ call, onOpen }: { call: ScheduledCampaignCall; onOpen: () => 
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
       </td>
-      <td className="px-4 py-3">{call.last_outcome ? <StatusBadge status={call.last_outcome} /> : <span className="text-faint">—</span>}</td>
-      <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(call.scheduled_at)}</td>
-      <td className="tnum px-4 py-3 text-body">
-        {call.attempts}
-        <span className="text-faint"> / {call.retry_count + 1}</span>
-      </td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{talkSeconds(call) ? formatDuration(talkSeconds(call)) : <span className="text-faint">—</span>}</td>
-      <td className="whitespace-nowrap px-4 py-3 text-right text-xs font-medium text-accent-text">View</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(costs?.plivo ?? 0, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(costs?.ai ?? 0, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(costs?.total ?? 0, 4)}</td>
     </tr>
   );
 }
@@ -415,6 +766,11 @@ function CallRow({ call, onOpen }: { call: ScheduledCampaignCall; onOpen: () => 
  */
 function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: ScheduledCampaignCall; onClose: () => void }) {
   const postOutcome = usePostCampaignCallOutcome();
+  const costs = useQuery({
+    queryKey: ["call-costs", "list", 1, 500],
+    queryFn: () => getCallCosts(1, 500),
+    retry: false,
+  });
   const [outcome, setOutcome] = useState<CallOutcome | "">("");
   const live = ACTIVE.has(call.status.toLowerCase());
   const attempts = [...(call.attempt_history ?? [])].sort((a, b) => b.attempt_no - a.attempt_no);
@@ -474,17 +830,44 @@ function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: S
         {attempts.length === 0 ? (
           <p className="rounded-md bg-raised px-4 py-6 text-center text-sm text-muted">Not dialled yet.</p>
         ) : (
-          attempts.map((a) => <AttemptCard key={a.id} attempt={a} />)
+          attempts.map((a) => (
+            <AttemptCard
+              key={a.id}
+              attempt={a}
+              aiCost={findAttemptAiCost(costs.data?.items, a)}
+              aiCostError={costs.isError ? costs.error.message : null}
+            />
+          ))
         )}
       </section>
     </Drawer>
   );
 }
 
-function AttemptCard({ attempt: a }: { attempt: CallAttempt }) {
+function findAttemptAiCost(costs: CallCost[] | undefined, attempt: CallAttempt) {
+  return costs?.find(
+    (cost) =>
+      cost.attempt_id === attempt.id ||
+      (!!attempt.plivo_call_uuid && cost.call_uuid === attempt.plivo_call_uuid),
+  )?.total_cost;
+}
+
+function AttemptCard({
+  attempt: a,
+  aiCost,
+  aiCostError,
+}: {
+  attempt: CallAttempt;
+  aiCost: number | undefined;
+  aiCostError: string | null;
+}) {
   const [showTranscript, setShowTranscript] = useState(false);
   const transcript = a.transcript ?? [];
   const transferred = ["completed", "success", "answered", "transferred"].includes((a.transfer_status ?? "").toLowerCase());
+  const plivoCost = a.total_amount == null ? undefined : Number(a.total_amount);
+  const combinedCost = plivoCost !== undefined && Number.isFinite(plivoCost) && aiCost !== undefined
+    ? plivoCost + aiCost
+    : undefined;
 
   return (
     <article className="rounded-lg border border-hairline bg-surface">
@@ -498,17 +881,49 @@ function AttemptCard({ attempt: a }: { attempt: CallAttempt }) {
       </header>
 
       <div className="space-y-4 p-4">
+        <section className="space-y-3">
+          <h4 className="eyebrow">WhatsApp messages sent</h4>
+          {(a.whatsapp_messages?.length ?? 0) === 0 ? (
+            <p className="rounded-md bg-raised px-4 py-4 text-sm text-muted">No WhatsApp messages sent for this attempt.</p>
+          ) : (
+            a.whatsapp_messages?.map((message) => (
+              <article key={message.id} className="rounded-lg border border-hairline bg-surface p-4">
+                <DetailList
+                  columns={3}
+                  items={[
+                    { label: "Message", value: message.message_name || "WhatsApp message" },
+                    { label: "Status", value: message.status ? <StatusBadge status={message.status} /> : "—" },
+                    { label: "Delivered at", value: formatDate(message.delivered_at) },
+                    { label: "Read at", value: formatDate(message.read_at) },
+                  ]}
+                />
+              </article>
+            ))
+          )}
+        </section>
+
+        <DetailList
+          columns={3}
+          items={[
+            { label: "Plivo cost", value: <span className="tnum">{plivoCost !== undefined && Number.isFinite(plivoCost) ? formatMoney(plivoCost, 4) : "—"}</span> },
+            { label: "AI cost", value: <span className="tnum">{aiCost !== undefined ? `₹${formatMoney(aiCost, 4)}` : "—"}</span> },
+            { label: "Total cost (Plivo + AI)", value: <span className="tnum font-semibold">{combinedCost !== undefined ? formatMoney(combinedCost, 4) : "—"}</span> },
+          ]}
+        />
         <DetailList
           columns={3}
           items={[
             { label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> },
-            { label: "Plivo cost", value: <span className="tnum">{a.total_amount ? formatMoney(a.total_amount, 4) : "—"}</span> },
-            { label: "Rate", value: <span className="tnum">{a.total_rate ?? "—"}</span> },
             { label: "Hang-up", value: a.hangup_cause_name ? `${a.hangup_cause_name}${a.hangup_source ? ` (by ${a.hangup_source.toLowerCase()})` : ""}` : "—" },
             { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` — ${a.transfer_reason}` : ""}` : "None" },
             { label: "Plivo status", value: a.plivo_status ? humanize(a.plivo_status) : "—" },
           ]}
         />
+        {aiCostError && (
+          <p role="alert" className="text-xs text-loss">
+            Could not load AI cost: {aiCostError}
+          </p>
+        )}
 
         {a.recording_url && (
           <div>

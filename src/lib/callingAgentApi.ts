@@ -354,6 +354,9 @@ export const getCampaignUnclassifiedCalls = (
 export const listWhatsAppMessages = () =>
   api<WhatsAppMessage[]>("/whatsapp-messages");
 
+export const listClassifications = (agentId: string, campaignId?: string) =>
+  api(`/api/agents/${agentId}/classifications${campaignId ? `?campaign_id=${campaignId}` : ""}`);
+
 export const getWhatsAppMessage = (id: string) =>
   api<WhatsAppMessage>(`/whatsapp-messages/${encodeURIComponent(id)}`);
 export const createWhatsAppMessage = (body: WhatsAppMessageInput) =>

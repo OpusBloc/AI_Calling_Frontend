@@ -155,10 +155,14 @@ export const postCampaignCallOutcome = (campaignId: string, callId: string, outc
     body: { outcome },
   });
 
-/** Multipart: the leads sheet plus the campaign fields as a JSON `payload` */
-export const createCampaign = (body: CampaignCreate, leadsFile: File) => {
+/** Multipart: campaign fields plus exactly one uploaded leads file or remote file URL. */
+export const createCampaign = (
+  body: CampaignCreate,
+  source: { file: File } | { fileUrl: string },
+) => {
   const form = new FormData();
-  form.append("file", leadsFile);
+  if ("file" in source) form.append("file", source.file);
+  else form.append("file_url", source.fileUrl);
   form.append("payload", JSON.stringify(body));
   return api<Campaign>("/campaigns", { method: "POST", body: form });
 };

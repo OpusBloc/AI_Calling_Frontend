@@ -69,16 +69,22 @@ const PART_META: Record<AgentPart, { label: string; description: string; placeho
   },
 };
 
+// Intro, Rules, Knowledge, Ending and Extra notes all live inside the single "prompt" tab
 const TABS = [
   { id: "details", label: "Details" },
   { id: "voice", label: "Voice" },
-  ...AGENT_PARTS.map((p) => ({ id: p, label: PART_META[p].label })),
+  { id: "prompt", label: "Prompt" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "classifications", label: "Classifications" },
   { id: "review", label: "Review" },
 ];
 
-const OPTIONAL_TABS = ["extra", "whatsapp", "classifications"];
+const OPTIONAL_TABS = ["whatsapp", "classifications"];
+
+const isPart = (id: string): id is AgentPart => (AGENT_PARTS as readonly string[]).includes(id);
+
+// Maps any part name ("rules", "ending", …) or old saved tab id onto the tab that contains it
+const tabFor = (id: string) => (isPart(id) ? "prompt" : id);
 
 const comparable = (d: AgentDraft) =>
   JSON.stringify({
@@ -112,6 +118,8 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  // Which sub-tab is open inside the Prompt tab
+  const [promptPart, setPromptPart] = useState<AgentPart>(AGENT_PARTS[0]);
 
   const dirty = comparable(draft) !== comparable(baseline);
   const missing = missingRequired(draft);
@@ -130,8 +138,13 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, storageOk]);
 
-  const tabIndex = Math.max(0, TABS.findIndex((t) => t.id === draft.tab));
-  const goTo = (tab: string) => setDraft((d) => ({ ...d, tab }));
+  const tabIndex = Math.max(0, TABS.findIndex((t) => t.id === tabFor(draft.tab)));
+
+  // Accepts a tab id or a part name; part names open the Prompt tab on that sub-tab
+  const goTo = (target: string) => {
+    setDraft((d) => ({ ...d, tab: tabFor(target) }));
+    if (isPart(target)) setPromptPart(target);
+  };
   const setPart = (part: AgentPart, value: PartDraft) =>
     setDraft((d) => ({ ...d, parts: { ...d.parts, [part]: value } }));
 
@@ -139,9 +152,13 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     if (id === "details") return !!draft.name.trim();
     if (id === "voice") return !!draft.voice;
     if (id === "review") return false;
+    if (id === "prompt") {
+      // Done once every required part is filled (Extra notes is optional)
+      return AGENT_PARTS.filter((p) => p !== "extra").every((p) => isPartFilled(draft.parts[p]));
+    }
     if (id === "whatsapp") return draft.whatsappMessageIds.length > 0;
     if (id === "classifications") return (draft.classifications?.length ?? 0) > 0;
-    return isPartFilled(draft.parts[id as AgentPart]);
+    return false;
   };
 
   const handleDiscard = async () => {
@@ -473,14 +490,48 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
           />
         )}
 
-        {(AGENT_PARTS as readonly string[]).includes(activeTab.id) && (
-          <PartEditor
-            key={activeTab.id}
-            part={activeTab.id as AgentPart}
-            value={draft.parts[activeTab.id as AgentPart]}
-            savedText={agent ? (agent[activeTab.id as AgentPart] ?? "") : null}
-            onChange={(v) => setPart(activeTab.id as AgentPart, v)}
-          />
+        {/* One Prompt tab with nested sub-tabs: Intro, Rules, Knowledge, Ending, Extra notes */}
+        {activeTab.id === "prompt" && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-xl font-semibold text-heading">Prompt</h2>
+              <p className="mt-0.5 text-sm text-muted">
+                Everything that makes up the system prompt. Pick a section below to edit it.
+              </p>
+            </div>
+
+            <div role="tablist" className="flex gap-1 overflow-x-auto rounded-md bg-chip p-1">
+              {AGENT_PARTS.map((part) => {
+                const active = part === promptPart;
+                const filled = isPartFilled(draft.parts[part]);
+                return (
+                  <button
+                    key={part}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setPromptPart(part)}
+                    className={clsx(
+                      "flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                      active ? "bg-surface text-heading shadow-xs" : "text-muted hover:text-heading",
+                    )}
+                  >
+                    {filled && <Check size={13} strokeWidth={3} className="text-gain" />}
+                    {PART_META[part].label}
+                    {part === "extra" && <span className="text-xs font-normal text-faint">optional</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <PartEditor
+              key={promptPart}
+              part={promptPart}
+              value={draft.parts[promptPart]}
+              savedText={agent ? (agent[promptPart] ?? "") : null}
+              onChange={(v) => setPart(promptPart, v)}
+            />
+          </div>
         )}
 
         {activeTab.id === "whatsapp" && (
@@ -603,9 +654,9 @@ function PartEditor({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-heading">
+          <h3 className="text-base font-semibold text-heading">
             {meta.label} {part === "extra" && <span className="text-sm font-normal text-faint">optional</span>}
-          </h2>
+          </h3>
           <p className="mt-0.5 text-sm text-muted">{meta.description}</p>
         </div>
         <div className="inline-flex rounded-md border border-hairline bg-surface p-0.5 text-xs">
@@ -676,7 +727,7 @@ function PartEditor({
             handleFile(e.dataTransfer.files[0]);
           }}
           className={clsx(
-            "flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-6 py-14 text-center transition-colors",
+            "flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-6 py-10 text-center transition-colors",
             dragging ? "border-accent bg-accent-bg" : "border-hairline-strong hover:bg-surface-hover",
           )}
         >
@@ -742,6 +793,7 @@ function Review({
       required: false,
     },
     { tab: "voice", label: "Voice", value: draft.voice || "Default voice", required: false },
+    // Each part's Edit button opens the Prompt tab on that part's sub-tab
     ...AGENT_PARTS.map((p) => {
       const part = draft.parts[p];
       return {

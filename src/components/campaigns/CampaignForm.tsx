@@ -37,12 +37,12 @@ type SheetCheck = { rows: number; phoneColumn: string; hasName: boolean } | { er
 
 /**
  * Quick look at a CSV before upload: count rows and find the phone column.
- * Excel files can't be read here, so the backend checks those.
+ * Excel and XML files are validated by the backend.
  */
 async function checkSheet(file: File): Promise<SheetCheck> {
   const ext = file.name.toLowerCase().split(".").pop();
-  if (ext !== "csv" && ext !== "xlsx") return { error: "Upload a .csv or .xlsx file." };
-  if (ext === "xlsx") return null;
+  if (ext !== "csv" && ext !== "xlsx" && ext !== "xml") return { error: "Upload a .csv, .xlsx, or .xml file." };
+  if (ext === "xlsx" || ext === "xml") return null;
   const text = await file.text();
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length === 0) return { error: "This file is empty." };
@@ -69,6 +69,8 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [status, setStatus] = useState<Campaign["status"]>(campaign?.status ?? "scheduled");
   const [leadsFile, setLeadsFile] = useState<File | null>(null);
   const [sheet, setSheet] = useState<SheetCheck>(null);
+  const [leadsSource, setLeadsSource] = useState<"file" | "link">("file");
+  const [leadsUrl, setLeadsUrl] = useState("");
   const [representativeIds, setRepresentativeIds] = useState<string[]>(campaign?.representative_ids ?? []);
   const [plivoPoolIds, setPlivoPoolIds] = useState<string[]>(campaign?.plivo_pool_ids ?? []);
   const [transferTimeout, setTransferTimeout] = useState(String(campaign?.transfer_timeout_seconds ?? 30));
@@ -91,15 +93,27 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
 
   const chooseFile = async (file: File | null) => {
     setLeadsFile(file);
+    if (file) setLeadsSource("file");
     setSheet(file ? await checkSheet(file) : null);
   };
 
   const sheetError = sheet && "error" in sheet ? sheet.error : null;
+  const leadsUrlError = leadsUrl.trim() && !/^https?:\/\//i.test(leadsUrl.trim())
+    ? "Enter a link that starts with http:// or https://."
+    : null;
   const hasPlivo = plivoPoolIds.length > 0 || (campaign?.plivo_numbers.length ?? 0) > 0;
   const errors = {
     name: !name.trim() ? "Give the campaign a name." : null,
     agent: !agentId ? "Choose the agent that will make the calls." : null,
-    leads: campaign ? null : !leadsFile ? "Upload the sheet of leads to call." : sheetError,
+    leads: campaign
+      ? null
+      : leadsSource === "file"
+        ? !leadsFile
+          ? "Upload the sheet of leads to call."
+          : sheetError
+        : !leadsUrl.trim()
+          ? "Paste a link to the leads file."
+          : leadsUrlError,
     plivo: !hasPlivo ? "Pick at least one Plivo pool to call from." : null,
     transferTimeout: !intBetween(transferTimeout, 5, 120) ? "Between 5 and 120 seconds." : null,
     retryInterval: !intBetween(retryInterval, 0) ? "Whole number of minutes, 0 or more." : null,
@@ -156,7 +170,10 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         timezone: "Asia/Kolkata",
         retry_on: retryOn as CampaignCreate["retry_on"],
       };
-      return createCampaign(body, leadsFile!);
+      return createCampaign(
+        body,
+        leadsSource === "link" ? { fileUrl: leadsUrl.trim() } : { file: leadsFile! },
+      );
     },
     onSuccess: async (saved) => {
       queryClient.setQueryData(["campaigns", saved.id], saved);
@@ -229,7 +246,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         description={
           campaign
             ? "The leads were imported when this campaign was created."
-            : "Upload a CSV or Excel sheet. The first row must have a phone column; a name column is optional."
+            : "Upload a CSV, Excel, or XML file, or import from a file link. Leads need a phone value; names are optional."
         }
       >
         {campaign ? (
@@ -237,26 +254,60 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
             Leads can&apos;t be changed after a campaign is created. To call a different list, create a new campaign with that sheet.
           </p>
         ) : (
-          <FileDrop
-            label="Upload leads sheet"
-            accept=".csv,.xlsx"
-            file={leadsFile}
-            onChange={chooseFile}
-            error={sheetError ?? show(errors.leads)}
-            details={
-              sheet && "rows" in sheet ? (
-                <span className="text-gain">
-                  {sheet.rows} lead{sheet.rows === 1 ? "" : "s"} · phone column “{sheet.phoneColumn}”{sheet.hasName ? " · names included" : ""}
-                </span>
-              ) : null
-            }
-            hint={
-              <>
-                Columns: <code className="tnum">phone</code> (or phone_number, mobile, phone_e164) and optional{" "}
-                <code className="tnum">name</code>. 10-digit numbers get +91 added. Duplicates are skipped.
-              </>
-            }
-          />
+          <div className="space-y-4">
+            <div className="flex gap-2" role="group" aria-label="Leads source">
+              <Button
+                type="button"
+                variant={leadsSource === "file" ? "primary" : "secondary"}
+                onClick={() => setLeadsSource("file")}
+              >
+                Upload file
+              </Button>
+              <Button
+                type="button"
+                variant={leadsSource === "link" ? "primary" : "secondary"}
+                onClick={() => setLeadsSource("link")}
+              >
+                Link
+              </Button>
+            </div>
+            {leadsSource === "file" ? (
+              <FileDrop
+                label="Upload leads sheet"
+                accept=".csv,.xlsx,.xml"
+                file={leadsFile}
+                onChange={chooseFile}
+                error={show(errors.leads)}
+                details={
+                  sheet && "rows" in sheet ? (
+                    <span className="text-gain">
+                      {sheet.rows} lead{sheet.rows === 1 ? "" : "s"} · phone column “{sheet.phoneColumn}”{sheet.hasName ? " · names included" : ""}
+                    </span>
+                  ) : null
+                }
+                hint={
+                  <>
+                    Columns: <code className="tnum">phone</code> (or phone_number, mobile, phone_e164) and optional{" "}
+                    <code className="tnum">name</code>. 10-digit numbers get +91 added. Duplicates are skipped.
+                  </>
+                }
+              />
+            ) : (
+              <Field
+                label="Leads file URL"
+                error={show(errors.leads)}
+                hint="Use a direct, publicly accessible link to a CSV, Excel (.xlsx), or XML file. XML lead entries need a phone field and may include a name. The file is fetched and imported when you create the campaign."
+              >
+                <TextInput
+                  type="url"
+                  value={leadsUrl}
+                  onChange={(event) => setLeadsUrl(event.target.value)}
+                  placeholder="https://example.com/leads.xlsx"
+                  aria-invalid={!!show(errors.leads)}
+                />
+              </Field>
+            )}
+          </div>
         )}
       </FormSection>
 

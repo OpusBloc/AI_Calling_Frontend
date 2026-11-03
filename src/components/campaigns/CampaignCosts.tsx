@@ -7,12 +7,12 @@ import { Clock, IndianRupee, PhoneCall } from "lucide-react";
 import { getCallCosts } from "@/lib/api";
 import type { ScheduledCampaignCall } from "@/types/types";
 import CostSplit, { rupees } from "@/components/CostSplit";
-import { Card, ErrorState, Pagination, SkeletonRows, StatTile, Table, TableMessage, formatDate, formatDuration, usePagination } from "@/components/ui";
+import { Card, ErrorState, Pagination, SkeletonRows, StatTile, Table, TableMessage, formatDate, formatDuration, formatMoney, usePagination } from "@/components/ui";
 
 // /call-costs can't filter by campaign, so take its largest page and match rows to this
 // campaign's attempts. Calls older than the newest RECENT_LIMIT costed calls are missed.
 const RECENT_LIMIT = 500;
-const HEAD = ["Lead", "When", "Attempt", "Duration", "Turns", "Speech-to-text", "AI model", "Text-to-speech", "Total"];
+const HEAD = ["Lead", "Mobile number", "When", "Duration", "AI cost", "Plivo cost", "Total cost"];
 
 /**
  * AI cost (Sarvam STT / LLM / TTS) for one campaign's calls
@@ -26,10 +26,15 @@ export default function CampaignCosts({ calls, callsLoading }: { calls: Schedule
 
   // attempt id / Plivo call id → the lead and attempt it belongs to
   const owners = useMemo(() => {
-    const map = new Map<string, { lead: string; attemptNo: number }>();
+    const map = new Map<string, { lead: string; phone: string; plivoCost: number | null }>();
     for (const call of calls ?? []) {
       for (const a of call.attempt_history ?? []) {
-        const owner = { lead: call.lead_name || call.phone_e164, attemptNo: a.attempt_no };
+        const amount = a.total_amount == null ? null : Number(a.total_amount);
+        const owner = {
+          lead: call.lead_name || call.phone_e164,
+          phone: call.phone_e164,
+          plivoCost: amount !== null && Number.isFinite(amount) ? amount : null,
+        };
         map.set(a.id, owner);
         if (a.plivo_call_uuid) map.set(a.plivo_call_uuid, owner);
       }
@@ -40,7 +45,16 @@ export default function CampaignCosts({ calls, callsLoading }: { calls: Schedule
   const rows = useMemo(
     () =>
       (costs.data?.items ?? [])
-        .map((c) => ({ ...c, owner: owners.get(c.attempt_id ?? "") ?? owners.get(c.call_uuid) }))
+        .map((c) => {
+          const owner = owners.get(c.attempt_id ?? "") ?? owners.get(c.call_uuid);
+          const plivoCost = owner?.plivoCost;
+          return {
+            ...c,
+            owner,
+            plivoCost,
+            combinedCost: plivoCost == null ? null : plivoCost + c.total_cost,
+          };
+        })
         .filter((c) => c.owner),
     [costs.data, owners],
   );
@@ -83,7 +97,7 @@ export default function CampaignCosts({ calls, callsLoading }: { calls: Schedule
 
       <CostSplit loading={loading} parts={rows.length ? totals : undefined} description="Share of this campaign's AI spend." />
 
-      <Card flush title="Cost per call" description="Newest first. Each attempt's AI charges, split by service.">
+      <Card flush title="Cost per call" description="Newest first. AI costs include speech-to-text, model, and text-to-speech.">
         <div className="space-y-3 pb-3">
           <Table bare head={HEAD} label="Cost per call">
             {loading ? (
@@ -94,14 +108,12 @@ export default function CampaignCosts({ calls, callsLoading }: { calls: Schedule
               pagination.pageItems.map((c) => (
                 <tr key={c.call_uuid}>
                   <td className="px-4 py-3 font-medium text-heading">{c.owner!.lead}</td>
+                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">{c.owner!.phone || "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.started_at ?? c.created_at)}</td>
-                  <td className="tnum px-4 py-3 text-body">#{c.owner!.attemptNo}</td>
                   <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(c.duration_seconds)}</td>
-                  <td className="tnum px-4 py-3 text-body">{c.turns}</td>
-                  <td className="tnum px-4 py-3 text-body">{rupees(c.stt_cost, 3)}</td>
-                  <td className="tnum px-4 py-3 text-body">{rupees(c.llm_cost, 3)}</td>
-                  <td className="tnum px-4 py-3 text-body">{rupees(c.tts_cost, 3)}</td>
-                  <td className="tnum px-4 py-3 font-semibold text-heading">{rupees(c.total_cost, 3)}</td>
+                  <td className="tnum px-4 py-3 text-body">{rupees(c.total_cost, 3)}</td>
+                  <td className="tnum px-4 py-3 text-body">{c.plivoCost == null ? "—" : formatMoney(c.plivoCost, 4)}</td>
+                  <td className="tnum px-4 py-3 font-semibold text-heading">{c.combinedCost == null ? "—" : formatMoney(c.combinedCost, 4)}</td>
                 </tr>
               ))
             )}

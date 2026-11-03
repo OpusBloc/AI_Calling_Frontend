@@ -40,17 +40,16 @@ const NAME_PLACEHOLDER = /\{\{\s*@?\s*name\s*\}\}/gi;
 
 const catalogKey = ["voice-catalog"];
 const customKey = ["custom-voices"];
-/** Fixed row heights (rem), so the list's height can be worked out from its rows */
-const ROW_REM = 3.75;
+/** Height of the sticky group headers (rem) */
 const GROUP_REM = 2;
-const MAX_LIST_REM = 28;
+const VOICE_PAGE_SIZE = 12;
 /** Reference clip length Sarvam's voice cloning expects */
 const CLIP_MIN_SECONDS = 10;
 const CLIP_MAX_SECONDS = 15;
 
 /**
- * Choose the voice an agent speaks with: a stock Sarvam voice (previewed saying the
- * agent's greeting) or a custom voice cloned from a recording.
+ * Choose the voice an agent speaks with: a stock Sarvam voice (previewed saying its
+ * name and the agent's greeting) or a custom voice cloned from a recording.
  */
 export default function VoicePicker({
   value,
@@ -62,7 +61,7 @@ export default function VoicePicker({
   value: string;
   onChange: (voiceId: string) => void;
   greeting: string;
-  /** The agent's main language; previews speak in it */
+  /** The agent's main language; used when a voice has no language of its own */
   language: string;
   onEditGreeting: () => void;
 }) {
@@ -72,26 +71,63 @@ export default function VoicePicker({
   const voices = useMemo(() => catalog.data?.voices ?? [], [catalog.data]);
   const customVoices = useMemo(() => custom.data ?? [], [custom.data]);
   const [adding, setAdding] = useState(false);
+  const [visibleStockCount, setVisibleStockCount] = useState(VOICE_PAGE_SIZE);
+  const stockListRef = useRef<HTMLDivElement>(null);
+  const lastLoadScrollTop = useRef(0);
 
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("");
+  const [style, setStyle] = useState("");
   const languages = useMemo(() => [...new Set(voices.map((v) => v.language_code))].sort(), [voices]);
-  const matches = (text: string, lang: string | null | undefined) =>
-    (!language || lang === language) && text.toLowerCase().includes(search.trim().toLowerCase());
-  const shown = voices.filter((v) => matches(`${v.speaker} ${v.voice_id} ${v.style ?? ""}`, v.language_code));
+  // Only styles that have at least one voice in the chosen language
+  const styles = useMemo(
+    () =>
+      [
+        ...new Set(
+          voices
+            .filter((v) => !language || v.language_code === language)
+            .map((v) => v.style?.trim())
+            .filter(Boolean) as string[],
+        ),
+      ].sort(),
+    [voices, language],
+  );
+  // If the chosen style isn't available in this language any more, treat it as "All styles"
+  const activeStyle = styles.includes(style) ? style : "";
+
+  const matches = (text: string, lang: string | null | undefined, voiceStyle?: string | null) =>
+    (!language || lang === language) &&
+    (!activeStyle || voiceStyle?.trim() === activeStyle) &&
+    text.toLowerCase().includes(search.trim().toLowerCase());
+
+  const shown = voices.filter((v) => matches(`${v.speaker} ${v.voice_id} ${v.style ?? ""}`, v.language_code, v.style));
+  // Custom voices have no style, so choosing a style hides them
   const shownCustom = customVoices.filter((v) => matches(`${v.name} ${v.id}`, v.language));
   const known = [...voices.map((v) => v.voice_id), ...customVoices.map((v) => v.id)];
   const selectedMissing = !!value && catalog.isSuccess && custom.isFetched && !known.includes(value);
+  const filtered = !!search.trim() || !!language || !!activeStyle;
+  const shownPage = shown.slice(0, visibleStockCount);
+  const hasMoreVoices = visibleStockCount < shown.length;
+
+  useEffect(() => {
+    setVisibleStockCount(VOICE_PAGE_SIZE);
+    lastLoadScrollTop.current = 0;
+    stockListRef.current?.scrollTo({ top: 0 });
+  }, [search, language, activeStyle, voices.length, customVoices.length]);
+
+  const handleStockScroll = () => {
+    const list = stockListRef.current;
+    if (!list || !hasMoreVoices) return;
+
+    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 100;
+    if (nearBottom && list.scrollTop > lastLoadScrollTop.current) {
+      lastLoadScrollTop.current = list.scrollTop;
+      setVisibleStockCount((count) => count + VOICE_PAGE_SIZE);
+    }
+  };
 
   const previewText = (greeting.trim() ? greeting.trim().replace(NAME_PLACEHOLDER, SAMPLE_NAME) : FALLBACK_TEXT).slice(0, 1000);
   const preview = usePreview(previewText, agentLanguage);
-
-  // Height follows the full list, not the filtered one: short lists leave no empty
-  // space, and filtering never moves the page
-  const rows = 1 + (selectedMissing ? 1 : 0) + customVoices.length + Math.max(voices.length, 1);
-  const groups = customVoices.length ? 2 : 0;
-  const listHeight = `${Math.min(MAX_LIST_REM, rows * ROW_REM + groups * GROUP_REM)}rem`;
-  const filtered = !!search.trim() || !!language;
 
   const upload = useMutation({
     mutationFn: (file: File) => {
@@ -110,7 +146,9 @@ export default function VoicePicker({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-heading">Voice</h2>
-          <p className="mt-0.5 text-sm text-muted">The voice this agent speaks with on every call. Play one to hear your greeting.</p>
+          <p className="mt-0.5 text-sm text-muted">
+            The voice this agent speaks with on every call. Click a voice to select it and hear it say its name and your greeting.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label
@@ -151,15 +189,15 @@ export default function VoicePicker({
       {catalog.isError ? (
         <ErrorState title="Couldn't load voices" message={(catalog.error as Error).message} onRetry={() => catalog.refetch()} />
       ) : catalog.isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} className="h-14 rounded-md" />
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-16 rounded-md" />
           ))}
         </div>
       ) : (
         <>
           {voices.length + customVoices.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
+            <div className="grid gap-3 sm:grid-cols-[1fr_200px_200px]">
               <SearchInput value={search} onChange={setSearch} placeholder="Search voices…" label="Search voices" />
               <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
                 <option value="">All languages</option>
@@ -169,60 +207,86 @@ export default function VoicePicker({
                   </option>
                 ))}
               </Select>
+              <Select value={activeStyle} onChange={(e) => setStyle(e.target.value)} aria-label="Style">
+                <option value="">All styles</option>
+                {styles.map((s) => (
+                  <option key={s} value={s}>
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </Select>
             </div>
           )}
 
-          <div
-            role="radiogroup"
-            aria-label="Agent voice"
-            style={{ height: listHeight }}
-            className="relative overflow-y-auto overscroll-contain rounded-md border border-hairline"
-          >
-            <VoiceRow label="Default voice" detail="The system's standard voice" selected={!value} onSelect={() => onChange("")} />
-            {selectedMissing && (
-              <VoiceRow label={value} detail="Current voice · not in either list" selected onSelect={() => onChange(value)} />
-            )}
+          <div role="radiogroup" aria-label="Agent voice" className="space-y-3 rounded-lg border border-hairline bg-surface p-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <VoiceCard label="Default voice" detail="The system's standard voice" selected={!value} onSelect={() => onChange("")} />
+              {selectedMissing && (
+                <VoiceCard label={value} detail="Current voice · not in either list" selected onSelect={() => onChange(value)} />
+              )}
+            </div>
 
             {customVoices.length > 0 && (
-              <>
+              <section className="space-y-2">
                 <GroupLabel>Custom voices</GroupLabel>
-                {shownCustom.map((v) => (
-                  <VoiceRow
-                    key={v.id}
-                    playable={{ id: v.id, language: v.language, custom: true }}
-                    label={v.name}
-                    detail={[v.language && languageName(v.language), v.gender, "Custom"].filter(Boolean).join(" · ")}
-                    selected={value === v.id}
-                    onSelect={() => onChange(v.id)}
-                    preview={preview}
-                  />
-                ))}
-                {filtered && shownCustom.length === 0 && <NoMatch />}
-                <GroupLabel>Stock voices</GroupLabel>
-              </>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {shownCustom.map((v) => (
+                    <VoiceCard
+                      key={v.id}
+                      playable={{ id: v.id, name: v.name, language: v.language, custom: true }}
+                      label={v.name}
+                      detail={[v.language && languageName(v.language), v.gender, "Custom"].filter(Boolean).join(" · ")}
+                      selected={value === v.id}
+                      onSelect={() => onChange(v.id)}
+                      preview={preview}
+                    />
+                  ))}
+                  {filtered && shownCustom.length === 0 && <NoMatch />}
+                </div>
+              </section>
             )}
 
-            {voices.length === 0 ? (
-              <RowMessage>No stock voices yet. Import the voice list (CSV or Excel).</RowMessage>
-            ) : (
-              shown.map((v) => (
-                <VoiceRow
-                  key={v.voice_id}
-                  playable={{ id: v.voice_id, language: v.language_code }}
-                  label={v.speaker || v.voice_id}
-                  detail={[languageName(v.language_code), v.style].filter(Boolean).join(" · ")}
-                  selected={value === v.voice_id}
-                  onSelect={() => onChange(v.voice_id)}
-                  preview={preview}
-                />
-              ))
-            )}
-            {voices.length > 0 && shown.length === 0 && <NoMatch />}
+            <section className="space-y-2">
+              <GroupLabel>Stock voices</GroupLabel>
+              {voices.length === 0 ? (
+                <RowMessage>No stock voices yet. Import the voice list (CSV or Excel).</RowMessage>
+              ) : shown.length === 0 ? (
+                <RowMessage>No stock voices match these filters.</RowMessage>
+              ) : (
+                <div
+                  ref={stockListRef}
+                  onScroll={handleStockScroll}
+                  className="h-80 overflow-y-auto overscroll-contain rounded-md border border-hairline p-2"
+                >
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {shownPage.map((v) => (
+                      <VoiceCard
+                        key={v.voice_id}
+                        playable={{ id: v.voice_id, name: v.speaker || v.voice_id, language: v.language_code }}
+                        label={v.speaker || v.voice_id}
+                        detail={[languageName(v.language_code), v.style].filter(Boolean).join(" · ")}
+                        selected={value === v.voice_id}
+                        onSelect={() => onChange(v.voice_id)}
+                        preview={preview}
+                      />
+                    ))}
+                    {hasMoreVoices && (
+                      <div role="status" aria-live="polite" className="col-span-full py-3 text-center text-xs text-muted">
+                        Showing {shownPage.length} of {shown.length} stock voices · scroll here for more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
-          <p className="text-xs text-muted">
-            {voices.length} stock{customVoices.length ? ` · ${customVoices.length} custom` : ""} voices. Previews use “{SAMPLE_NAME}” in
-            place of {"{{name}}"}.
-            {custom.isError && " Custom voices couldn't be loaded."}
+          <p className="flex flex-wrap justify-between gap-2 text-xs text-muted">
+            <span>
+              Showing {shownPage.length} of {shown.length} matching stock voices
+              {customVoices.length > 0 ? ` · ${shownCustom.length} custom ${shownCustom.length === 1 ? "voice" : "voices"}` : ""}.
+              {custom.isError && " Custom voices couldn't be loaded."}
+            </span>
+            <span>Previews use “{SAMPLE_NAME}” in place of {"{{name}}"}.</span>
           </p>
         </>
       )}
@@ -245,7 +309,7 @@ export default function VoicePicker({
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="sticky top-0 z-10 flex items-center border-t border-hairline bg-raised px-3 text-xs font-semibold uppercase tracking-wide text-muted"
+      className="sticky top-0 z-10 col-span-full -mx-2 flex items-center bg-raised px-5 text-xs font-semibold uppercase tracking-wide text-muted"
       style={{ height: `${GROUP_REM}rem` }}
     >
       {children}
@@ -254,19 +318,16 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 function RowMessage({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="flex items-center justify-center border-t border-hairline px-4 text-center text-sm text-muted" style={{ height: `${ROW_REM}rem` }}>
-      {children}
-    </p>
-  );
+  return <p className="col-span-full px-4 py-6 text-center text-sm text-muted">{children}</p>;
 }
 
 const NoMatch = () => <RowMessage>No voices match these filters.</RowMessage>;
 
 /** Stock voices speak through /voices/speak, custom (cloned) ones through /voices/clone */
-type Playable = { id: string; language: string | null; custom?: boolean };
+type Playable = { id: string; name: string; language: string | null; custom?: boolean };
 
-function VoiceRow({
+/** One voice as a card. Clicking it selects the voice and plays it (click again to stop). */
+function VoiceCard({
   playable,
   label,
   detail,
@@ -284,47 +345,50 @@ function VoiceRow({
   const playing = !!playable && preview?.playingId === playable.id;
   const loading = !!playable && preview?.loadingId === playable.id;
 
+  const activate = () => {
+    onSelect();
+    // Ignore the play part while another voice is still being generated
+    if (playable && preview && (!preview.loadingId || loading)) preview.toggle(playable);
+  };
+
   return (
     <div
+      role="radio"
+      aria-checked={selected}
+      tabIndex={0}
+      onClick={activate}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          activate();
+        }
+      }}
       className={clsx(
-        "flex items-center gap-3 border-t border-hairline px-3 transition-colors first:border-t-0",
-        selected ? "bg-accent-bg" : "hover:bg-surface-hover",
+        "flex min-w-0 cursor-pointer items-center gap-3 rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        selected ? "border-accent bg-accent-bg" : "border-hairline hover:bg-surface-hover",
       )}
-      style={{ height: `${ROW_REM}rem` }}
     >
-      <label className="relative flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-        <input type="radio" name="agent-voice" checked={selected} onChange={onSelect} className="sr-only" />
-        <span
-          aria-hidden
-          className={clsx(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-            selected ? "border-accent bg-accent text-on-accent" : "border-hairline-strong",
-          )}
-        >
-          {selected && <Check size={12} strokeWidth={3} />}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-heading">{label}</span>
-          <span className="block truncate text-xs text-muted">{detail}</span>
-        </span>
-      </label>
-      {playable && preview && (
-        <button
-          type="button"
-          onClick={() => preview.toggle(playable)}
-          disabled={!!preview.loadingId && !loading}
-          aria-label={playing ? `Stop ${label}` : `Play ${label}`}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline text-heading transition-colors hover:bg-surface disabled:opacity-50"
-        >
-          {loading ? (
-            <Loader2 size={15} className="animate-spin" aria-hidden />
-          ) : playing ? (
-            <Square size={13} fill="currentColor" aria-hidden />
-          ) : (
-            <Play size={15} fill="currentColor" aria-hidden />
-          )}
-        </button>
-      )}
+      <span
+        aria-hidden
+        className={clsx(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
+          selected ? "border-accent bg-accent text-on-accent" : "border-hairline text-heading",
+        )}
+      >
+        {loading ? (
+          <Loader2 size={15} className="animate-spin" />
+        ) : playing ? (
+          <Square size={13} fill="currentColor" />
+        ) : selected ? (
+          <Check size={15} strokeWidth={3} />
+        ) : playable ? (
+          <Play size={15} fill="currentColor" />
+        ) : null}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-heading">{label}</span>
+        <span className="block truncate text-xs text-muted">{detail}</span>
+      </span>
     </div>
   );
 }
@@ -483,9 +547,9 @@ function useAudioDuration(file: File | null) {
 }
 
 /**
- * Speaks `text` with a voice (stock or custom) on demand, in the agent's language when
- * set. Clips are kept per voice, language and text, so replaying doesn't generate (and
- * store) a new sample.
+ * Speaks "Hi, I'm {name}." followed by `text` with a voice (stock or custom), in the
+ * voice's own language (falling back to the agent's). Clips are kept per voice,
+ * language and text, so replaying doesn't generate (and store) a new sample.
  */
 function usePreview(text: string, agentLanguage: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -509,16 +573,18 @@ function usePreview(text: string, agentLanguage: string) {
   const toggle = async (voice: Playable) => {
     if (playingId === voice.id) return stop();
     stop();
-    const language = agentLanguage || (voice.language && /^[a-z]{2}-[A-Z]{2}$/.test(voice.language) ? voice.language : "en-IN");
-    const key = `${voice.id}|${language}|${text}`;
+    const language =
+      voice.language && /^[a-z]{2}-[A-Z]{2}$/.test(voice.language) ? voice.language : agentLanguage || "en-IN";
+    const spoken = `Hi, I'm ${voice.name}. ${text}`.slice(0, 1000);
+    const key = `${voice.id}|${language}|${spoken}`;
     let url = clips.current.get(key);
     if (!url) {
       setLoadingId(voice.id);
       try {
         const audio = voice.custom
-          ? await speakWithCustomVoice({ voiceId: voice.id, text, language })
+          ? await speakWithCustomVoice({ voiceId: voice.id, text: spoken, language })
           : await getSpeakAudio(
-              (await speakSample({ text, speaker: voice.id, target_language_code: language, output_audio_codec: "mp3" })).id,
+              (await speakSample({ text: spoken, speaker: voice.id, target_language_code: language, output_audio_codec: "mp3" })).id,
             );
         url = URL.createObjectURL(audio);
         clips.current.set(key, url);

@@ -870,7 +870,7 @@ export function FormPage({
         </div>
       )}
       <div className="divide-y divide-hairline">{children}</div>
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div data-sticky-form-footer className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {footer}
       </div>
     </div>
