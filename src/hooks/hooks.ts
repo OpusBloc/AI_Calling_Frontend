@@ -185,6 +185,7 @@ export const useClassifications = (agentId: string, campaignId?: string) =>
     retry: false,
   });
 
+
 export const useClassification = (agentId: string, classificationId: string) =>
   useQuery<Classification>({
     queryKey: ["classification", agentId, classificationId],
@@ -314,3 +315,4 @@ export const useDeleteWhatsAppMessage = () => {
     onSuccess: refresh,
   });
 };
+

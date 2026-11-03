@@ -30,8 +30,10 @@ export default function MultiSelect({
   loading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLFieldSetElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const term = search.trim().toLowerCase();
   const filtered = options.filter((o) => `${o.label} ${o.detail ?? ""}`.toLowerCase().includes(term));
@@ -44,6 +46,28 @@ export default function MultiSelect({
     document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updateDirection = () => {
+      const trigger = triggerRef.current?.getBoundingClientRect();
+      if (!trigger) return;
+
+      const footer = document.querySelector<HTMLElement>("[data-sticky-form-footer]");
+      const footerTop = footer?.getBoundingClientRect().top ?? window.innerHeight;
+      const spaceBelow = Math.max(0, Math.min(window.innerHeight, footerTop) - trigger.bottom);
+      setOpenUpwards(spaceBelow < 232 && trigger.top > spaceBelow);
+    };
+
+    updateDirection();
+    window.addEventListener("resize", updateDirection);
+    window.addEventListener("scroll", updateDirection, true);
+    return () => {
+      window.removeEventListener("resize", updateDirection);
+      window.removeEventListener("scroll", updateDirection, true);
+    };
+  }, [open]);
 
   return (
     <fieldset ref={ref} className="min-w-0">
@@ -58,7 +82,7 @@ export default function MultiSelect({
       </legend>
 
       <div className="relative">
-        <div className="glow-field flex h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 transition-colors hover:border-accent-strong focus-within:border-accent">
+        <div ref={triggerRef} className="glow-field flex h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 transition-colors hover:border-accent-strong focus-within:border-accent">
           <Search size={15} aria-hidden className="shrink-0 text-muted" />
           <input
             value={search}
@@ -94,7 +118,10 @@ export default function MultiSelect({
         {open && (
           <div
             id={listId}
-            className="animate-fade-in absolute inset-x-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-md border border-hairline-strong bg-surface p-1 shadow-md"
+            className={clsx(
+              "animate-fade-in absolute inset-x-0 z-20 max-h-56 overflow-y-auto rounded-md border border-hairline-strong bg-surface p-1 shadow-md",
+              openUpwards ? "bottom-full mb-1" : "top-full mt-1",
+            )}
           >
             {filtered.length === 0 ? (
               <p className="px-2 py-3 text-sm text-muted">

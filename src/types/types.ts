@@ -55,6 +55,16 @@ export interface CallAttempt {
   transcript?: Array<Record<string, string>>;
   transfer_status?: string | null;
   transfer_reason?: string | null;
+  whatsapp_messages?: SentWhatsAppMessage[];
+}
+
+export interface SentWhatsAppMessage {
+  id: string;
+  message_name: string | null;
+  status: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
 }
 
 export type ScheduledCampaignCall = Omit<
