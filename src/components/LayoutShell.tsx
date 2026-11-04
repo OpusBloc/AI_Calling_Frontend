@@ -28,7 +28,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   if (pathname.startsWith("/auth")) return <>{children}</>;
 
   return (
-    <div className="flex h-dvh bg-canvas">
+    <div className="flex h-dvh overflow-hidden bg-canvas">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-heading focus:shadow-lg"
@@ -36,9 +36,9 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         Skip to content
       </a>
       <Sidebar open={menuOpen} onClose={closeMenu} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="ml-0 flex min-h-0 min-w-0 flex-1 flex-col md:ml-64">
         <Navbar onMenuClick={() => setMenuOpen(true)} />
-        <main id="main" ref={mainRef} tabIndex={-1} className="flex-1 overflow-y-auto outline-none">
+        <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
           <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
         </main>
       </div>

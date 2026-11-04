@@ -51,6 +51,7 @@ export interface CallAttempt {
   hangup_cause_code?: number | null;
   hangup_cause_name?: string | null;
   hangup_source?: string | null;
+  hangup_response?: Record<string, unknown>;
   recording_url?: string | null;
   transcript?: Array<Record<string, string>>;
   transfer_status?: string | null;

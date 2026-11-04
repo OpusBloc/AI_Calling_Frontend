@@ -89,6 +89,8 @@ export interface CatalogVoice {
 }
 
 export const listVoiceCatalog = () => api<{ total: number; voices: CatalogVoice[] }>("/voices/catalog");
+export const getDefaultVoiceConfig = () =>
+  api<{ speaker: string; language: string }>("/voices/config/default-voice");
 /** Multipart `file` (.csv/.xlsx); replaces the whole list */
 export const uploadVoiceCatalog = (form: FormData) => api<unknown>("/voices/catalog", { method: "POST", body: form });
 
@@ -148,6 +150,7 @@ export interface SpeakInput {
   /** Stock voice id */
   speaker: string;
   target_language_code: string;
+  model?: string;
   pace?: number;
   speech_sample_rate?: number;
   output_audio_codec?: "mp3" | "wav";
@@ -365,4 +368,3 @@ export const updateWhatsAppMessage = (id: string, body: Partial<WhatsAppMessageI
   api<WhatsAppMessage>(`/whatsapp-messages/${encodeURIComponent(id)}`, { method: "PATCH", body });
 export const deleteWhatsAppMessage = (id: string) =>
   api<void>(`/whatsapp-messages/${encodeURIComponent(id)}`, { method: "DELETE" });
-

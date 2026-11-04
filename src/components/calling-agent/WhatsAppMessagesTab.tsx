@@ -199,7 +199,11 @@ export default function WhatsAppMessagesTab() {
                   <td className="max-w-md px-4 py-3 text-body">
                     <span className="line-clamp-2 whitespace-pre-line">{m.content}</span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(m.updated_at)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">
+                    {m.updated_at
+                      ? new Date(m.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+                      : "—"}
+                  </td>
                   <td className="px-4 py-2">
                     <div className="flex justify-end gap-1">
                       <IconButton label={`Edit ${m.name || m.template_id}`} onClick={() => openEdit(m)}>

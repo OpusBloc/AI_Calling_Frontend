@@ -93,7 +93,7 @@ export default function PlivoPoolPage() {
         breadcrumbs={crumbs}
         title={pool.name}
         meta={<StatusBadge status={pool.status} />}
-        description={`Created ${formatDate(pool.created_at)} · Updated ${formatDate(pool.updated_at)}`}
+        description={`Created ${new Date(pool.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(pool.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
         actions={
           <>
             <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="text-loss">

@@ -8,6 +8,9 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  ArrowDownUp,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
   ArrowLeft,
   IndianRupee,
   LayoutDashboard,
@@ -47,7 +50,7 @@ import PageHeader from "@/components/PageHeader";
 import { formatDays, formatWindow } from "@/components/campaigns/CampaignsTab";
 import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/DispatchPanel";
 import CampaignCosts from "@/components/campaigns/CampaignCosts";
-import type { ClassificationCallsResponse } from "@/lib/callingAgentApi";
+import type { ClassificationCall, ClassificationCallsResponse } from "@/lib/callingAgentApi";
 
 import {
   Badge,
@@ -58,6 +61,7 @@ import {
   Drawer,
   EmptyState,
   ErrorState,
+  IconButton,
   Loading,
   Pagination,
   SearchInput,
@@ -211,7 +215,7 @@ function CampaignDetails() {
         breadcrumbs={crumbs}
         title={campaign.name}
         meta={<StatusBadge status={campaign.status} />}
-        description={`Created ${formatDate(campaign.created_at)} · Updated ${formatDate(campaign.updated_at)}`}
+        description={`Created ${new Date(campaign.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(campaign.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
         actions={
           <>
             <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="text-loss">
@@ -363,7 +367,9 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
                       }}
                     />
                   </span>
-                  <span className="line-clamp-2 min-h-8 text-xs font-medium text-heading">{bar.name}</span>
+                  <span className="line-clamp-2 min-h-8 break-words text-xs font-medium text-heading">
+                    {bar.name.replaceAll("_", " ")}
+                  </span>
                 </button>
               );
             })}
@@ -453,6 +459,8 @@ function ClassificationCallsPanel({
   const calls = data?.calls ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const [selectedCall, setSelectedCall] = useState<ClassificationCall | null>(null);
+  const [lastOpenedCallId, setLastOpenedCallId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -473,42 +481,46 @@ function ClassificationCallsPanel({
           <EmptyState title="No calls in this classification" text="No call records are available yet." />
         ) : (
           <div className="space-y-4">
-            {calls.map((call, index) => (
-              <article
-                key={call.call_uuid ?? call.attempt_id ?? `${page}-${index}`}
-                className="space-y-3 rounded-lg border border-hairline bg-surface p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-medium text-heading">{call.name || "Unnamed caller"}</h3>
-                    <p className="tnum mt-0.5 text-sm text-muted">{call.phone || "No phone number"}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                    {call.status && <StatusBadge status={call.status} />}
-                    {call.duration_seconds != null && <span>{formatDuration(call.duration_seconds)}</span>}
-                    <span>{formatDate(call.classified_at ?? call.ended_at)}</span>
-                  </div>
-                </div>
-                {call.reason && (
-                  <p className="whitespace-pre-wrap rounded-md bg-raised p-3 text-sm text-body">{call.reason}</p>
-                )}
-                {call.audio && (
-                  <audio controls preload="none" src={call.audio} className="w-full">
-                    Your browser does not support audio.
-                  </audio>
-                )}
-                {call.transcript != null && (
-                  <details>
-                    <summary className="cursor-pointer text-sm font-medium text-accent-text">View transcript</summary>
-                    <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-raised p-3 text-xs text-body">
-                      {typeof call.transcript === "string"
-                        ? call.transcript
-                        : JSON.stringify(call.transcript, null, 2) ?? ""}
-                    </pre>
-                  </details>
-                )}
-              </article>
-            ))}
+            <Table head={["Name", "Mobile number", "Status", "Duration", "Time"]} label={`${title} calls`}>
+              {calls.map((call, index) => (
+                <tr
+                  key={call.call_uuid ?? call.attempt_id ?? `${page}-${index}`}
+                  tabIndex={0}
+                  onClick={() => {
+                    setSelectedCall(call);
+                    setLastOpenedCallId(call.call_uuid ?? call.attempt_id ?? `${page}-${index}`);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      setSelectedCall(call);
+                      setLastOpenedCallId(call.call_uuid ?? call.attempt_id ?? `${page}-${index}`);
+                    }
+                  }}
+                  className={`cursor-pointer align-middle outline-none transition-colors ${
+                    lastOpenedCallId === (call.call_uuid ?? call.attempt_id ?? `${page}-${index}`)
+                      ? "bg-accent/10 shadow-[inset_3px_0_0_var(--accent)]"
+                      : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]"
+                  }`}
+                >
+                  <td className="px-4 py-3 font-medium text-heading">
+                    {call.name || "Unnamed caller"}
+                    {lastOpenedCallId === (call.call_uuid ?? call.attempt_id ?? `${page}-${index}`) && (
+                      <span className="ml-2 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent-text">
+                        Last opened
+                      </span>
+                    )}
+                  </td>
+                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone || "—"}</td>
+                  <td className="px-4 py-3">{call.status ? <StatusBadge status={call.status} /> : "—"}</td>
+                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">
+                    {call.duration_seconds != null ? formatDuration(call.duration_seconds) : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">
+                    {formatDate(call.classified_at ?? call.ended_at)}
+                  </td>
+                </tr>
+              ))}
+            </Table>
 
             {pageCount > 1 && (
               <div className="flex items-center justify-between gap-3 border-t border-hairline pt-4 text-sm text-muted">
@@ -526,7 +538,142 @@ function ClassificationCallsPanel({
           </div>
         )}
       </Card>
+      {selectedCall && (
+        <ClassificationCallDrawer call={selectedCall} classificationName={title} onClose={() => setSelectedCall(null)} />
+      )}
     </div>
+  );
+}
+
+function transcriptText(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value == null) return "";
+  try {
+    return JSON.stringify(value) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function transcriptEntries(transcript: unknown): Array<{ role: string; content: string }> {
+  let value = transcript;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return value.trim() ? [{ role: "Transcript", content: value }] : [];
+    }
+  }
+
+  if (typeof value === "string") return value.trim() ? [{ role: "Transcript", content: value }] : [];
+  const entries = Array.isArray(value) ? value : value && typeof value === "object" ? [value] : [];
+  return entries
+    .map((entry) => {
+      if (typeof entry === "string") return { role: "Lead", content: entry };
+      if (!entry || typeof entry !== "object") return null;
+
+      const record = entry as Record<string, unknown>;
+      const content = record.content ?? record.text ?? record.message ?? record.transcript;
+      const role = record.role ?? record.speaker ?? record.name ?? "Lead";
+      const text = transcriptText(content ?? record);
+      return text ? { role: transcriptText(role) || "Lead", content: text } : null;
+    })
+    .filter((entry): entry is { role: string; content: string } => entry !== null);
+}
+
+function ClassificationCallDrawer({
+  call,
+  classificationName,
+  onClose,
+}: {
+  call: ClassificationCall;
+  classificationName: string;
+  onClose: () => void;
+}) {
+  const transcript = transcriptEntries(call.transcript);
+  const callTime = call.classified_at ?? call.ended_at;
+
+  return (
+    <Drawer
+      wide
+      title={call.name || call.phone || "Call details"}
+      description={call.phone || undefined}
+      onClose={onClose}
+    >
+      <DetailList
+        columns={2}
+        items={[
+          { label: "Name", value: call.name || "Unnamed caller" },
+          { label: "Mobile number", value: <span className="tnum">{call.phone || "—"}</span> },
+          { label: "Status", value: call.status ? <StatusBadge status={call.status} /> : "—" },
+          {
+            label: "Duration",
+            value: (
+              <span className="tnum">
+                {call.duration_seconds != null ? formatDuration(call.duration_seconds) : "—"}
+              </span>
+            ),
+          },
+          { label: "Classification", value: call.classification || classificationName },
+          { label: "Time", value: formatDate(callTime) },
+          { label: "Classified at", value: formatDate(call.classified_at) },
+          { label: "Ended at", value: formatDate(call.ended_at) },
+          { label: "Hang-up cause", value: call.hangup_cause || "—" },
+          { label: "Transfer status", value: call.transfer_status ? humanize(call.transfer_status) : "—" },
+          { label: "Call ID", value: <span className="break-all font-mono text-xs">{call.call_uuid || "—"}</span> },
+          { label: "Attempt ID", value: <span className="break-all font-mono text-xs">{call.attempt_id || "—"}</span> },
+        ]}
+      />
+
+      {call.reason && (
+        <section className="space-y-2">
+          <h4 className="eyebrow">Classification reason</h4>
+          <p className="whitespace-pre-wrap rounded-md bg-raised p-3 text-sm text-body">{call.reason}</p>
+        </section>
+      )}
+
+      <section className="space-y-2">
+        <h4 className="eyebrow">Voice recording</h4>
+        {call.audio ? (
+          <audio controls preload="none" src={call.audio} className="w-full">
+            Your browser does not support audio.
+          </audio>
+        ) : (
+          <p className="rounded-md bg-raised p-3 text-sm text-muted">No recording is available for this call.</p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h4 className="eyebrow">Transcript</h4>
+        {transcript.length ? (
+          <ol
+            aria-label="Call transcript"
+            className="max-h-96 space-y-3 overflow-y-auto rounded-lg border border-hairline bg-raised p-4"
+          >
+            {transcript.map((line, index) => {
+              const role = line.role.toLowerCase();
+              const agent = role.includes("assistant") || role.includes("agent");
+              return (
+                <li key={index} className={`flex ${agent ? "justify-start" : "justify-end"}`}>
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                      agent ? "bg-accent-bg text-heading" : "bg-surface text-body"
+                    }`}
+                  >
+                    <span className="mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-muted">
+                      {agent ? "Agent" : line.role}
+                    </span>
+                    <p className="whitespace-pre-wrap">{line.content}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="rounded-md bg-raised p-3 text-sm text-muted">No transcript is available for this call.</p>
+        )}
+      </section>
+    </Drawer>
   );
 }
 
@@ -601,7 +748,9 @@ function CallsCard({
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [talkTimeSort, setTalkTimeSort] = useState<"default" | "asc" | "desc">("default");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
   const costs = useQuery({
     queryKey: ["call-costs", "list", 1, 500],
     queryFn: () => getCallCosts(1, 500),
@@ -645,7 +794,13 @@ function CallsCard({
       (filter !== "messages:none" || !hasSentWhatsAppMessages(c)) &&
       (!term || `${c.lead_name ?? ""} ${c.phone_e164}`.toLowerCase().includes(term)),
   );
-  const pagination = usePagination(filtered, 25);
+  const sortedCalls = [...filtered];
+  if (talkTimeSort !== "default") {
+    sortedCalls.sort((a, b) =>
+      talkTimeSort === "asc" ? talkSeconds(a) - talkSeconds(b) : talkSeconds(b) - talkSeconds(a),
+    );
+  }
+  const pagination = usePagination(sortedCalls, 25);
   const open = list.find((c) => c.id === openId) ?? null;
 
   return (
@@ -653,7 +808,7 @@ function CallsCard({
       <Card
         flush
         title="Calls"
-        description="One row per lead. Open a call to see every attempt, its recording and the transcript."
+        description="One row per lead. Open a call to see every attempt, its recording and the transcript. The last opened call stays highlighted after you close it."
         actions={
           list.length > 0 && (
             <>
@@ -672,6 +827,23 @@ function CallsCard({
                 ))}
                 <option value="messages:sent">Messages sent</option>
               </Select>
+              <IconButton
+                label={`Talk time: ${talkTimeSort === "default" ? "default order; activate for low to high" : talkTimeSort === "asc" ? "low to high; activate for high to low" : "high to low; activate for default order"}`}
+                className="border border-hairline-strong bg-surface-input hover:bg-surface-hover"
+                onClick={() =>
+                  setTalkTimeSort((current) =>
+                    current === "default" ? "asc" : current === "asc" ? "desc" : "default",
+                  )
+                }
+              >
+                {talkTimeSort === "default" ? (
+                  <ArrowDownUp size={16} aria-hidden />
+                ) : talkTimeSort === "asc" ? (
+                  <ArrowUpNarrowWide size={16} aria-hidden />
+                ) : (
+                  <ArrowDownWideNarrow size={16} aria-hidden />
+                )}
+              </IconButton>
             </>
           )
         }
@@ -701,7 +873,11 @@ function CallsCard({
                     key={call.id}
                     call={call}
                     costs={totalsByCall.get(call.id)}
-                    onOpen={() => setOpenId(call.id)}
+                    selected={call.id === selectedCallId}
+                    onOpen={() => {
+                      setSelectedCallId(call.id);
+                      setOpenId(call.id);
+                    }}
                   />
                 ))
               )}
@@ -726,10 +902,12 @@ function CallsCard({
 function CallRow({
   call,
   costs,
+  selected,
   onOpen,
 }: {
   call: ScheduledCampaignCall;
   costs: { ai: number | null; plivo: number | null; total: number | null } | undefined;
+  selected: boolean;
   onOpen: () => void;
 }) {
   const live = ACTIVE.has(call.status.toLowerCase());
@@ -738,10 +916,19 @@ function CallRow({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className="cursor-pointer align-middle outline-none transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]"
+      className={`cursor-pointer align-middle outline-none transition-colors ${
+        selected
+          ? "bg-accent/10 shadow-[inset_3px_0_0_var(--accent)]"
+          : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]"
+      }`}
     >
       <td className="px-4 py-3 font-medium text-heading">
         {call.lead_name || <span className="text-faint">Unnamed</span>}
+        {selected && (
+          <span className="ml-2 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent-text">
+            Last opened
+          </span>
+        )}
         {live && (
           <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-gain">
             <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gain" /> Live
@@ -752,7 +939,7 @@ function CallRow({
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
       </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{talkSeconds(call) ? formatDuration(talkSeconds(call)) : <span className="text-faint">—</span>}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(talkSeconds(call))}</td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(costs?.plivo ?? 0, 4)}</td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(costs?.ai ?? 0, 4)}</td>
       <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(costs?.total ?? 0, 4)}</td>
@@ -799,7 +986,12 @@ function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: S
           { label: "Status", value: <StatusBadge status={call.status} /> },
           { label: "Last outcome", value: call.last_outcome ? <StatusBadge status={call.last_outcome} /> : "—" },
           { label: "Attempts", value: <span className="tnum">{call.attempts} of {call.retry_count + 1}</span> },
-          { label: "Scheduled", value: formatDate(call.scheduled_at) },
+          {
+            label: "Scheduled",
+            value: call.scheduled_at
+              ? new Date(call.scheduled_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+              : "—",
+          },
           { label: "Called from", value: <span className="tnum">{call.caller_number ?? "—"}</span> },
           { label: "Retries when", value: call.retry_on.map(humanize).join(", ") || "—" },
         ]}
@@ -834,6 +1026,7 @@ function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: S
             <AttemptCard
               key={a.id}
               attempt={a}
+              machineDetection={machineDetectionForAttempt(call, a)}
               aiCost={findAttemptAiCost(costs.data?.items, a)}
               aiCostError={costs.isError ? costs.error.message : null}
             />
@@ -852,12 +1045,38 @@ function findAttemptAiCost(costs: CallCost[] | undefined, attempt: CallAttempt) 
   )?.total_cost;
 }
 
+function machineDetectionForAttempt(call: ScheduledCampaignCall, attempt: CallAttempt): boolean | null {
+  const responses = Object.entries(call.hangup_responses ?? {}).filter(
+    (entry): entry is [string, Record<string, unknown>] =>
+      Boolean(entry[1]) && typeof entry[1] === "object" && !Array.isArray(entry[1]),
+  );
+  const callCallback = responses.find(
+    ([key, response]) =>
+      key === attempt.id ||
+      response.attempt_id === attempt.id ||
+      (!!attempt.plivo_call_uuid && response.CallUUID === attempt.plivo_call_uuid) ||
+      (!!attempt.plivo_request_uuid && response.RequestUUID === attempt.plivo_request_uuid),
+  )?.[1];
+  const machine = attempt.hangup_response?.Machine ?? callCallback?.Machine;
+  const causeCode =
+    attempt.hangup_response?.HangupCauseCode ?? callCallback?.HangupCauseCode ?? attempt.hangup_cause_code;
+
+  if (machine != null && machine !== "") {
+    if (String(machine).toLowerCase() === "true") return true;
+    if (String(machine).toLowerCase() === "false") return false;
+  }
+  if (String(causeCode) === "9100") return true;
+  return null;
+}
+
 function AttemptCard({
   attempt: a,
+  machineDetection,
   aiCost,
   aiCostError,
 }: {
   attempt: CallAttempt;
+  machineDetection: string;
   aiCost: number | undefined;
   aiCostError: string | null;
 }) {
@@ -877,7 +1096,9 @@ function AttemptCard({
           <StatusBadge status={a.status} />
           {transferred && <Badge tone="gain">Transferred</Badge>}
         </div>
-        <span className="text-xs text-muted">{formatDate(a.ended_at ?? a.submitted_at)}</span>
+        <span className="text-xs text-muted">
+          {new Date(a.ended_at ?? a.submitted_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
+        </span>
       </header>
 
       <div className="space-y-4 p-4">
@@ -917,6 +1138,10 @@ function AttemptCard({
             { label: "Hang-up", value: a.hangup_cause_name ? `${a.hangup_cause_name}${a.hangup_source ? ` (by ${a.hangup_source.toLowerCase()})` : ""}` : "—" },
             { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` — ${a.transfer_reason}` : ""}` : "None" },
             { label: "Plivo status", value: a.plivo_status ? humanize(a.plivo_status) : "—" },
+            {
+              label: "Machine detected",
+              value: String(machineDetection ?? false),
+            },
           ]}
         />
         {aiCostError && (
@@ -1017,7 +1242,12 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
         <DetailList
           columns={2}
           items={[
-            { label: "Start", value: formatDate(campaign.start_at) },
+            {
+              label: "Start",
+              value: campaign.start_at
+                ? new Date(campaign.start_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+                : "—",
+            },
             { label: "Calling hours", value: <span className="tnum">{formatWindow(campaign.window_start, campaign.window_end)}</span> },
             { label: "Call days", value: formatDays(campaign.call_days) },
             { label: "Timezone", value: campaign.timezone },

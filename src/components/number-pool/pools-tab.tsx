@@ -111,14 +111,10 @@ export function PoolsTab() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="tnum font-medium text-heading">{p.phone_numbers.length}</span>
-                    {p.phone_numbers.length > 0 && (
-                      <span className="tnum ml-2 text-xs text-muted">
-                        {p.phone_numbers.slice(0, 2).join(", ")}
-                        {p.phone_numbers.length > 2 && ` +${p.phone_numbers.length - 2} more`}
-                      </span>
-                    )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDay(p.created_at)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">
+                    {new Date(p.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
+                  </td>
                   <td className="px-4 py-2">
                     <div className="flex justify-end gap-1">
                       <IconButton label={`Edit ${p.name}`} onClick={() => router.push(`/number-pool/pools/${p.id}/edit`)}>

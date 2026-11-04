@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -303,11 +303,11 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
         <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="border-b border-[#efe7d2]">
-              <th className={`${thCls} w-[22%]`}>Name</th>
-              <th className={`${thCls} w-[42%]`}>Description</th>
-              <th className={`${thCls} w-[12%]`}>Calls</th>
+              <th className={`${thCls} w-[20%]`}>Name</th>
+              <th className={`${thCls} w-[36%]`}>Description</th>
+              <th className={`${thCls} w-[10%]`}>Calls</th>
               <th className={`${thCls} w-[14%]`}>{isNew ? "Status" : "Updated"}</th>
-              <th className={`${thCls} w-[10%]`}>
+              <th className={`${thCls} w-[20%]`}>
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -336,34 +336,37 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
             )}
             {visible.map((c) => (
               <tr key={c.id} className="border-b border-[#f1eadb] last:border-0 hover:bg-[#f9f4e8]">
-                <td className="px-5 py-4 align-top text-sm font-semibold text-[#1b1b2f]">{c.name}</td>
+                <td className="break-words px-5 py-4 align-top text-sm font-semibold text-[#1b1b2f] [overflow-wrap:anywhere]">
+                  {c.name}
+                </td>
                 <td className="px-5 py-4 align-top text-sm text-[#6b6450]">
                   <p className="line-clamp-2 whitespace-pre-wrap">{c.description}</p>
                 </td>
                 <td className="px-5 py-4 align-top text-sm text-[#6b6450]">
-                  {!isNew && (c.calls ?? 0) > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setViewingCalls({
-                          classificationId: c.id,
-                          title: `Calls: ${c.name}`,
-                        })
-                      }
-                      className="font-medium text-[#8f7a3c] underline hover:text-[#1b1b2f]"
-                      title="View calls sorted into this classification"
-                    >
-                      {c.calls}
-                    </button>
-                  ) : (
-                    c.calls ?? 0
-                  )}
+                  {c.calls ?? 0}
                 </td>
                 <td className="px-5 py-4 align-top text-sm text-[#a08a4a]">
                   {isNew ? "In draft" : c.updated_at ? formatDate(c.updated_at) : "—"}
                 </td>
                 <td className="px-5 py-4 align-top">
-                  <div className="flex justify-end gap-3 text-[#8f8566]">
+                  <div className="flex flex-wrap justify-end gap-3 text-[#8f8566]">
+                    {!isNew && (c.calls ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setViewingCalls({
+                            classificationId: c.id,
+                            title: `Calls: ${c.name}`,
+                          })
+                        }
+                        aria-label={`View calls for ${c.name}`}
+                        title="View calls"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#8f7a3c] hover:text-[#1b1b2f]"
+                      >
+                        <Eye size={16} aria-hidden />
+                        View
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => openEdit(c)}

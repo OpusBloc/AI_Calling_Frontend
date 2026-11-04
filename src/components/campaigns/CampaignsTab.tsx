@@ -163,8 +163,12 @@ export default function CampaignsTab() {
                 <span className="text-xs text-muted">{formatDays(c.call_days)}</span>
               </td>
               <td className="tnum px-4 py-3 text-body">{c.concurrent_calls ?? c.concurrency_limit}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted">{c.status === "scheduled" ? formatDate(c.start_at) : "—"}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.updated_at)}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted">{c.start_at ? formatDate(c.start_at) : "—"}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted">
+                {c.updated_at
+                  ? new Date(c.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+                  : "—"}
+              </td>
               <td className="px-4 py-2">
                 <div className="flex justify-end gap-1">
                   <IconButton label={`Edit ${c.name}`} onClick={() => router.push(`/campaigns/${c.id}/edit`)}>
