@@ -32,25 +32,53 @@ import {
   toCreateForm,
   toUpdateForm,
 } from "@/lib/agentDraft";
-import { AGENT_LANGUAGES, AGENT_PARTS, Agent, AgentPart, createAgent, deleteAgent, updateAgent } from "@/lib/callingAgentApi";
-import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
+import {
+  AGENT_LANGUAGES,
+  AGENT_PARTS,
+  Agent,
+  AgentPart,
+  createAgent,
+  deleteAgent,
+  updateAgent,
+} from "@/lib/callingAgentApi";
+import {
+  showErrorNotification,
+  showSuccessNotification,
+} from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { Button, PageTopBar, ErrorBanner, Field, Select, TextArea, TextInput, errorMessage, formatDate } from "@/components/ui";
+import {
+  Button,
+  PageTopBar,
+  ErrorBanner,
+  Field,
+  Select,
+  TextArea,
+  TextInput,
+  errorMessage,
+  formatDate,
+} from "@/components/ui";
 import TestCallDrawer from "./TestCallDrawer";
 import VoicePicker from "./VoicePicker";
 import ClassificationsStep from "./ClassificationsStep";
 import WhatsAppMessagesField from "./WhatsAppMessagesField";
 
-const PART_META: Record<AgentPart, { label: string; description: string; placeholder: string }> = {
+const PART_META: Record<
+  AgentPart,
+  { label: string; description: string; placeholder: string }
+> = {
   intro: {
     label: "Intro",
-    description: "Persona and call script. This goes at the top of the system prompt.",
-    placeholder: "You are Poonam, a warm and confident calling assistant for Opus Bloc…",
+    description:
+      "Persona and call script. This goes at the top of the system prompt.",
+    placeholder:
+      "You are Poonam, a warm and confident calling assistant for Opus Bloc…",
   },
   rules: {
     label: "Rules",
-    description: "How the agent should talk and the flow the call should follow.",
-    placeholder: "- Keep every reply under two sentences.\n- Ask one question at a time.",
+    description:
+      "How the agent should talk and the flow the call should follow.",
+    placeholder:
+      "- Keep every reply under two sentences.\n- Ask one question at a time.",
   },
   knowledge: {
     label: "Knowledge",
@@ -64,7 +92,8 @@ const PART_META: Record<AgentPart, { label: string; description: string; placeho
   },
   extra: {
     label: "Extra notes",
-    description: "Optional. Anything else, added to the prompt as “Additional notes”.",
+    description:
+      "Optional. Anything else, added to the prompt as “Additional notes”.",
     placeholder: "Anything the other sections don't cover…",
   },
 };
@@ -81,7 +110,8 @@ const TABS = [
 
 const OPTIONAL_TABS = ["whatsapp", "classifications"];
 
-const isPart = (id: string): id is AgentPart => (AGENT_PARTS as readonly string[]).includes(id);
+const isPart = (id: string): id is AgentPart =>
+  (AGENT_PARTS as readonly string[]).includes(id);
 
 // Maps any part name ("rules", "ending", …) or old saved tab id onto the tab that contains it
 const tabFor = (id: string) => (isPart(id) ? "prompt" : id);
@@ -96,19 +126,27 @@ const comparable = (d: AgentDraft) =>
     silenceCheck: d.silenceCheckSeconds,
     silencePrompt: d.silencePrompt,
     silenceHangup: d.silenceHangupSeconds,
+    interruptionMinWords: d.interruptionMinWords,
     whatsapp: d.whatsappMessageIds,
     parts: d.parts,
     classifications: d.classifications,
   });
 
-export default function AgentEditor({ agent: initialAgent }: { agent: Agent | null }) {
+export default function AgentEditor({
+  agent: initialAgent,
+}: {
+  agent: Agent | null;
+}) {
   const router = useRouter();
   const qc = useQueryClient();
   const agentId = initialAgent?.id ?? null;
   const isNew = agentId === null;
 
   const [agent, setAgent] = useState(initialAgent);
-  const baseline = useMemo(() => (agent ? draftFromAgent(agent) : emptyDraft()), [agent]);
+  const baseline = useMemo(
+    () => (agent ? draftFromAgent(agent) : emptyDraft()),
+    [agent],
+  );
 
   // Restore an unsaved local draft if there is one
   const [restored] = useState(() => loadDraft(agentId));
@@ -138,7 +176,10 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, storageOk]);
 
-  const tabIndex = Math.max(0, TABS.findIndex((t) => t.id === tabFor(draft.tab)));
+  const tabIndex = Math.max(
+    0,
+    TABS.findIndex((t) => t.id === tabFor(draft.tab)),
+  );
 
   // Accepts a tab id or a part name; part names open the Prompt tab on that sub-tab
   const goTo = (target: string) => {
@@ -154,17 +195,22 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     if (id === "review") return false;
     if (id === "prompt") {
       // Done once every required part is filled (Extra notes is optional)
-      return AGENT_PARTS.filter((p) => p !== "extra").every((p) => isPartFilled(draft.parts[p]));
+      return AGENT_PARTS.filter((p) => p !== "extra").every((p) =>
+        isPartFilled(draft.parts[p]),
+      );
     }
     if (id === "whatsapp") return draft.whatsappMessageIds.length > 0;
-    if (id === "classifications") return (draft.classifications?.length ?? 0) > 0;
+    if (id === "classifications")
+      return (draft.classifications?.length ?? 0) > 0;
     return false;
   };
 
   const handleDiscard = async () => {
     const ok = await confirmDialog({
       title: isNew ? "Discard draft?" : "Discard changes?",
-      message: isNew ? "This draft will be cleared and you'll start over." : "Your unsaved changes will be lost.",
+      message: isNew
+        ? "This draft will be cleared and you'll start over."
+        : "Your unsaved changes will be lost.",
       confirmLabel: "Discard",
     });
     if (!ok) return;
@@ -178,7 +224,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
     if (missing.length) {
       goTo(missing[0]);
       setError("Fill in every required section before saving.");
-      showErrorNotification("Fill in every required section before saving.", { title: "Agent not saved" });
+      showErrorNotification("Fill in every required section before saving.", {
+        title: "Agent not saved",
+      });
       return;
     }
     setSaving(true);
@@ -188,7 +236,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
         const created = await createAgent(toCreateForm(draft));
         clearDraft(null);
         await qc.invalidateQueries({ queryKey: ["agents"] });
-        showSuccessNotification(`"${created.name}" was created.`, { title: "Agent created" });
+        showSuccessNotification(`"${created.name}" was created.`, {
+          title: "Agent created",
+        });
         router.replace(`/calling-agent/agents/${created.id}`);
         return;
       }
@@ -199,9 +249,14 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       setAgent(updated);
       setDraft({ ...draftFromAgent(updated), tab: draft.tab });
       setShowRestored(false);
-      showSuccessNotification(form ? `"${updated.name}" was updated.` : "There were no changes to save.", {
-        title: form ? "Agent saved" : "Nothing to save",
-      });
+      showSuccessNotification(
+        form
+          ? `"${updated.name}" was updated.`
+          : "There were no changes to save.",
+        {
+          title: form ? "Agent saved" : "Nothing to save",
+        },
+      );
     } catch (err) {
       const message = errorMessage(err);
       setError(message);
@@ -227,7 +282,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       await deleteAgent(agent.id);
       clearDraft(agentId);
       await qc.invalidateQueries({ queryKey: ["agents"] });
-      showSuccessNotification(`"${agent.name}" was deleted.`, { title: "Agent deleted" });
+      showSuccessNotification(`"${agent.name}" was deleted.`, {
+        title: "Agent deleted",
+      });
       router.replace("/calling-agent?tab=agents");
     } catch (err) {
       setError(errorMessage(err));
@@ -266,25 +323,39 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             </Button>
           )}
           {!isNew && (
-            <Button variant="secondary" onClick={() => setTesting(true)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => setTesting(true)}
+              disabled={saving}
+            >
               <PhoneCall size={16} /> Test call
             </Button>
           )}
           {!isNew && (
-            <Button variant="secondary" onClick={handleDelete} disabled={saving} className="text-loss hover:bg-loss-bg">
+            <Button
+              variant="secondary"
+              onClick={handleDelete}
+              disabled={saving}
+              className="text-loss hover:bg-loss-bg"
+            >
               <Trash2 size={16} /> Delete
             </Button>
           )}
         </div>
       </div>
 
-      {testing && agent && <TestCallDrawer agentId={agent.id} onClose={() => setTesting(false)} />}
+      {testing && agent && (
+        <TestCallDrawer agentId={agent.id} onClose={() => setTesting(false)} />
+      )}
 
       {showRestored && dirty && (
         <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-hairline bg-accent-bg px-3 py-2 text-sm text-heading">
           <span>
             Restored your unsaved {isNew ? "draft" : "changes"}
-            {restored?.savedAt ? ` from ${formatDate(new Date(restored.savedAt).toISOString())}` : ""}.
+            {restored?.savedAt
+              ? ` from ${formatDate(new Date(restored.savedAt).toISOString())}`
+              : ""}
+            .
           </span>
           <button
             type="button"
@@ -298,7 +369,10 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
       )}
 
       {/* Tabs */}
-      <div role="tablist" className="mt-6 flex gap-1 overflow-x-auto border-b border-hairline">
+      <div
+        role="tablist"
+        className="mt-6 flex gap-1 overflow-x-auto border-b border-hairline"
+      >
         {TABS.map((tab, i) => {
           const done = tabDone(tab.id);
           const active = i === tabIndex;
@@ -311,13 +385,19 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
               onClick={() => goTo(tab.id)}
               className={clsx(
                 "-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
-                active ? "border-accent text-accent-text" : "border-transparent text-muted hover:text-heading",
+                active
+                  ? "border-accent text-accent-text"
+                  : "border-transparent text-muted hover:text-heading",
               )}
             >
               <span
                 className={clsx(
                   "flex h-5 w-5 items-center justify-center rounded-full text-[11px]",
-                  done ? "bg-gain-bg text-gain" : active ? "bg-accent text-on-accent" : "bg-chip text-muted",
+                  done
+                    ? "bg-gain-bg text-gain"
+                    : active
+                      ? "bg-accent text-on-accent"
+                      : "bg-chip text-muted",
                 )}
               >
                 {done ? <Check size={12} strokeWidth={3} /> : i + 1}
@@ -345,7 +425,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                   value={draft.name}
                   maxLength={255}
                   autoFocus={isNew}
-                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, name: e.target.value }))
+                  }
                   placeholder="e.g. Poonam"
                 />
               </Field>
@@ -353,19 +435,27 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 label="Greeting"
                 hint={
                   <>
-                    Optional. The first sentence spoken on the call; a default is used when empty. Type{" "}
-                    <code className="tnum">{"{{name}}"}</code> to say the lead&apos;s name — if a lead has no name, that sentence is skipped.
+                    Optional. The first sentence spoken on the call; a default
+                    is used when empty. Type{" "}
+                    <code className="tnum">{"{{name}}"}</code> to say the
+                    lead&apos;s name — if a lead has no name, that sentence is
+                    skipped.
                   </>
                 }
               >
                 <TextInput
                   value={draft.greeting}
-                  onChange={(e) => setDraft((d) => ({ ...d, greeting: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, greeting: e.target.value }))
+                  }
                   placeholder="Hello, this is Poonam from Opus Bloc. Am I speaking with {{name}}?"
                 />
               </Field>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Main language" hint="The agent starts every call in this language.">
+                <Field
+                  label="Main language"
+                  hint="The agent starts every call in this language."
+                >
                   <Select
                     value={draft.primaryLanguage}
                     onChange={(e) => {
@@ -374,7 +464,11 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                         ...d,
                         primaryLanguage,
                         // A second language needs a main one, and can't be the same
-                        secondaryLanguage: !primaryLanguage || d.secondaryLanguage === primaryLanguage ? "" : d.secondaryLanguage,
+                        secondaryLanguage:
+                          !primaryLanguage ||
+                          d.secondaryLanguage === primaryLanguage
+                            ? ""
+                            : d.secondaryLanguage,
                       }));
                     }}
                   >
@@ -388,12 +482,21 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 </Field>
                 <Field
                   label="Second language"
-                  hint={draft.primaryLanguage ? "Optional. Used only if the caller speaks it." : "Pick a main language first."}
+                  hint={
+                    draft.primaryLanguage
+                      ? "Optional. Used only if the caller speaks it."
+                      : "Pick a main language first."
+                  }
                 >
                   <Select
                     value={draft.secondaryLanguage}
                     disabled={!draft.primaryLanguage}
-                    onChange={(e) => setDraft((d) => ({ ...d, secondaryLanguage: e.target.value }))}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        secondaryLanguage: e.target.value,
+                      }))
+                    }
                   >
                     <option value="">None</option>
                     {Object.entries(AGENT_LANGUAGES)
@@ -408,8 +511,8 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
               </div>
               {draft.primaryLanguage && (
                 <p className="-mt-1 text-xs text-muted">
-                  The agent speaks only {languageList(draft)}. If a caller uses another language, it politely says so and carries on in
-                  these.
+                  The agent speaks only {languageList(draft)}. If a caller uses
+                  another language, it politely says so and carries on in these.
                 </p>
               )}
             </div>
@@ -417,13 +520,48 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             {/* Silence Settings Section */}
             <div className="border-t border-hairline pt-5 space-y-4">
               <div>
-                <h3 className="text-sm font-semibold text-heading">Silence Settings</h3>
+                <h3 className="text-sm font-semibold text-heading">
+                  Silence Settings
+                </h3>
                 <p className="mt-0.5 text-xs text-muted">
-                  Control how the agent responds and when calls hang up when the caller is quiet.
+                  Control how the agent responds and when calls hang up when the
+                  caller is quiet.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Interruption Minimum Words"
+                 hint="Whole numbers only. 0 prevents interruptions; empty uses the system default."
+                >
+                  <TextInput
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    value={
+                      draft.interruptionMinWords !== null
+                        ? String(draft.interruptionMinWords)
+                        : ""
+                    }
+                    onKeyDown={(e) => {
+                      // type="number" allows these by default; block them
+                      if (["e", "E", "+", "-", "."].includes(e.key))
+                        e.preventDefault();
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // only allow empty or digits
+                      if (val !== "" && !/^\d+$/.test(val)) return;
+                      setDraft((d) => ({
+                        ...d,
+                        interruptionMinWords:
+                          val === "" ? null : parseInt(val, 10),
+                      }));
+                    }}
+                    placeholder="System default"
+                  />
+                </Field>
                 <Field
                   label="Silence Check Seconds"
                   hint="Seconds of silence before agent prompts caller."
@@ -432,7 +570,11 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                     type="number"
                     min={1}
                     max={300}
-                    value={draft.silenceCheckSeconds !== null ? String(draft.silenceCheckSeconds) : ""}
+                    value={
+                      draft.silenceCheckSeconds !== null
+                        ? String(draft.silenceCheckSeconds)
+                        : ""
+                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       setDraft((d) => ({
@@ -452,7 +594,11 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                     type="number"
                     min={1}
                     max={600}
-                    value={draft.silenceHangupSeconds !== null ? String(draft.silenceHangupSeconds) : ""}
+                    value={
+                      draft.silenceHangupSeconds !== null
+                        ? String(draft.silenceHangupSeconds)
+                        : ""
+                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       setDraft((d) => ({
@@ -472,7 +618,9 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                 <TextArea
                   rows={2}
                   value={draft.silencePrompt}
-                  onChange={(e) => setDraft((d) => ({ ...d, silencePrompt: e.target.value }))}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, silencePrompt: e.target.value }))
+                  }
                   placeholder="e.g. Hello, are you still there? Please let me know how I can help."
                 />
               </Field>
@@ -496,11 +644,15 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
             <div>
               <h2 className="text-xl font-semibold text-heading">Prompt</h2>
               <p className="mt-0.5 text-sm text-muted">
-                Everything that makes up the system prompt. Pick a section below to edit it.
+                Everything that makes up the system prompt. Pick a section below
+                to edit it.
               </p>
             </div>
 
-            <div role="tablist" className="flex gap-1 overflow-x-auto rounded-md bg-chip p-1">
+            <div
+              role="tablist"
+              className="flex gap-1 overflow-x-auto rounded-md bg-chip p-1"
+            >
               {AGENT_PARTS.map((part) => {
                 const active = part === promptPart;
                 const filled = isPartFilled(draft.parts[part]);
@@ -513,12 +665,20 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
                     onClick={() => setPromptPart(part)}
                     className={clsx(
                       "flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1.5 text-sm font-medium transition-colors",
-                      active ? "bg-surface text-heading shadow-xs" : "text-muted hover:text-heading",
+                      active
+                        ? "bg-surface text-heading shadow-xs"
+                        : "text-muted hover:text-heading",
                     )}
                   >
-                    {filled && <Check size={13} strokeWidth={3} className="text-gain" />}
+                    {filled && (
+                      <Check size={13} strokeWidth={3} className="text-gain" />
+                    )}
                     {PART_META[part].label}
-                    {part === "extra" && <span className="text-xs font-normal text-faint">optional</span>}
+                    {part === "extra" && (
+                      <span className="text-xs font-normal text-faint">
+                        optional
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -538,15 +698,19 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
           <div className="max-w-xl space-y-4">
             <div>
               <h2 className="text-lg font-semibold text-heading">
-                WhatsApp messages <span className="text-sm font-normal text-faint">optional</span>
+                WhatsApp messages{" "}
+                <span className="text-sm font-normal text-faint">optional</span>
               </h2>
               <p className="mt-0.5 text-sm text-muted">
-                The agent can send these template messages to the lead on WhatsApp during or after the call.
+                The agent can send these template messages to the lead on
+                WhatsApp during or after the call.
               </p>
             </div>
             <WhatsAppMessagesField
               value={draft.whatsappMessageIds}
-              onChange={(ids) => setDraft((d) => ({ ...d, whatsappMessageIds: ids }))}
+              onChange={(ids) =>
+                setDraft((d) => ({ ...d, whatsappMessageIds: ids }))
+              }
             />
           </div>
         )}
@@ -555,25 +719,40 @@ export default function AgentEditor({ agent: initialAgent }: { agent: Agent | nu
           <ClassificationsStep
             agentId={agentId}
             items={draft.classifications}
-            onChange={(classifications) => setDraft((d) => ({ ...d, classifications }))}
+            onChange={(classifications) =>
+              setDraft((d) => ({ ...d, classifications }))
+            }
           />
         )}
 
-        {activeTab.id === "review" && <Review draft={draft} missing={missing} onEdit={goTo} />}
+        {activeTab.id === "review" && (
+          <Review draft={draft} missing={missing} onEdit={goTo} />
+        )}
 
         {/* Footer navigation */}
         <div className="mt-6 flex items-center justify-between border-t border-hairline pt-4">
-          <Button variant="secondary" onClick={() => goTo(TABS[tabIndex - 1].id)} disabled={tabIndex === 0}>
+          <Button
+            variant="secondary"
+            onClick={() => goTo(TABS[tabIndex - 1].id)}
+            disabled={tabIndex === 0}
+          >
             <ArrowLeft size={16} /> Back
           </Button>
           <div className="flex gap-2">
             {!isNew && activeTab.id !== "review" && (
-              <Button variant="secondary" onClick={handleSubmit} disabled={!dirty || saving}>
+              <Button
+                variant="secondary"
+                onClick={handleSubmit}
+                disabled={!dirty || saving}
+              >
                 {saving ? "Saving…" : "Save changes"}
               </Button>
             )}
             {activeTab.id === "review" ? (
-              <Button onClick={handleSubmit} disabled={saving || missing.length > 0 || (!isNew && !dirty)}>
+              <Button
+                onClick={handleSubmit}
+                disabled={saving || missing.length > 0 || (!isNew && !dirty)}
+              >
                 {saving ? "Saving…" : isNew ? "Create agent" : "Save changes"}
               </Button>
             ) : (
@@ -594,7 +773,13 @@ const languageList = (d: AgentDraft) =>
     .map((code) => AGENT_LANGUAGES[code] ?? code)
     .join(" and ");
 
-function DraftStatus({ dirty, storageOk }: { dirty: boolean; storageOk: boolean }) {
+function DraftStatus({
+  dirty,
+  storageOk,
+}: {
+  dirty: boolean;
+  storageOk: boolean;
+}) {
   if (!dirty) return null;
   if (!storageOk) {
     return (
@@ -655,7 +840,10 @@ function PartEditor({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-heading">
-            {meta.label} {part === "extra" && <span className="text-sm font-normal text-faint">optional</span>}
+            {meta.label}{" "}
+            {part === "extra" && (
+              <span className="text-sm font-normal text-faint">optional</span>
+            )}
           </h3>
           <p className="mt-0.5 text-sm text-muted">{meta.description}</p>
         </div>
@@ -665,7 +853,9 @@ function PartEditor({
             onClick={() => switchMode("text")}
             className={clsx(
               "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
-              mode === "text" ? "bg-accent text-on-accent shadow-xs" : "text-muted hover:text-heading",
+              mode === "text"
+                ? "bg-accent text-on-accent shadow-xs"
+                : "text-muted hover:text-heading",
             )}
           >
             <PenLine size={13} /> Type text
@@ -675,7 +865,9 @@ function PartEditor({
             onClick={() => switchMode("file")}
             className={clsx(
               "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
-              mode === "file" ? "bg-accent text-on-accent shadow-xs" : "text-muted hover:text-heading",
+              mode === "file"
+                ? "bg-accent text-on-accent shadow-xs"
+                : "text-muted hover:text-heading",
             )}
           >
             <Upload size={13} /> Upload file
@@ -694,7 +886,8 @@ function PartEditor({
         <div className="rounded-md border border-hairline bg-surface">
           <div className="flex items-center justify-between border-b border-hairline px-3 py-2 text-xs">
             <span className="flex items-center gap-1.5 font-medium text-heading">
-              <FileText size={14} className="text-accent-text" /> {value.fileName}
+              <FileText size={14} className="text-accent-text" />{" "}
+              {value.fileName}
               <span className="text-muted">
                 {value.text.length.toLocaleString()} chars
               </span>
@@ -703,7 +896,10 @@ function PartEditor({
               <Button variant="ghost" onClick={() => inputRef.current?.click()}>
                 Replace
               </Button>
-              <Button variant="ghost" onClick={() => onChange({ source: "file", text: "" })}>
+              <Button
+                variant="ghost"
+                onClick={() => onChange({ source: "file", text: "" })}
+              >
                 Remove
               </Button>
             </div>
@@ -728,12 +924,18 @@ function PartEditor({
           }}
           className={clsx(
             "flex w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed px-6 py-10 text-center transition-colors",
-            dragging ? "border-accent bg-accent-bg" : "border-hairline-strong hover:bg-surface-hover",
+            dragging
+              ? "border-accent bg-accent-bg"
+              : "border-hairline-strong hover:bg-surface-hover",
           )}
         >
           <Upload size={22} className="text-muted" />
-          <span className="text-sm font-medium text-heading">Drop a file here or click to browse</span>
-          <span className="text-xs text-muted">.txt or .md, UTF-8, up to 1 MB</span>
+          <span className="text-sm font-medium text-heading">
+            Drop a file here or click to browse
+          </span>
+          <span className="text-xs text-muted">
+            .txt or .md, UTF-8, up to 1 MB
+          </span>
         </button>
       )}
 
@@ -770,20 +972,51 @@ function Review({
   missing: string[];
   onEdit: (tab: string) => void;
 }) {
-  const rows: { tab: string; label: string; value: string; detail?: string; required: boolean }[] = [
+  const rows: {
+    tab: string;
+    label: string;
+    value: string;
+    detail?: string;
+    required: boolean;
+  }[] = [
     { tab: "details", label: "Name", value: draft.name.trim(), required: true },
-    { tab: "details", label: "Greeting", value: draft.greeting.trim() || "Default greeting", required: false },
-    { tab: "details", label: "Languages", value: draft.primaryLanguage ? languageList(draft) : "System default", required: false },
+    {
+      tab: "details",
+      label: "Greeting",
+      value: draft.greeting.trim() || "Default greeting",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Languages",
+      value: draft.primaryLanguage ? languageList(draft) : "System default",
+      required: false,
+    },
     {
       tab: "details",
       label: "Silence Check",
-      value: draft.silenceCheckSeconds !== null ? `${draft.silenceCheckSeconds}s` : "Not set",
+      value:
+        draft.silenceCheckSeconds !== null
+          ? `${draft.silenceCheckSeconds}s`
+          : "Not set",
       required: false,
     },
     {
       tab: "details",
       label: "Silence Hangup",
-      value: draft.silenceHangupSeconds !== null ? `${draft.silenceHangupSeconds}s` : "Not set",
+      value:
+        draft.silenceHangupSeconds !== null
+          ? `${draft.silenceHangupSeconds}s`
+          : "Not set",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Interruption Minimum Words",
+      value:
+        draft.interruptionMinWords !== null
+          ? String(draft.interruptionMinWords)
+          : "System default",
       required: false,
     },
     {
@@ -792,7 +1025,12 @@ function Review({
       value: draft.silencePrompt.trim() || "Not set",
       required: false,
     },
-    { tab: "voice", label: "Voice", value: draft.voice || "Default voice", required: false },
+    {
+      tab: "voice",
+      label: "Voice",
+      value: draft.voice || "Default voice",
+      required: false,
+    },
     // Each part's Edit button opens the Prompt tab on that part's sub-tab
     ...AGENT_PARTS.map((p) => {
       const part = draft.parts[p];
@@ -800,7 +1038,8 @@ function Review({
         tab: p,
         label: PART_META[p].label,
         value: part.text.trim(),
-        detail: part.source === "file" && part.fileName ? part.fileName : undefined,
+        detail:
+          part.source === "file" && part.fileName ? part.fileName : undefined,
         required: p !== "extra",
       };
     }),
@@ -828,18 +1067,28 @@ function Review({
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-heading">Review</h2>
-        <p className="mt-0.5 text-sm text-muted">Check everything before saving to the backend.</p>
+        <p className="mt-0.5 text-sm text-muted">
+          Check everything before saving to the backend.
+        </p>
       </div>
 
       {missing.length > 0 && (
         <p className="rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
-          Still needed: {missing.map((m) => (m === "details" ? "Name" : PART_META[m as AgentPart].label)).join(", ")}
+          Still needed:{" "}
+          {missing
+            .map((m) =>
+              m === "details" ? "Name" : PART_META[m as AgentPart].label,
+            )
+            .join(", ")}
         </p>
       )}
 
       <dl className="divide-y divide-hairline rounded-md border border-hairline">
         {rows.map((row) => (
-          <div key={row.label} className="grid gap-1 px-4 py-3 sm:grid-cols-[140px_1fr_auto] sm:gap-4">
+          <div
+            key={row.label}
+            className="grid gap-1 px-4 py-3 sm:grid-cols-[140px_1fr_auto] sm:gap-4"
+          >
             <dt className="text-sm font-medium text-heading">{row.label}</dt>
             <dd className="min-w-0 text-sm">
               {row.value ? (
@@ -849,7 +1098,9 @@ function Review({
                       <FileText size={12} /> {row.detail}
                     </span>
                   )}
-                  <span className="line-clamp-2 whitespace-pre-line text-body">{row.value}</span>
+                  <span className="line-clamp-2 whitespace-pre-line text-body">
+                    {row.value}
+                  </span>
                 </>
               ) : (
                 <span className={row.required ? "text-loss" : "text-faint"}>

@@ -149,9 +149,7 @@ export default function CampaignsTab() {
             <LinkRow key={c.id} href={`/campaigns/${encodeURIComponent(c.id)}`}>
               <td className="max-w-xs px-4 py-3">
                 <span className="block truncate font-medium text-heading">{c.name}</span>
-                <span className="tnum text-xs text-muted">
-                  {c.plivo_pool_ids.length} Plivo pool{c.plivo_pool_ids.length === 1 ? "" : "s"}
-                </span>
+
               </td>
               <td className="px-4 py-3">
                 <StatusBadge status={c.status} />

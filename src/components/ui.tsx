@@ -1,10 +1,28 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  isValidElement,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, FileSpreadsheet, Loader2, RotateCw, Search, UploadCloud, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  FileSpreadsheet,
+  Loader2,
+  RotateCw,
+  Search,
+  UploadCloud,
+  X,
+} from "lucide-react";
 
 /* --------------------------------- Data ---------------------------------- */
 
@@ -40,11 +58,16 @@ export const errorMessage = (err: unknown) =>
 
 export const formatDate = (value: string | null | undefined) =>
   value
-    ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    ? new Date(value).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
     : "—";
 
 export const formatDay = (value: string | null | undefined) =>
-  value ? new Date(value).toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
+  value
+    ? new Date(value).toLocaleDateString(undefined, { dateStyle: "medium" })
+    : "—";
 
 /** 125 → "2m 5s", 3725 → "1h 2m" */
 export const formatDuration = (seconds: number | null | undefined) => {
@@ -56,13 +79,22 @@ export const formatDuration = (seconds: number | null | undefined) => {
 };
 
 /** Number with fixed decimals; accepts the backend's numeric strings */
-export const formatMoney = (value: number | string | null | undefined, digits = 2) => {
+export const formatMoney = (
+  value: number | string | null | undefined,
+  digits = 2,
+) => {
   const n = Number(value ?? 0);
-  return Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : "—";
+  return Number.isFinite(n)
+    ? n.toLocaleString(undefined, {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      })
+    : "—";
 };
 
 /** "in_progress" → "In progress" */
-export const humanize = (value: string) => value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+export const humanize = (value: string) =>
+  value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
 /* -------------------------------- Controls -------------------------------- */
 
@@ -91,11 +123,13 @@ export function Button({
       className={clsx(
         "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-[background-color,border-color,color,box-shadow] duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0",
         size === "md" ? "h-10 px-4 text-sm" : "h-8 px-3 text-[13px]",
-        variant === "primary" && "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
+        variant === "primary" &&
+          "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
         variant === "secondary" &&
           "border border-hairline-strong bg-surface text-heading shadow-sm hover:bg-surface-hover",
         variant === "danger" && "bg-loss text-white shadow-sm hover:opacity-90",
-        variant === "ghost" && "text-body hover:bg-surface-hover hover:text-heading",
+        variant === "ghost" &&
+          "text-body hover:bg-surface-hover hover:text-heading",
         className,
       )}
     >
@@ -165,7 +199,10 @@ export function Field({
       </span>
       {children}
       {error ? (
-        <span role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-loss">
+        <span
+          role="alert"
+          className="mt-1.5 flex items-center gap-1 text-xs text-loss"
+        >
           <CircleAlert size={13} aria-hidden /> {error}
         </span>
       ) : (
@@ -176,12 +213,23 @@ export function Field({
 }
 
 /** Wrapper that draws the travelling border light (see .glow-field in globals.css) */
-export function GlowField({ className, children }: { className?: string; children: ReactNode }) {
-  return <span className={clsx("glow-field block", className)}>{children}</span>;
+export function GlowField({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className={clsx("glow-field block", className)}>{children}</span>
+  );
 }
 
 /** `className` sizes the field (width/max-width); the input fills it */
-export function TextInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+export function TextInput({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <GlowField className={className}>
       <input {...props} className={clsx(inputClass, "h-10")} />
@@ -190,16 +238,25 @@ export function TextInput({ className, ...props }: React.InputHTMLAttributes<HTM
 }
 
 /** `className` styles the textarea itself (rows, font); it always fills the width */
-export function TextArea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea({
+  className,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <GlowField>
-      <textarea {...props} className={clsx(inputClass, "block py-2 leading-relaxed", className)} />
+      <textarea
+        {...props}
+        className={clsx(inputClass, "block py-2 leading-relaxed", className)}
+      />
     </GlowField>
   );
 }
 
 /** `className` sizes the field (width/max-width); the select fills it */
-export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({
+  className,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <GlowField className={className}>
       <select {...props} className={clsx(inputClass, "h-10 cursor-pointer")} />
@@ -214,7 +271,9 @@ export const COUNTRY_CODE = "+91";
 /** Any typed or pasted number → its 10 local digits ("+91 98123-45678" → "9812345678") */
 export const toLocalNumber = (value: string) => {
   const digits = value.replace(/\D/g, "");
-  return digits.length > 10 && digits.startsWith("91") ? digits.slice(2, 12) : digits.slice(0, 10);
+  return digits.length > 10 && digits.startsWith("91")
+    ? digits.slice(2, 12)
+    : digits.slice(0, 10);
 };
 
 export const toE164 = (local: string) => `${COUNTRY_CODE}${local}`;
@@ -272,7 +331,11 @@ export function SearchInput({
 }) {
   return (
     <div className={clsx("glow-field relative", className)}>
-      <Search size={16} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <Search
+        size={16}
+        aria-hidden
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+      />
       <input
         type="search"
         value={value}
@@ -386,12 +449,19 @@ const STATUS_TONES: Record<string, Tone> = {
   hung_up: "loss",
 };
 
-export const statusTone = (status: string): Tone => STATUS_TONES[status.toLowerCase()] ?? "neutral";
+export const statusTone = (status: string): Tone =>
+  STATUS_TONES[status.toLowerCase()] ?? "neutral";
 
 /**
  * Status pill: a dot plus the label, so meaning never rests on colour alone
  */
-export function StatusBadge({ status, label }: { status: string; label?: string }) {
+export function StatusBadge({
+  status,
+  label,
+}: {
+  status: string;
+  label?: string;
+}) {
   const tone = statusTone(status);
   return (
     <span
@@ -400,13 +470,20 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
         TONE_CLASS[tone],
       )}
     >
-      <span aria-hidden className={clsx("h-1.5 w-1.5 rounded-full", DOT_CLASS[tone])} />
+      <span
+        aria-hidden
+        className={clsx("h-1.5 w-1.5 rounded-full", DOT_CLASS[tone])}
+      />
       {label ?? humanize(status)}
     </span>
   );
 }
 
-export function ErrorBanner({ message }: { message: string | null | undefined }) {
+export function ErrorBanner({
+  message,
+}: {
+  message: string | null | undefined;
+}) {
   if (!message) return null;
   return (
     <p
@@ -432,12 +509,20 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="rounded-lg border border-loss/30 bg-loss-bg/50 px-6 py-10 text-center">
+    <div
+      role="alert"
+      className="rounded-lg border border-loss/30 bg-loss-bg/50 px-6 py-10 text-center"
+    >
       <CircleAlert size={22} aria-hidden className="mx-auto text-loss" />
       <p className="mt-2 text-sm font-semibold text-heading">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted">{message}</p>
       {onRetry && (
-        <Button variant="secondary" size="sm" className="mt-4" onClick={onRetry}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-4"
+          onClick={onRetry}
+        >
           <RotateCw size={14} aria-hidden /> Try again
         </Button>
       )}
@@ -447,7 +532,10 @@ export function ErrorState({
 
 export function Loading({ label = "Loading" }: { label?: string }) {
   return (
-    <div role="status" className="flex items-center justify-center gap-2 py-16 text-muted">
+    <div
+      role="status"
+      className="flex items-center justify-center gap-2 py-16 text-muted"
+    >
       <Loader2 className="animate-spin" size={22} aria-hidden />
       <span className="sr-only">{label}</span>
     </div>
@@ -455,13 +543,21 @@ export function Loading({ label = "Loading" }: { label?: string }) {
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <span aria-hidden className={clsx("skeleton block rounded", className)} />;
+  return (
+    <span aria-hidden className={clsx("skeleton block rounded", className)} />
+  );
 }
 
 /**
  * Placeholder rows shown inside <Table> while data loads
  */
-export function SkeletonRows({ rows = 5, cols }: { rows?: number; cols: number }) {
+export function SkeletonRows({
+  rows = 5,
+  cols,
+}: {
+  rows?: number;
+  cols: number;
+}) {
   return (
     <>
       {Array.from({ length: rows }, (_, r) => (
@@ -519,7 +615,9 @@ export function SectionHeader({
         <h2 className="text-lg font-semibold text-heading">{title}</h2>
         <p className="mt-0.5 max-w-2xl text-sm text-muted">{description}</p>
       </div>
-      {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
+      {action && (
+        <div className="flex flex-wrap items-center gap-2">{action}</div>
+      )}
     </div>
   );
 }
@@ -544,14 +642,25 @@ export function Card({
   flush?: boolean;
 }) {
   return (
-    <section className={clsx("overflow-hidden rounded-lg border border-hairline bg-surface shadow-sm", className)}>
+    <section
+      className={clsx(
+        "overflow-hidden rounded-lg border border-hairline bg-surface shadow-sm",
+        className,
+      )}
+    >
       {(title || actions) && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-4">
           <div className="min-w-0">
-            {title && <h2 className="text-base font-semibold text-heading">{title}</h2>}
-            {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+            {title && (
+              <h2 className="text-base font-semibold text-heading">{title}</h2>
+            )}
+            {description && (
+              <p className="mt-0.5 text-sm text-muted">{description}</p>
+            )}
           </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {actions && (
+            <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          )}
         </div>
       )}
       <div className={flush ? undefined : "p-5"}>{children}</div>
@@ -577,18 +686,30 @@ export function StatTile({
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-muted">{label}</p>
         {icon && (
-          <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-bg text-accent-text">
+          <span
+            aria-hidden
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-bg text-accent-text"
+          >
             {icon}
           </span>
         )}
       </div>
-      <p className="tnum mt-2 text-2xl font-semibold tracking-tight text-heading">{value}</p>
+      <p className="tnum mt-2 text-2xl font-semibold tracking-tight text-heading">
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </>
   );
-  const cls = "block rounded-lg border border-hairline bg-surface p-4 shadow-sm";
+  const cls =
+    "block rounded-lg border border-hairline bg-surface p-4 shadow-sm";
   return href ? (
-    <Link href={href} className={clsx(cls, "transition-colors hover:border-accent-strong hover:bg-raised")}>
+    <Link
+      href={href}
+      className={clsx(
+        cls,
+        "transition-colors hover:border-accent-strong hover:bg-raised",
+      )}
+    >
       {body}
     </Link>
   ) : (
@@ -607,10 +728,20 @@ export function DetailList({
   columns?: 2 | 3;
 }) {
   return (
-    <dl className={clsx("grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2", columns === 3 && "lg:grid-cols-3")}>
+    <dl
+      className={clsx(
+        "grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2",
+        columns === 3 && "lg:grid-cols-3",
+      )}
+    >
       {items.map(({ label, value, wide }) => (
-        <div key={label} className={clsx("min-w-0", wide && "sm:col-span-full")}>
-          <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted">{label}</dt>
+        <div
+          key={label}
+          className={clsx("min-w-0", wide && "sm:col-span-full")}
+        >
+          <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted">
+            {label}
+          </dt>
           <dd className="mt-1 break-words text-sm text-heading">{value}</dd>
         </div>
       ))}
@@ -619,10 +750,23 @@ export function DetailList({
 }
 
 /** Small rounded label for IDs, numbers and names inside detail lists */
-export function Chip({ children, href }: { children: ReactNode; href?: string }) {
-  const cls = "inline-flex max-w-full items-center rounded-md bg-chip px-2 py-0.5 text-xs text-body";
+export function Chip({
+  children,
+  href,
+}: {
+  children: ReactNode;
+  href?: string;
+}) {
+  const cls =
+    "inline-flex max-w-full items-center rounded-md bg-chip px-2 py-0.5 text-xs text-body";
   return href ? (
-    <Link href={href} className={clsx(cls, "underline-offset-2 hover:text-accent-text hover:underline")}>
+    <Link
+      href={href}
+      className={clsx(
+        cls,
+        "underline-offset-2 hover:text-accent-text hover:underline",
+      )}
+    >
       {children}
     </Link>
   ) : (
@@ -630,7 +774,13 @@ export function Chip({ children, href }: { children: ReactNode; href?: string })
   );
 }
 
-export function ChipList({ items, empty = "None" }: { items: Array<{ key: string; label: ReactNode; href?: string }>; empty?: string }) {
+export function ChipList({
+  items,
+  empty = "None",
+}: {
+  items: Array<{ key: string; label: ReactNode; href?: string }>;
+  empty?: string;
+}) {
   if (items.length === 0) return <span className="text-faint">{empty}</span>;
   return (
     <span className="flex flex-wrap gap-1.5">
@@ -681,7 +831,8 @@ export function PageTopBar({
   backHref?: string | null;
 }) {
   const parent = breadcrumbs?.filter((b) => b.href).at(-1)?.href;
-  const fallback = backHref === null ? null : (backHref ?? parent ?? "/dashboard");
+  const fallback =
+    backHref === null ? null : (backHref ?? parent ?? "/dashboard");
   return (
     <div className="mb-3 flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">
       <BackButton fallback={fallback} />
@@ -695,19 +846,31 @@ export function PageTopBar({
   );
 }
 
-export function Breadcrumbs({ items }: { items: Array<{ label: string; href?: string }> }) {
+export function Breadcrumbs({
+  items,
+}: {
+  items: Array<{ label: string; href?: string }>;
+}) {
   return (
     <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1 text-sm text-muted">
         {items.map((item, i) => (
           <li key={`${item.label}-${i}`} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight size={14} aria-hidden className="text-faint" />}
+            {i > 0 && (
+              <ChevronRight size={14} aria-hidden className="text-faint" />
+            )}
             {item.href ? (
-              <Link href={item.href} className="rounded px-0.5 hover:text-heading hover:underline underline-offset-2">
+              <Link
+                href={item.href}
+                className="rounded px-0.5 hover:text-heading hover:underline underline-offset-2"
+              >
                 {item.label}
               </Link>
             ) : (
-              <span aria-current="page" className="max-w-[16rem] truncate font-medium text-heading">
+              <span
+                aria-current="page"
+                className="max-w-[16rem] truncate font-medium text-heading"
+              >
                 {item.label}
               </span>
             )}
@@ -721,12 +884,17 @@ export function Breadcrumbs({ items }: { items: Array<{ label: string; href?: st
 /**
  * Active tab kept in `?tab=` so it survives reloads and can be linked to
  */
-export function useTabParam<T extends string>(ids: readonly T[], fallback: T = ids[0]) {
+export function useTabParam<T extends string>(
+  ids: readonly T[],
+  fallback: T = ids[0],
+) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const raw = searchParams.get("tab");
-  const active = (ids as readonly string[]).includes(raw ?? "") ? (raw as T) : fallback;
+  const active = (ids as readonly string[]).includes(raw ?? "")
+    ? (raw as T)
+    : fallback;
   const setActive = useCallback(
     (id: T) => router.replace(`${pathname}?tab=${id}`, { scroll: false }),
     [router, pathname],
@@ -740,7 +908,12 @@ export function Tabs<T extends string>({
   onChange,
   label,
 }: {
-  tabs: ReadonlyArray<{ id: T; label: string; icon?: React.ComponentType<{ size?: number }>; count?: number }>;
+  tabs: ReadonlyArray<{
+    id: T;
+    label: string;
+    icon?: React.ComponentType<{ size?: number }>;
+    count?: number;
+  }>;
   active: T;
   onChange: (id: T) => void;
   label: string;
@@ -758,7 +931,11 @@ export function Tabs<T extends string>({
   };
 
   return (
-    <div role="tablist" aria-label={label} className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline">
+    <div
+      role="tablist"
+      aria-label={label}
+      className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline"
+    >
       {tabs.map(({ id, label: text, icon: Icon, count }, i) => {
         const selected = id === active;
         return (
@@ -775,13 +952,17 @@ export function Tabs<T extends string>({
             onKeyDown={(e) => onKeyDown(e, i)}
             className={clsx(
               "-mb-px flex h-11 items-center gap-2 whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors",
-              selected ? "border-accent text-accent-text" : "border-transparent text-muted hover:text-heading",
+              selected
+                ? "border-accent text-accent-text"
+                : "border-transparent text-muted hover:text-heading",
             )}
           >
             {Icon && <Icon size={16} />}
             {text}
             {count !== undefined && (
-              <span className="tnum rounded-full bg-chip px-1.5 text-[11px] text-muted">{count}</span>
+              <span className="tnum rounded-full bg-chip px-1.5 text-[11px] text-muted">
+                {count}
+              </span>
             )}
           </button>
         );
@@ -799,13 +980,19 @@ export function EditLoadState({
   breadcrumbs,
   backHref,
 }: {
-  query: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+  query: {
+    isLoading: boolean;
+    isError: boolean;
+    error: unknown;
+    refetch: () => unknown;
+  };
   noun: string;
   breadcrumbs: Array<{ label: string; href?: string }>;
   backHref: string;
 }) {
   const router = useRouter();
-  const notFound = query.isError && /not found/i.test(errorMessage(query.error));
+  const notFound =
+    query.isError && /not found/i.test(errorMessage(query.error));
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -824,19 +1011,23 @@ export function EditLoadState({
         <EmptyState
           title={`This ${noun} doesn't exist`}
           text="It may have been deleted, or the link is wrong."
-          action={<Button onClick={() => router.push(backHref)}>Go back</Button>}
+          action={
+            <Button onClick={() => router.push(backHref)}>Go back</Button>
+          }
         />
       ) : (
-        <ErrorState message={errorMessage(query.error)} onRetry={() => query.refetch()} />
+        <ErrorState
+          message={errorMessage(query.error)}
+          onRetry={() => query.refetch()}
+        />
       )}
     </div>
   );
 }
 
 /**
- * Full-page create/edit form. Header with the actions on top, settings-style
- * sections below (<FormSection>), and the actions repeated in a bar pinned to
- * the bottom of the screen so Save is always in reach on long forms.
+ * Full-page create/edit form with settings-style sections and a sticky action
+ * bar so Save is always in reach on long forms.
  */
 export function FormPage({
   breadcrumbs,
@@ -844,6 +1035,8 @@ export function FormPage({
   description,
   children,
   footer,
+  showHeaderActions = true,
+  flushFooterToBottom = false,
   error,
 }: {
   breadcrumbs: Array<{ label: string; href?: string }>;
@@ -851,18 +1044,31 @@ export function FormPage({
   description?: string;
   children: ReactNode;
   footer: ReactNode;
+  showHeaderActions?: boolean;
+  flushFooterToBottom?: boolean;
   /** Form-level message shown above the sections, e.g. "fix the highlighted fields" */
   error?: string | null;
 }) {
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className={clsx("mx-auto max-w-5xl", flushFooterToBottom && "-mb-10")}>
       <PageTopBar breadcrumbs={breadcrumbs} />
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-6">
+      <div
+        className={clsx(
+          "flex flex-wrap items-end gap-4 border-b border-hairline pb-6",
+          showHeaderActions && "justify-between",
+        )}
+      >
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">{title}</h1>
-          {description && <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>}
+          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
+            {title}
+          </h1>
+          {description && (
+            <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
+          )}
         </div>
-        <div className="hidden items-center gap-2 md:flex">{footer}</div>
+        {showHeaderActions && (
+          <div className="hidden items-center gap-2 md:flex ">{footer}</div>
+        )}
       </div>
       {error && (
         <div className="mt-6">
@@ -870,7 +1076,13 @@ export function FormPage({
         </div>
       )}
       <div className="divide-y divide-hairline">{children}</div>
-      <div data-sticky-form-footer className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div
+        data-sticky-form-footer
+        className={clsx(
+          "sticky z-10 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 py-3 backdrop-blur-md  -mx-10 sm:-mx-10 sm:pl-6 sm:pr-10  lg:-mx-10 lg:pl-10 lg:pr-10",
+          flushFooterToBottom ? "bottom-[-20px]" : "bottom-0",
+        )}
+      >
         {footer}
       </div>
     </div>
@@ -893,14 +1105,23 @@ export function FormSection({
     <section className="grid gap-4 py-8 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] md:gap-10">
       <div>
         <h2 className="text-base font-semibold text-heading">{title}</h2>
-        {description && <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            {description}
+          </p>
+        )}
       </div>
-      <div className="space-y-5 rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">{children}</div>
+      <div className="space-y-5 rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">
+        {children}
+      </div>
     </section>
   );
 }
 
-const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+const formatBytes = (n: number) =>
+  n < 1024 * 1024
+    ? `${Math.max(1, Math.round(n / 1024))} KB`
+    : `${(n / 1024 / 1024).toFixed(1)} MB`;
 
 /**
  * Drag-and-drop (or click) file picker that shows the chosen file
@@ -948,20 +1169,33 @@ export function FileDrop({
             error ? "border-loss" : "border-hairline-strong",
           )}
         >
-          <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-bg text-accent-text">
+          <span
+            aria-hidden
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-bg text-accent-text"
+          >
             <FileSpreadsheet size={20} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-heading">{file.name}</p>
+            <p className="truncate text-sm font-medium text-heading">
+              {file.name}
+            </p>
             <p className="text-xs text-muted">
               {formatBytes(file.size)}
               {details && <> · {details}</>}
             </p>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => inputRef.current?.click()}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => inputRef.current?.click()}
+          >
             Replace
           </Button>
-          <IconButton label="Remove file" tone="danger" onClick={() => onChange(null)}>
+          <IconButton
+            label="Remove file"
+            tone="danger"
+            onClick={() => onChange(null)}
+          >
             <X size={16} />
           </IconButton>
         </div>
@@ -988,15 +1222,23 @@ export function FileDrop({
                 : "border-hairline-strong bg-surface-input hover:border-accent-strong hover:bg-accent-bg/50",
           )}
         >
-          <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-bg text-accent-text">
+          <span
+            aria-hidden
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-bg text-accent-text"
+          >
             <UploadCloud size={22} />
           </span>
           <span className="text-sm font-medium text-heading">{label}</span>
-          <span className="text-xs text-muted">Drag a file here, or click to browse</span>
+          <span className="text-xs text-muted">
+            Drag a file here, or click to browse
+          </span>
         </button>
       )}
       {error ? (
-        <p role="alert" className="mt-2 flex items-center gap-1 text-xs text-loss">
+        <p
+          role="alert"
+          className="mt-2 flex items-center gap-1 text-xs text-loss"
+        >
           <CircleAlert size={13} aria-hidden /> {error}
         </p>
       ) : (
@@ -1039,7 +1281,9 @@ export function Drawer({
     document.body.style.overflow = "hidden";
     const panel = panelRef.current;
     if (panel && !panel.contains(document.activeElement)) {
-      const first = panel.querySelector<HTMLElement>("input:not([disabled]), select, textarea, button:not([aria-label='Close'])");
+      const first = panel.querySelector<HTMLElement>(
+        "input:not([disabled]), select, textarea, button:not([aria-label='Close'])",
+      );
       (first ?? panel).focus();
     }
     return () => {
@@ -1049,7 +1293,12 @@ export function Drawer({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <div
         aria-hidden
         onMouseDown={onClose}
@@ -1065,16 +1314,24 @@ export function Drawer({
       >
         <div className="flex items-start justify-between gap-3 border-b border-hairline px-6 py-5">
           <div className="min-w-0">
-            <h3 className="text-lg font-semibold tracking-tight text-heading">{title}</h3>
-            {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+            <h3 className="text-lg font-semibold tracking-tight text-heading">
+              {title}
+            </h3>
+            {description && (
+              <p className="mt-0.5 text-sm text-muted">{description}</p>
+            )}
           </div>
           <IconButton label="Close" onClick={onClose}>
             <X size={18} />
           </IconButton>
         </div>
-        <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="no-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+          {children}
+        </div>
         {footer && (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-hairline bg-raised px-6 py-4">{footer}</div>
+          <div className="flex flex-wrap justify-end gap-2 border-t border-hairline bg-raised px-6 py-4">
+            {footer}
+          </div>
         )}
       </aside>
     </div>
@@ -1087,7 +1344,7 @@ export function Table({
   label,
   bare,
 }: {
-  head: string[];
+  head: ReactNode[];
   children: ReactNode;
   /** Accessible name for the table */
   label?: string;
@@ -1095,15 +1352,35 @@ export function Table({
   bare?: boolean;
 }) {
   return (
-    <div className={clsx("overflow-x-auto bg-surface", !bare && "rounded-lg border border-hairline shadow-sm")}>
+    <div
+      className={clsx(
+        "overflow-x-auto bg-surface",
+        !bare && "rounded-lg border border-hairline shadow-sm",
+      )}
+    >
       <table className="w-full text-left text-sm" aria-label={label}>
         <thead className="border-b border-hairline bg-raised text-[11px] uppercase tracking-[0.08em] text-muted">
           <tr>
-            {head.map((h, i) => (
-              <th key={h || i} scope="col" className={clsx("whitespace-nowrap px-4 py-3 font-medium", !h && "w-px")}>
-                {h || <span className="sr-only">Actions</span>}
-              </th>
-            ))}
+            {head.map((h, i) => {
+              const ariaSort = isValidElement<{
+                ariaSort?: "ascending" | "descending" | "none";
+              }>(h)
+                ? h.props.ariaSort
+                : undefined;
+              return (
+                <th
+                  key={i}
+                  scope="col"
+                  aria-sort={ariaSort}
+                  className={clsx(
+                    "whitespace-nowrap px-4 py-3 font-medium",
+                    !h && "w-px",
+                  )}
+                >
+                  {h || <span className="sr-only">Actions</span>}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-hairline">{children}</tbody>
@@ -1113,18 +1390,30 @@ export function Table({
 }
 
 /** Table row that opens a detail page on click and on Enter */
-export function LinkRow({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
+export function LinkRow({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
   const router = useRouter();
   return (
     <tr
       tabIndex={0}
       onClick={(e) => {
         // Let buttons/links inside the row do their own thing
-        if ((e.target as HTMLElement).closest("button, a, input, select, label")) return;
+        if (
+          (e.target as HTMLElement).closest("button, a, input, select, label")
+        )
+          return;
         router.push(href);
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && e.target === e.currentTarget) router.push(href);
+        if (e.key === "Enter" && e.target === e.currentTarget)
+          router.push(href);
       }}
       className={clsx(
         "cursor-pointer align-middle outline-none transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]",
@@ -1137,7 +1426,13 @@ export function LinkRow({ href, children, className }: { href: string; children:
 }
 
 /** A full-width message row inside a table body */
-export function TableMessage({ cols, children }: { cols: number; children: ReactNode }) {
+export function TableMessage({
+  cols,
+  children,
+}: {
+  cols: number;
+  children: ReactNode;
+}) {
   return (
     <tr>
       <td colSpan={cols} className="px-4 py-10 text-center text-sm text-muted">
@@ -1181,9 +1476,13 @@ export function usePagination<T>(items: T[], initialSize = PAGE_SIZES[0]) {
 /** Page numbers to show, with "…" gaps: 1 … 4 5 6 … 12 */
 const pageList = (page: number, count: number): (number | "…")[] => {
   if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
-  const pages = new Set([1, count, page - 1, page, page + 1].filter((p) => p >= 1 && p <= count));
+  const pages = new Set(
+    [1, count, page - 1, page, page + 1].filter((p) => p >= 1 && p <= count),
+  );
   const sorted = [...pages].sort((a, b) => a - b);
-  return sorted.flatMap((p, i) => (i > 0 && p - sorted[i - 1] > 1 ? ["…" as const, p] : [p]));
+  return sorted.flatMap((p, i) =>
+    i > 0 && p - sorted[i - 1] > 1 ? ["…" as const, p] : [p],
+  );
 };
 
 export function Pagination({
@@ -1199,7 +1498,8 @@ export function Pagination({
   if (total === 0) return null;
   const end = Math.min(start + pageSize, total);
 
-  const pageButton = "inline-flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm transition-colors";
+  const pageButton =
+    "inline-flex h-9 min-w-9 items-center justify-center rounded-md px-2 text-sm transition-colors";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-1 text-sm text-muted">
@@ -1230,7 +1530,10 @@ export function Pagination({
             aria-label="Previous page"
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
-            className={clsx(pageButton, "hover:bg-surface-hover hover:text-heading disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent")}
+            className={clsx(
+              pageButton,
+              "hover:bg-surface-hover hover:text-heading disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
+            )}
           >
             <ChevronLeft size={16} />
           </button>
@@ -1263,7 +1566,10 @@ export function Pagination({
             aria-label="Next page"
             disabled={page === pageCount}
             onClick={() => setPage(page + 1)}
-            className={clsx(pageButton, "hover:bg-surface-hover hover:text-heading disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent")}
+            className={clsx(
+              pageButton,
+              "hover:bg-surface-hover hover:text-heading disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
+            )}
           >
             <ChevronRight size={16} />
           </button>

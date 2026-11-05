@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {  useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
@@ -9,8 +9,8 @@ import {
   CheckCircle2,
   Clock,
   ArrowDownUp,
-  ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
+  ArrowDown,
+  ArrowUp,
   ArrowLeft,
   IndianRupee,
   LayoutDashboard,
@@ -54,6 +54,7 @@ import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/Dispatc
 import CampaignCosts from "@/components/campaigns/CampaignCosts";
 import type { ClassificationCall, ClassificationCallsResponse } from "@/lib/callingAgentApi";
 
+
 import {
   Badge,
   Button,
@@ -63,7 +64,6 @@ import {
   Drawer,
   EmptyState,
   ErrorState,
-  IconButton,
   Loading,
   Pagination,
   SearchInput,
@@ -85,6 +85,7 @@ import {
 
 const OUTCOMES: CallOutcome[] = ["completed", "no_answer", "not_connected", "busy", "failed", "hung_up", "cancelled"];
 const CALL_HEAD = ["Lead", "Phone", "Status", "Talk time", "Plivo cost", "AI cost", "Total cost"];
+type SortKey = "talk" | "plivo" | "ai" | "total";
 const CLASSIFICATION_BAR_COLORS = [
   "#279be8",
   "#a43be0",
@@ -216,7 +217,18 @@ function CampaignDetails() {
         breadcrumbs={crumbs}
         title={campaign.name}
         meta={<StatusBadge status={campaign.status} />}
-        description={`Created ${new Date(campaign.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(campaign.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
+        description={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <span>Created {new Date(campaign.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}</span>
+            <span aria-hidden>|</span>
+            <span>Updated {new Date(campaign.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}</span>
+            <span aria-hidden>|</span>
+            
+            <span className="tnum text-xs text-muted">
+               {(campaign.plivo_pool_ids ?? []).length} Plivo pool{(campaign.plivo_pool_ids ?? []).length === 1 ? "" : "s"}
+            </span>
+          </span>
+        }
         actions={
           <>
             <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="text-loss">
@@ -750,9 +762,24 @@ function CallsCard({
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [talkTimeSort, setTalkTimeSort] = useState<"default" | "asc" | "desc">("default");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  const router = useRouter();
+const pathname = usePathname();
+const searchParams = useSearchParams();
+const openId = searchParams.get("call"); // popup is open when this is set
+const [selectedCallId, setSelectedCallId] = useState<string | null>(null); // "Last opened" highlight
+
+const openCall = (callId: string) => {
+  const params = new URLSearchParams(searchParams.toString()); // keeps tab=calls
+  params.set("call", callId);
+  router.push(`${pathname}?${params.toString()}`, { scroll: false });
+};
+
+const closeCall = () => {
+  const params = new URLSearchParams(searchParams.toString());
+  params.delete("call");
+  router.push(`${pathname}?${params.toString()}`, { scroll: false });
+};
 
   const list = useMemo(() => calls ?? [], [calls]);
   const statuses = [...new Set(list.map((c) => c.status))].sort();
@@ -764,15 +791,50 @@ function CallsCard({
       (filter !== "messages:sent" || c.has_whatsapp_messages) &&
       (!term || `${c.lead_name ?? ""} ${c.phone}`.toLowerCase().includes(term)),
   );
-  const sortedCalls = [...filtered];
-  if (talkTimeSort !== "default") {
-    sortedCalls.sort((a, b) =>
-      talkTimeSort === "asc"
-        ? a.total_talk_seconds - b.total_talk_seconds
-        : b.total_talk_seconds - a.total_talk_seconds,
-    );
-  }
+  const activeSort = sort;
+  const sortedCalls = activeSort
+    ? [...filtered].sort((a, b) => {
+        const value = (call: CampaignCallSummary) => {
+          switch (activeSort.key) {
+            case "talk":
+              return call.total_talk_seconds;
+            case "plivo":
+              return call.plivo_cost;
+            case "ai":
+              return call.sarvam_cost;
+            case "total":
+              return call.plivo_cost + call.sarvam_cost;
+          }
+        };
+        const difference = value(a) - value(b);
+        return activeSort.dir === "asc" ? difference : -difference;
+      })
+    : filtered;
   const pagination = usePagination(sortedCalls, 25);
+  const toggleSort = (key: SortKey) => {
+    pagination.setPage(1);
+    setSort((current) =>
+      current?.key !== key ? { key, dir: "asc" } : current.dir === "asc" ? { key, dir: "desc" } : null,
+    );
+  };
+  const head = [
+    ...CALL_HEAD.slice(0, 3),
+    ...([
+      ["talk", "Talk time"],
+      ["plivo", "Plivo cost"],
+      ["ai", "AI cost"],
+      ["total", "Total cost"],
+    ] as const).map(([key, label]) => (
+      <SortHead
+        key={key}
+        label={label}
+        active={sort?.key === key}
+        dir={sort?.key === key ? sort.dir : null}
+        ariaSort={sort?.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+        onClick={() => toggleSort(key)}
+      />
+    )),
+  ];
   const open = list.find((c) => c.call_id === openId) ?? null;
 
   return (
@@ -799,23 +861,6 @@ function CallsCard({
                 ))}
                 <option value="messages:sent">Messages sent</option>
               </Select>
-              <IconButton
-                label={`Talk time: ${talkTimeSort === "default" ? "default order; activate for low to high" : talkTimeSort === "asc" ? "low to high; activate for high to low" : "high to low; activate for default order"}`}
-                className="border border-hairline-strong bg-surface-input hover:bg-surface-hover"
-                onClick={() =>
-                  setTalkTimeSort((current) =>
-                    current === "default" ? "asc" : current === "asc" ? "desc" : "default",
-                  )
-                }
-              >
-                {talkTimeSort === "default" ? (
-                  <ArrowDownUp size={16} aria-hidden />
-                ) : talkTimeSort === "asc" ? (
-                  <ArrowUpNarrowWide size={16} aria-hidden />
-                ) : (
-                  <ArrowDownWideNarrow size={16} aria-hidden />
-                )}
-              </IconButton>
             </>
           )
         }
@@ -834,7 +879,7 @@ function CallsCard({
           </div>
         ) : (
           <div className="space-y-3 pb-3">
-            <Table bare head={CALL_HEAD} label="Campaign calls">
+            <Table bare head={head} label="Campaign calls">
               {loading ? (
                 <SkeletonRows cols={CALL_HEAD.length} />
               ) : filtered.length === 0 ? (
@@ -847,7 +892,7 @@ function CallsCard({
                     selected={call.call_id === selectedCallId}
                     onOpen={() => {
                       setSelectedCallId(call.call_id);
-                      setOpenId(call.call_id);
+                      openCall(call.call_id);
                     }}
                   />
                 ))
@@ -860,8 +905,38 @@ function CallsCard({
         )}
       </Card>
 
-      {open && <CallDrawer campaignId={campaignId} call={open} onClose={() => setOpenId(null)} />}
+      {open && <CallDrawer campaignId={campaignId} call={open} onClose={closeCall} />}
     </>
+  );
+}
+
+function SortHead({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc" | null;
+  ariaSort: "ascending" | "descending" | "none";
+  onClick: () => void;
+}) {
+  const SortIcon = !active ? ArrowDownUp : dir === "asc" ? ArrowUp : ArrowDown;
+
+  return (
+    <button
+      type="button"
+      aria-label={`Sort by ${label}`}
+      onClick={onClick}
+      className={clsx(
+        "inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        active ? "text-heading" : "text-muted hover:text-heading",
+      )}
+    >
+      <span>{label}</span>
+      <SortIcon size={13} aria-hidden />
+    </button>
   );
 }
 

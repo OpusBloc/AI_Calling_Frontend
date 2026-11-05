@@ -668,3 +668,12 @@ summary {
     opacity: 0.25;
   }
 }
+
+/* Hide scrollbar but keep scrolling working */
+.no-scrollbar {
+  -ms-overflow-style: none;   /* old Edge / IE */
+  scrollbar-width: none;      /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari, new Edge, Opera */
+}

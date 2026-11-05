@@ -27,6 +27,7 @@ export interface AgentDraft {
   silenceCheckSeconds: number | null;
   silencePrompt: string;
   silenceHangupSeconds: number | null;
+  interruptionMinWords: number | null;
   whatsappMessageIds: string[];
   parts: Record<AgentPart, PartDraft>;
   classifications: ClassificationDraftItem[];
@@ -48,6 +49,7 @@ export const emptyDraft = (): AgentDraft => ({
   silenceCheckSeconds: null,
   silencePrompt: "",
   silenceHangupSeconds: null,
+  interruptionMinWords: null,
   whatsappMessageIds: [],
   parts: Object.fromEntries(AGENT_PARTS.map((p) => [p, blankPart()])) as AgentDraft["parts"],
   classifications: [],
@@ -63,6 +65,7 @@ export const draftFromAgent = (agent: Agent): AgentDraft => ({
   silenceCheckSeconds: agent.silence_check_seconds ?? null,
   silencePrompt: agent.silence_prompt ?? "",
   silenceHangupSeconds: agent.silence_hangup_seconds ?? null,
+  interruptionMinWords: agent.interruption_min_words ?? null,
   whatsappMessageIds: agent.whatsapp_message_ids ?? [],
   parts: Object.fromEntries(
     AGENT_PARTS.map((p) => [p, { source: "text", text: agent[p] ?? "" }]),
@@ -90,6 +93,7 @@ export const loadDraft = (agentId: string | null): AgentDraft | null => {
       silenceCheckSeconds: parsed.silenceCheckSeconds ?? null,
       silencePrompt: parsed.silencePrompt ?? "",
       silenceHangupSeconds: parsed.silenceHangupSeconds ?? null,
+      interruptionMinWords: parsed.interruptionMinWords ?? null,
       whatsappMessageIds: parsed.whatsappMessageIds ?? [],
       classifications: parsed.classifications ?? [],
     };
@@ -171,6 +175,9 @@ export function toCreateForm(draft: AgentDraft): FormData {
   if (draft.silenceHangupSeconds !== null && draft.silenceHangupSeconds !== undefined && !isNaN(draft.silenceHangupSeconds)) {
     form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
   }
+  if (draft.interruptionMinWords !== null && !isNaN(draft.interruptionMinWords)) {
+    form.append("interruption_min_words", String(draft.interruptionMinWords));
+  }
 
   if (draft.whatsappMessageIds && draft.whatsappMessageIds.length > 0) {
     form.append("whatsapp_message_ids", JSON.stringify(draft.whatsappMessageIds));
@@ -216,6 +223,11 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   if (draft.silenceHangupSeconds !== (agent.silence_hangup_seconds ?? null)) {
     if (draft.silenceHangupSeconds !== null && !isNaN(draft.silenceHangupSeconds)) {
       form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
+    }
+  }
+  if (draft.interruptionMinWords !== (agent.interruption_min_words ?? null)) {
+    if (draft.interruptionMinWords !== null && !isNaN(draft.interruptionMinWords)) {
+      form.append("interruption_min_words", String(draft.interruptionMinWords));
     }
   }
 
