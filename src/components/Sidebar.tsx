@@ -11,7 +11,13 @@ import { showSuccessNotification } from "@/hooks/useNotification";
 import { CurrentUser, clearToken, getUser, onAuthChange } from "@/lib/auth";
 import { navItems } from "./navItems";
 
-export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function Sidebar({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -29,7 +35,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
   const handleLogout = () => {
     clearToken();
-    showSuccessNotification("You have been signed out.", { title: "Signed out" });
+    showSuccessNotification("You have been signed out.", {
+      title: "Signed out",
+    });
     router.replace("/auth/login");
   };
 
@@ -40,15 +48,15 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         aria-hidden
         onClick={onClose}
         className={clsx(
-          "fixed inset-0 z-30 bg-black/40 transition-opacity md:hidden",
+          "fixed inset-0 z-30 bg-black/40 transition-opacity lg:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col border-r border-hairline bg-surface transition-transform duration-200 ease-out md:translate-x-0",
-          open ? "translate-x-0 shadow-lg" : "-translate-x-full",
+          "fixed inset-y-4 left-4 z-40 flex h-[calc(100vh-2rem)] w-[280px] shrink-0 flex-col rounded-2xl border border-hairline bg-surface  transition-transform duration-200 ease-out lg:static lg:h-full lg:w-full lg:translate-x-0 shadow-md",
+          open ? "translate-x-0 shadow-lg" : "-translate-x-[calc(100%+1rem)]",
         )}
       >
         {/* Brand */}
@@ -58,23 +66,32 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
               OB
             </span>
             <span className="leading-tight">
-              <span className="block text-[15px] font-semibold tracking-tight text-heading">Opus Bloc</span>
-              <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted">Admin</span>
+              <span className="block text-[15px] font-semibold tracking-tight text-heading">
+                Opus Bloc
+              </span>
+              <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                Admin
+              </span>
             </span>
           </Link>
           <button
             type="button"
             aria-label="Close menu"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading md:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading lg:hidden"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav aria-label="Main" className="nav-scroll flex flex-1 flex-col overflow-y-auto px-3 pt-4">
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">Menu</p>
+        <nav
+          aria-label="Main"
+          className="nav-scroll flex flex-1 flex-col overflow-y-auto px-3 pt-4"
+        >
+          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
+            Menu
+          </p>
           <ul className="space-y-0.5">
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname.startsWith(href);
@@ -90,8 +107,14 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                         : "font-medium text-body hover:bg-surface-hover hover:text-heading",
                     )}
                   >
-                    {active && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-accent" />}
-                    <Icon size={18} aria-hidden className={active ? "text-accent-text" : "text-muted"} />
+                    {active && (
+                      <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-accent" />
+                    )}
+                    <Icon
+                      size={18}
+                      aria-hidden
+                      className={active ? "text-accent-text" : "text-muted"}
+                    />
                     {label}
                   </Link>
                 </li>
@@ -101,11 +124,13 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </nav>
 
         {/* Signed-in user */}
-        <div className="border-t border-hairline p-3">
+        <div className="mt-auto border-t border-hairline p-3">
           <div className="flex items-center gap-3 rounded-md px-2 py-2">
             {user && <UserAvatar user={user} size={34} />}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-heading">{user?.full_name || "Admin"}</p>
+              <p className="truncate text-sm font-semibold text-heading">
+                {user?.full_name || "Admin"}
+              </p>
               <p className="truncate text-xs text-muted">{user?.email}</p>
             </div>
             <button
