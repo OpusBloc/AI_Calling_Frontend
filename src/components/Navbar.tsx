@@ -28,14 +28,14 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
     }
   };
 
-  return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface/80 px-4 backdrop-blur sm:px-8">
+  return ( 
+    <header className="z-20 flex h-[72px] shrink-0 items-center justify-between gap-3 rounded-2xl border border-hairline bg-surface/80 px-4  backdrop-blur sm:px-8 shadow-md">
       <div className="flex items-center gap-2">
         <button
           type="button"
           aria-label="Open menu"
           onClick={onMenuClick}
-          className="-ml-2 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted hover:bg-surface-hover hover:text-heading lg:hidden"
         >
           <Menu size={20} />
         </button>

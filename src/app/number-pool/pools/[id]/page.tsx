@@ -20,7 +20,6 @@ import {
   StatTile,
   StatusBadge,
   Table,
-  formatDate,
 } from "@/components/ui";
 
 const HEAD = ["Number", "Alias", "Type", "Location", "Capabilities", "Daily limit", "Max concurrent"];

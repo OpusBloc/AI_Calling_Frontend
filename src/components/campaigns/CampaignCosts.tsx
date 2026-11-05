@@ -7,7 +7,7 @@ import { Clock, IndianRupee, PhoneCall } from "lucide-react";
 import { getCallCosts } from "@/lib/api";
 import type { ScheduledCampaignCall } from "@/types/types";
 import CostSplit, { rupees } from "@/components/CostSplit";
-import { Card, ErrorState, Pagination, SkeletonRows, StatTile, Table, TableMessage, formatDate, formatDuration, formatMoney, usePagination } from "@/components/ui";
+import { Card, ErrorState, Pagination, SkeletonRows, StatTile, Table, TableMessage, formatDuration, formatMoney, usePagination } from "@/components/ui";
 
 // /call-costs can't filter by campaign, so take its largest page and match rows to this
 // campaign's attempts. Calls older than the newest RECENT_LIMIT costed calls are missed.

@@ -559,10 +559,11 @@ function transcriptText(value: unknown): string {
 function transcriptEntries(transcript: unknown): Array<{ role: string; content: string }> {
   let value = transcript;
   if (typeof value === "string") {
+    const text = value;
     try {
-      value = JSON.parse(value);
+      value = JSON.parse(text);
     } catch {
-      return value.trim() ? [{ role: "Transcript", content: value }] : [];
+      return text.trim() ? [{ role: "Transcript", content: text }] : [];
     }
   }
 
@@ -999,6 +1000,7 @@ function CallDrawer({
 function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const transcript = a.transcript ?? [];
+  const whatsappMessages = a.whatsapp_messages ?? [];
   const transferred = ["completed", "success", "answered", "transferred"].includes((a.transfer_status ?? "").toLowerCase());
   const plivoCost = a.plivo.cost_inr;
   const aiCost = a.sarvam?.total_cost_inr ?? 0;
@@ -1018,10 +1020,10 @@ function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
       <div className="space-y-4 p-4">
         <section className="space-y-3">
           <h4 className="eyebrow">WhatsApp messages sent</h4>
-          {a.whatsapp_messages.length === 0 ? (
+          {whatsappMessages.length === 0 ? (
             <p className="rounded-md bg-raised px-4 py-4 text-sm text-muted">No WhatsApp messages sent for this attempt.</p>
           ) : (
-            a.whatsapp_messages.map((message) => (
+            whatsappMessages.map((message) => (
               <article key={message.id} className="rounded-lg border border-hairline bg-surface p-4">
                 <DetailList
                   columns={3}

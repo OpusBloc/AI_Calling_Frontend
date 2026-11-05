@@ -21,14 +21,14 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     if (from === null) return;
     // Arriving from the login screen isn't a page to go "back" to
     if (!from.startsWith("/auth")) markInAppNavigation();
-    mainRef.current?.scrollTo({ top: 0 });
+    mainRef.current?.querySelector<HTMLElement>(".content-scroll")?.scrollTo({ top: 0 });
     mainRef.current?.focus({ preventScroll: true });
   }, [pathname]);
 
   if (pathname.startsWith("/auth")) return <>{children}</>;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-canvas">
+     <div className="grid h-screen grid-cols-1 gap-2 overflow-hidden bg-canvas p-4 lg:grid-cols-[280px_minmax(0,1fr)] ">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-heading focus:shadow-lg"
@@ -36,10 +36,12 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         Skip to content
       </a>
       <Sidebar open={menuOpen} onClose={closeMenu} />
-      <div className="ml-0 flex min-h-0 min-w-0 flex-1 flex-col md:ml-64">
+      <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 ">
         <Navbar onMenuClick={() => setMenuOpen(true)} />
-        <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+        <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-hairline bg-surface shadow-sm outline-none">
+          <div className="content-scroll h-full overflow-y-auto px-5 py-5 pr-8 sm:px-6 sm:pr-9 lg:px-8 lg:pr-10 shadow-xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { getCampaignDispatch, setCampaignDispatch } from "@/lib/api";
 import type { DispatchStatus } from "@/types/types";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { Card, ErrorState, Skeleton, StatusBadge, formatDate } from "@/components/ui";
+import { Card, ErrorState, Skeleton, StatusBadge } from "@/components/ui";
 
 export const dispatchKey = (campaignId: string) => ["dispatch-status", campaignId];
 

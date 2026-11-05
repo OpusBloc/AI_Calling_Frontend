@@ -44,10 +44,11 @@ export default function ClassificationCallsDrawer({
   const transcriptEntries = (transcript: unknown): Array<{ role: string; content: string }> => {
     let value = transcript;
     if (typeof value === "string") {
+      const text = value;
       try {
-        value = JSON.parse(value);
+        value = JSON.parse(text);
       } catch {
-        return value.trim() ? [{ role: "Transcript", content: value }] : [];
+        return text.trim() ? [{ role: "Transcript", content: text }] : [];
       }
     }
 
