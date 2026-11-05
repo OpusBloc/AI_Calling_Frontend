@@ -76,6 +76,26 @@ export type ScheduledCampaignCall = Omit<
 };
 
 /** GET /campaigns/{id}/report */
+export interface CampaignCallSummary {
+  call_id: string;
+  lead_name: string | null;
+  phone: string;
+  status: string;
+  total_talk_seconds: number;
+  plivo_cost: number;
+  sarvam_cost: number;
+  has_whatsapp_messages: boolean;
+  attempts: Array<{
+    attempt_id: string;
+    attempt_no: number;
+    plivo_call_uuid: string | null;
+    status: string;
+    duration_seconds: number;
+    plivo_cost: number;
+    sarvam_cost: number;
+  }>;
+}
+
 export interface CampaignReport {
   campaign: {
     id: string;
@@ -97,7 +117,75 @@ export interface CampaignReport {
     total_run_minutes: number;
     total_call_minutes: number;
   };
-  calls: ScheduledCampaignCall[];
+  calls: CampaignCallSummary[];
+}
+
+export interface CampaignCallDetailAttempt {
+  attempt_id: string;
+  attempt_no: number;
+  caller_number: string | null;
+  status: string;
+  plivo_call_uuid: string | null;
+  plivo_request_uuid: string | null;
+  submitted_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number;
+  last_error: string | null;
+  plivo: {
+    status: string | null;
+    cost_inr: number;
+    total_amount_usd: string | null;
+    total_rate_usd: string | null;
+    hangup_cause_code: number | null;
+    hangup_cause_name: string | null;
+    hangup_source: string | null;
+    machine_detected: boolean | null;
+    callback: Record<string, unknown> | null;
+    cdr: Record<string, unknown> | null;
+  };
+  sarvam: {
+    total_cost_inr: number;
+    subtotal_cost: number | null;
+    gst_cost: number | null;
+    stt_cost: number | null;
+    llm_cost: number | null;
+    tts_cost: number | null;
+    stt_seconds: number | null;
+    prompt_tokens: number | null;
+    completion_tokens: number | null;
+    cached_tokens: number | null;
+    turns: number | null;
+    tts_chars: number | null;
+    total_chars: number | null;
+  } | null;
+  recording_url: string | null;
+  transfer_status: string | null;
+  transfer_reason: string | null;
+  transcript: Array<Record<string, string>>;
+  whatsapp_messages: SentWhatsAppMessage[];
+}
+
+export interface CampaignCallDetail {
+  call: {
+    call_id: string;
+    campaign_id: string;
+    lead_name: string | null;
+    phone: string;
+    caller_number: string | null;
+    status: string;
+    last_outcome: string | null;
+    attempt_count: number;
+    max_attempts: number;
+    scheduled_at: string | null;
+    callback_at: string | null;
+    created_at: string;
+    updated_at: string;
+    total_talk_seconds: number;
+    total_plivo_cost: number;
+    total_sarvam_cost: number;
+    billing_currency: string;
+  };
+  attempts: CampaignCallDetailAttempt[];
 }
 
 /** Dispatch is per campaign: on while the campaign is scheduled or running */

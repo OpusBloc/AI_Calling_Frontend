@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   CalendarClock,
@@ -28,11 +28,13 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { deleteCampaign, getCallCosts } from "@/lib/api";
-import type { CallAttempt, CallCost, CallOutcome, Campaign, CampaignReport, ScheduledCampaignCall } from "@/types/types";
+import { deleteCampaign } from "@/lib/api";
+import type { CampaignCallDetailAttempt, CampaignCallSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
 import {
   useAgents,
   useCampaign,
+  useCampaignCallDetail,
+  useCampaignCalls,
   useCampaignClassificationCalls,
   useCampaignClassifications,
   useCampaignIds,
@@ -91,6 +93,10 @@ const CLASSIFICATION_BAR_COLORS = [
 ] as const;
 // Must match the backend: an outcome can only be recorded while a call is live
 const ACTIVE = new Set(["dialing", "ringing", "in_progress"]);
+const formatDateWithSeconds = (value: string | null | undefined) =>
+  value
+    ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+    : "—";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -99,12 +105,6 @@ const TABS = [
   { id: "classification", label: "Classification", icon: Tags },
   { id: "settings", label: "Settings", icon: Settings2 },
 ] as const;
-
-const talkSeconds = (call: ScheduledCampaignCall) =>
-  (call.attempt_history ?? []).reduce((sum, a) => sum + (a.duration_seconds ?? 0), 0);
-
-const hasSentWhatsAppMessages = (call: ScheduledCampaignCall) =>
-  (call.attempt_history ?? []).some((attempt) => (attempt.whatsapp_messages?.length ?? 0) > 0);
 
 export default function CampaignDetailsPage() {
   // useTabParam reads the URL, which needs a Suspense boundary in the app router
@@ -126,6 +126,7 @@ function CampaignDetails() {
   const exists = ids.data?.includes(id) ?? false;
   const campaignQuery = useCampaign(id, ids.isSuccess && exists);
   const report = useCampaignReport(id, campaignQuery.isSuccess);
+  const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && tab === "costs");
   const schedule = useScheduleCampaign();
   const campaign = campaignQuery.data;
   const dispatch = useToggleDispatch(id, campaign?.name ?? "Campaign");
@@ -247,7 +248,7 @@ function CampaignDetails() {
               onRetry={() => report.refetch()}
             />
           )}
-          {tab === "costs" && <CampaignCosts calls={report.data?.calls} callsLoading={report.isLoading} />}
+          {tab === "costs" && <CampaignCosts calls={costCalls.data} callsLoading={costCalls.isLoading} />}
           {tab === "classification" && (
             <CampaignClassificationChart campaignId={id} agentId={campaign.agent_id} />
           )}
@@ -741,7 +742,7 @@ function CallsCard({
   onRetry,
 }: {
   campaignId: string;
-  calls: ScheduledCampaignCall[] | undefined;
+  calls: CampaignCallSummary[] | undefined;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -751,57 +752,27 @@ function CallsCard({
   const [talkTimeSort, setTalkTimeSort] = useState<"default" | "asc" | "desc">("default");
   const [openId, setOpenId] = useState<string | null>(null);
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
-  const costs = useQuery({
-    queryKey: ["call-costs", "list", 1, 500],
-    queryFn: () => getCallCosts(1, 500),
-    retry: false,
-  });
 
   const list = useMemo(() => calls ?? [], [calls]);
-  const costsByAttempt = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const cost of costs.data?.items ?? []) {
-      if (cost.attempt_id) map.set(cost.attempt_id, cost.total_cost);
-      map.set(cost.call_uuid, cost.total_cost);
-    }
-    return map;
-  }, [costs.data]);
-  const totalsByCall = useMemo(() => {
-    const map = new Map<string, { ai: number | null; plivo: number | null; total: number | null }>();
-    for (const call of list) {
-      const attempts = call.attempt_history ?? [];
-      const aiValues = attempts.map((attempt) =>
-        costsByAttempt.get(attempt.id) ??
-        (attempt.plivo_call_uuid ? costsByAttempt.get(attempt.plivo_call_uuid) : undefined),
-      );
-      const plivoValues = attempts.map((attempt) => {
-        const amount = attempt.total_amount == null ? Number.NaN : Number(attempt.total_amount);
-        return Number.isFinite(amount) ? amount : null;
-      });
-      const ai = aiValues.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-      const plivo = plivoValues.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-      map.set(call.id, { ai, plivo, total: ai + plivo });
-    }
-    return map;
-  }, [costsByAttempt, list]);
   const statuses = [...new Set(list.map((c) => c.status))].sort();
   const statusFilter = filter.startsWith("status:") ? filter.slice("status:".length) : null;
   const term = search.trim().toLowerCase();
   const filtered = list.filter(
     (c) =>
       (!statusFilter || c.status === statusFilter) &&
-      (filter !== "messages:sent" || hasSentWhatsAppMessages(c)) &&
-      (filter !== "messages:none" || !hasSentWhatsAppMessages(c)) &&
-      (!term || `${c.lead_name ?? ""} ${c.phone_e164}`.toLowerCase().includes(term)),
+      (filter !== "messages:sent" || c.has_whatsapp_messages) &&
+      (!term || `${c.lead_name ?? ""} ${c.phone}`.toLowerCase().includes(term)),
   );
   const sortedCalls = [...filtered];
   if (talkTimeSort !== "default") {
     sortedCalls.sort((a, b) =>
-      talkTimeSort === "asc" ? talkSeconds(a) - talkSeconds(b) : talkSeconds(b) - talkSeconds(a),
+      talkTimeSort === "asc"
+        ? a.total_talk_seconds - b.total_talk_seconds
+        : b.total_talk_seconds - a.total_talk_seconds,
     );
   }
   const pagination = usePagination(sortedCalls, 25);
-  const open = list.find((c) => c.id === openId) ?? null;
+  const open = list.find((c) => c.call_id === openId) ?? null;
 
   return (
     <>
@@ -870,23 +841,17 @@ function CallsCard({
               ) : (
                 pagination.pageItems.map((call) => (
                   <CallRow
-                    key={call.id}
+                    key={call.call_id}
                     call={call}
-                    costs={totalsByCall.get(call.id)}
-                    selected={call.id === selectedCallId}
+                    selected={call.call_id === selectedCallId}
                     onOpen={() => {
-                      setSelectedCallId(call.id);
-                      setOpenId(call.id);
+                      setSelectedCallId(call.call_id);
+                      setOpenId(call.call_id);
                     }}
                   />
                 ))
               )}
             </Table>
-            {costs.isError && (
-              <p role="alert" className="px-4 text-xs text-loss">
-                Could not load AI costs: {costs.error.message}
-              </p>
-            )}
             <div className="px-4">
               <Pagination {...pagination} noun="calls" />
             </div>
@@ -901,12 +866,10 @@ function CallsCard({
 
 function CallRow({
   call,
-  costs,
   selected,
   onOpen,
 }: {
-  call: ScheduledCampaignCall;
-  costs: { ai: number | null; plivo: number | null; total: number | null } | undefined;
+  call: CampaignCallSummary;
   selected: boolean;
   onOpen: () => void;
 }) {
@@ -935,37 +898,38 @@ function CallRow({
           </span>
         )}
       </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone_e164}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone}</td>
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
       </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(talkSeconds(call))}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(costs?.plivo ?? 0, 4)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(costs?.ai ?? 0, 4)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(costs?.total ?? 0, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(call.total_talk_seconds)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(call.sarvam_cost, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(call.plivo_cost + call.sarvam_cost, 4)}</td>
     </tr>
   );
 }
 
-/**
- * One lead's call: its attempts (newest first) with billing, recording and transcript,
- * plus recording an outcome while the call is live
- */
-function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: ScheduledCampaignCall; onClose: () => void }) {
+function CallDrawer({
+  campaignId,
+  call,
+  onClose,
+}: {
+  campaignId: string;
+  call: CampaignCallSummary;
+  onClose: () => void;
+}) {
+  const details = useCampaignCallDetail(campaignId, call.call_id);
   const postOutcome = usePostCampaignCallOutcome();
-  const costs = useQuery({
-    queryKey: ["call-costs", "list", 1, 500],
-    queryFn: () => getCallCosts(1, 500),
-    retry: false,
-  });
   const [outcome, setOutcome] = useState<CallOutcome | "">("");
-  const live = ACTIVE.has(call.status.toLowerCase());
-  const attempts = [...(call.attempt_history ?? [])].sort((a, b) => b.attempt_no - a.attempt_no);
+  const callDetail = details.data?.call;
+  const live = callDetail ? ACTIVE.has(callDetail.status.toLowerCase()) : false;
+  const attempts = [...(details.data?.attempts ?? [])].sort((a, b) => b.attempt_no - a.attempt_no);
 
   const save = () => {
     if (!outcome) return;
     postOutcome.mutate(
-      { campaignId, callId: call.id, outcome },
+      { campaignId, callId: call.call_id, outcome },
       {
         onSuccess: (r) => {
           showSuccessNotification(
@@ -979,114 +943,66 @@ function CallDrawer({ campaignId, call, onClose }: { campaignId: string; call: S
   };
 
   return (
-    <Drawer wide title={call.lead_name || call.phone_e164} description={call.lead_name ? call.phone_e164 : undefined} onClose={onClose}>
-      <DetailList
-        columns={3}
-        items={[
-          { label: "Status", value: <StatusBadge status={call.status} /> },
-          { label: "Last outcome", value: call.last_outcome ? <StatusBadge status={call.last_outcome} /> : "—" },
-          { label: "Attempts", value: <span className="tnum">{call.attempts} of {call.retry_count + 1}</span> },
-          {
-            label: "Scheduled",
-            value: call.scheduled_at
-              ? new Date(call.scheduled_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
-              : "—",
-          },
-          { label: "Called from", value: <span className="tnum">{call.caller_number ?? "—"}</span> },
-          { label: "Retries when", value: call.retry_on.map(humanize).join(", ") || "—" },
-        ]}
-      />
+    <Drawer wide title="Call details" onClose={onClose}>
+      {details.isLoading ? (
+        <Loading label="Loading call details" />
+      ) : details.isError ? (
+        <ErrorState message={details.error.message} onRetry={() => details.refetch()} />
+      ) : callDetail ? (
+        <>
+          <DetailList
+            columns={3}
+            items={[
+              { label: "Attempts", value: <span className="tnum">{callDetail.attempt_count} of {callDetail.max_attempts}</span> },
+              { label: "Scheduled", value: formatDateWithSeconds(callDetail.scheduled_at) },
+              { label: "Called from", value: <span className="tnum">{callDetail.caller_number ?? "—"}</span> },
+              { label: "Created", value: formatDateWithSeconds(callDetail.created_at) },
+              { label: "Updated", value: formatDateWithSeconds(callDetail.updated_at) },
+            ]}
+          />
 
-      {live && (
-        <section className="rounded-lg border border-gain/30 bg-gain-bg/50 p-4">
-          <h4 className="text-sm font-semibold text-heading">Record outcome</h4>
-          <p className="mt-0.5 text-xs text-muted">Only possible while the call is live. Some outcomes schedule a retry.</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value as CallOutcome | "")} className="w-48">
-              <option value="">Choose an outcome…</option>
-              {OUTCOMES.map((o) => (
-                <option key={o} value={o}>
-                  {humanize(o)}
-                </option>
-              ))}
-            </Select>
-            <Button onClick={save} disabled={!outcome} loading={postOutcome.isPending}>
-              Save outcome
-            </Button>
-          </div>
-        </section>
-      )}
+          {live && (
+            <section className="rounded-lg border border-gain/30 bg-gain-bg/50 p-4">
+              <h4 className="text-sm font-semibold text-heading">Record outcome</h4>
+              <p className="mt-0.5 text-xs text-muted">Only possible while the call is live. Some outcomes schedule a retry.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Select aria-label="Outcome" value={outcome} onChange={(e) => setOutcome(e.target.value as CallOutcome | "")} className="w-48">
+                  <option value="">Choose an outcome…</option>
+                  {OUTCOMES.map((o) => (
+                    <option key={o} value={o}>
+                      {humanize(o)}
+                    </option>
+                  ))}
+                </Select>
+                <Button onClick={save} disabled={!outcome} loading={postOutcome.isPending}>
+                  Save outcome
+                </Button>
+              </div>
+            </section>
+          )}
 
-      <section className="space-y-3">
-        <h4 className="eyebrow">Attempts</h4>
-        {attempts.length === 0 ? (
-          <p className="rounded-md bg-raised px-4 py-6 text-center text-sm text-muted">Not dialled yet.</p>
-        ) : (
-          attempts.map((a) => (
-            <AttemptCard
-              key={a.id}
-              attempt={a}
-              machineDetection={machineDetectionForAttempt(call, a)}
-              aiCost={findAttemptAiCost(costs.data?.items, a)}
-              aiCostError={costs.isError ? costs.error.message : null}
-            />
-          ))
-        )}
-      </section>
+          <section className="space-y-3">
+            <h4 className="eyebrow">Attempts</h4>
+            {attempts.length === 0 ? (
+              <p className="rounded-md bg-raised px-4 py-6 text-center text-sm text-muted">Not dialled yet.</p>
+            ) : (
+              attempts.map((attempt) => <AttemptCard key={attempt.attempt_id} attempt={attempt} />)
+            )}
+          </section>
+
+        </>
+      ) : null}
     </Drawer>
   );
 }
 
-function findAttemptAiCost(costs: CallCost[] | undefined, attempt: CallAttempt) {
-  return costs?.find(
-    (cost) =>
-      cost.attempt_id === attempt.id ||
-      (!!attempt.plivo_call_uuid && cost.call_uuid === attempt.plivo_call_uuid),
-  )?.total_cost;
-}
-
-function machineDetectionForAttempt(call: ScheduledCampaignCall, attempt: CallAttempt): boolean | null {
-  const responses = Object.entries(call.hangup_responses ?? {}).filter(
-    (entry): entry is [string, Record<string, unknown>] =>
-      Boolean(entry[1]) && typeof entry[1] === "object" && !Array.isArray(entry[1]),
-  );
-  const callCallback = responses.find(
-    ([key, response]) =>
-      key === attempt.id ||
-      response.attempt_id === attempt.id ||
-      (!!attempt.plivo_call_uuid && response.CallUUID === attempt.plivo_call_uuid) ||
-      (!!attempt.plivo_request_uuid && response.RequestUUID === attempt.plivo_request_uuid),
-  )?.[1];
-  const machine = attempt.hangup_response?.Machine ?? callCallback?.Machine;
-  const causeCode =
-    attempt.hangup_response?.HangupCauseCode ?? callCallback?.HangupCauseCode ?? attempt.hangup_cause_code;
-
-  if (machine != null && machine !== "") {
-    if (String(machine).toLowerCase() === "true") return true;
-    if (String(machine).toLowerCase() === "false") return false;
-  }
-  if (String(causeCode) === "9100") return true;
-  return null;
-}
-
-function AttemptCard({
-  attempt: a,
-  machineDetection,
-  aiCost,
-  aiCostError,
-}: {
-  attempt: CallAttempt;
-  machineDetection: string;
-  aiCost: number | undefined;
-  aiCostError: string | null;
-}) {
+function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const transcript = a.transcript ?? [];
   const transferred = ["completed", "success", "answered", "transferred"].includes((a.transfer_status ?? "").toLowerCase());
-  const plivoCost = a.total_amount == null ? undefined : Number(a.total_amount);
-  const combinedCost = plivoCost !== undefined && Number.isFinite(plivoCost) && aiCost !== undefined
-    ? plivoCost + aiCost
-    : undefined;
+  const plivoCost = a.plivo.cost_inr;
+  const aiCost = a.sarvam?.total_cost_inr ?? 0;
+  const combinedCost = plivoCost + aiCost;
 
   return (
     <article className="rounded-lg border border-hairline bg-surface">
@@ -1096,26 +1012,24 @@ function AttemptCard({
           <StatusBadge status={a.status} />
           {transferred && <Badge tone="gain">Transferred</Badge>}
         </div>
-        <span className="text-xs text-muted">
-          {new Date(a.ended_at ?? a.submitted_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
-        </span>
+        <span className="text-xs text-muted">{formatDateWithSeconds(a.ended_at ?? a.submitted_at)}</span>
       </header>
 
       <div className="space-y-4 p-4">
         <section className="space-y-3">
           <h4 className="eyebrow">WhatsApp messages sent</h4>
-          {(a.whatsapp_messages?.length ?? 0) === 0 ? (
+          {a.whatsapp_messages.length === 0 ? (
             <p className="rounded-md bg-raised px-4 py-4 text-sm text-muted">No WhatsApp messages sent for this attempt.</p>
           ) : (
-            a.whatsapp_messages?.map((message) => (
+            a.whatsapp_messages.map((message) => (
               <article key={message.id} className="rounded-lg border border-hairline bg-surface p-4">
                 <DetailList
                   columns={3}
                   items={[
                     { label: "Message", value: message.message_name || "WhatsApp message" },
                     { label: "Status", value: message.status ? <StatusBadge status={message.status} /> : "—" },
-                    { label: "Delivered at", value: formatDate(message.delivered_at) },
-                    { label: "Read at", value: formatDate(message.read_at) },
+                    { label: "Delivered at", value: formatDateWithSeconds(message.delivered_at) },
+                    { label: "Read at", value: formatDateWithSeconds(message.read_at) },
                   ]}
                 />
               </article>
@@ -1126,73 +1040,80 @@ function AttemptCard({
         <DetailList
           columns={3}
           items={[
-            { label: "Plivo cost", value: <span className="tnum">{plivoCost !== undefined && Number.isFinite(plivoCost) ? formatMoney(plivoCost, 4) : "—"}</span> },
-            { label: "AI cost", value: <span className="tnum">{aiCost !== undefined ? `₹${formatMoney(aiCost, 4)}` : "—"}</span> },
-            { label: "Total cost (Plivo + AI)", value: <span className="tnum font-semibold">{combinedCost !== undefined ? formatMoney(combinedCost, 4) : "—"}</span> },
+            { label: "Plivo cost", value: <span className="tnum">₹{formatMoney(plivoCost, 4)}</span> },
+            { label: "AI cost", value: <span className="tnum">₹{formatMoney(aiCost, 4)}</span> },
+            { label: "Total cost (Plivo + AI)", value: <span className="tnum font-semibold">₹{formatMoney(combinedCost, 4)}</span> },
           ]}
         />
         <DetailList
           columns={3}
           items={[
+            { label: "Caller number", value: <span className="tnum">{a.caller_number ?? "—"}</span> },
             { label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> },
-            { label: "Hang-up", value: a.hangup_cause_name ? `${a.hangup_cause_name}${a.hangup_source ? ` (by ${a.hangup_source.toLowerCase()})` : ""}` : "—" },
+            { label: "Submitted", value: formatDateWithSeconds(a.submitted_at) },
+            { label: "Ended", value: formatDateWithSeconds(a.ended_at) },
+            { label: "Hang-up", value: a.plivo.hangup_cause_name ? `${a.plivo.hangup_cause_name}${a.plivo.hangup_source ? ` (by ${a.plivo.hangup_source.toLowerCase()})` : ""}` : "—" },
             { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` — ${a.transfer_reason}` : ""}` : "None" },
-            { label: "Plivo status", value: a.plivo_status ? humanize(a.plivo_status) : "—" },
-            {
-              label: "Machine detected",
-              value: String(machineDetection ?? false),
-            },
+            { label: "Transfer reason", value: a.transfer_reason ?? "—" },
+            { label: "Plivo status", value: a.plivo.status ? humanize(a.plivo.status) : "—" },
+            { label: "Machine detected", value: a.plivo.machine_detected == null ? "—" : String(a.plivo.machine_detected) },
           ]}
         />
-        {aiCostError && (
-          <p role="alert" className="text-xs text-loss">
-            Could not load AI cost: {aiCostError}
-          </p>
-        )}
 
-        {a.recording_url && (
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.06em] text-muted">Recording</p>
-            <audio controls preload="none" src={a.recording_url} className="w-full">
-              <a href={a.recording_url}>Download recording</a>
-            </audio>
-          </div>
-        )}
+        <section className="space-y-2">
+          <h4 className="eyebrow">Recording</h4>
+          {a.recording_url ? (
+            <>
+              <p className="break-all text-xs text-muted">{a.recording_url}</p>
+              <audio controls preload="none" src={a.recording_url} className="w-full">
+                <a href={a.recording_url}>Download recording</a>
+              </audio>
+            </>
+          ) : (
+            <p className="rounded-md bg-raised px-4 py-3 text-sm text-muted">No recording is available for this attempt.</p>
+          )}
+        </section>
 
-        {transcript.length > 0 && (
-          <div>
-            <button
-              type="button"
-              aria-expanded={showTranscript}
-              onClick={() => setShowTranscript((v) => !v)}
-              className="text-sm font-medium text-accent-text underline-offset-2 hover:underline"
-            >
-              {showTranscript ? "Hide" : "Show"} transcript ({transcript.length} lines)
-            </button>
-            {showTranscript && (
-              <ol className="mt-3 max-h-80 space-y-2 overflow-y-auto rounded-md bg-raised p-3">
-                {transcript.map((line, i) => {
-                  const agent = line.role === "assistant";
-                  return (
-                    <li key={i} className={clsx("flex", agent ? "justify-start" : "justify-end")}>
-                      <div
-                        className={clsx(
-                          "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                          agent ? "bg-surface text-body" : "bg-accent-bg text-heading",
-                        )}
-                      >
-                        <span className="mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-muted">
-                          {agent ? "Agent" : "Lead"}
-                        </span>
-                        {line.content ?? Object.values(line).join(" ")}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </div>
-        )}
+        <section className="space-y-2">
+          <h4 className="eyebrow">Transcript</h4>
+          {transcript.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                aria-expanded={showTranscript}
+                onClick={() => setShowTranscript((v) => !v)}
+                className="text-sm font-medium text-accent-text underline-offset-2 hover:underline"
+              >
+                {showTranscript ? "Hide" : "Show"} transcript ({transcript.length} lines)
+              </button>
+              {showTranscript && (
+                <ol className="mt-3 max-h-80 space-y-2 overflow-y-auto rounded-md bg-raised p-3">
+                  {transcript.map((line, i) => {
+                    const agent = line.role === "assistant";
+                    return (
+                      <li key={i} className={clsx("flex", agent ? "justify-start" : "justify-end")}>
+                        <div
+                          className={clsx(
+                            "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                            agent ? "bg-surface text-body" : "bg-accent-bg text-heading",
+                          )}
+                        >
+                          <span className="mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-muted">
+                            {agent ? "Agent" : "Lead"}
+                          </span>
+                          {line.content ?? Object.values(line).join(" ")}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-md bg-raised px-4 py-3 text-sm text-muted">No transcript is available for this attempt.</p>
+          )}
+        </section>
+
       </div>
     </article>
   );
