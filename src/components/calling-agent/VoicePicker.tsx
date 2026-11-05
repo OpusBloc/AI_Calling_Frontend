@@ -7,6 +7,7 @@ import { Check, Loader2, Play, Plus, Square, UploadCloud } from "lucide-react";
 
 import {
   createCustomVoice,
+  getDefaultVoiceConfig,
   getSpeakAudio,
   listCustomVoices,
   listVoiceCatalog,
@@ -46,6 +47,8 @@ const VOICE_PAGE_SIZE = 12;
 /** Reference clip length Sarvam's voice cloning expects */
 const CLIP_MIN_SECONDS = 10;
 const CLIP_MAX_SECONDS = 15;
+const SPEECH_SAMPLE_RATES = [8000, 16000, 22050, 24000] as const;
+type SpeechSampleRate = (typeof SPEECH_SAMPLE_RATES)[number];
 
 /**
  * Choose the voice an agent speaks with: a stock Sarvam voice (previewed saying its
@@ -68,6 +71,11 @@ export default function VoicePicker({
   const queryClient = useQueryClient();
   const catalog = useQuery({ queryKey: catalogKey, queryFn: listVoiceCatalog, retry: false });
   const custom = useQuery({ queryKey: customKey, queryFn: listCustomVoices, retry: false });
+  const defaultVoice = useQuery({
+    queryKey: ["default-voice-config"],
+    queryFn: getDefaultVoiceConfig,
+    retry: false,
+  });
   const voices = useMemo(() => catalog.data?.voices ?? [], [catalog.data]);
   const customVoices = useMemo(() => custom.data ?? [], [custom.data]);
   const [adding, setAdding] = useState(false);
@@ -127,7 +135,9 @@ export default function VoicePicker({
   };
 
   const previewText = (greeting.trim() ? greeting.trim().replace(NAME_PLACEHOLDER, SAMPLE_NAME) : FALLBACK_TEXT).slice(0, 1000);
-  const preview = usePreview(previewText, agentLanguage);
+  const [previewPace, setPreviewPace] = useState(1);
+  const [previewSampleRate, setPreviewSampleRate] = useState<SpeechSampleRate>(24000);
+  const preview = usePreview(previewText, agentLanguage, previewPace, previewSampleRate);
 
   const upload = useMutation({
     mutationFn: (file: File) => {
@@ -142,7 +152,7 @@ export default function VoicePicker({
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 @container">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-heading">Voice</h2>
@@ -185,11 +195,10 @@ export default function VoicePicker({
           {greeting.trim() ? "Edit greeting" : "Add a greeting"}
         </button>
       </div>
-
       {catalog.isError ? (
         <ErrorState title="Couldn't load voices" message={(catalog.error as Error).message} onRetry={() => catalog.refetch()} />
       ) : catalog.isLoading ? (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 @md:grid-cols-2 @xl:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-16 rounded-md" />
           ))}
@@ -197,7 +206,7 @@ export default function VoicePicker({
       ) : (
         <>
           {voices.length + customVoices.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-[1fr_200px_200px]">
+            <div className="grid min-w-0 grid-cols-1 gap-3 @md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
               <SearchInput value={search} onChange={setSearch} placeholder="Search voices…" label="Search voices" />
               <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
                 <option value="">All languages</option>
@@ -219,17 +228,67 @@ export default function VoicePicker({
           )}
 
           <div role="radiogroup" aria-label="Agent voice" className="space-y-3 rounded-lg border border-hairline bg-surface p-3">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <VoiceCard label="Default voice" detail="The system's standard voice" selected={!value} onSelect={() => onChange("")} />
-              {selectedMissing && (
-                <VoiceCard label={value} detail="Current voice · not in either list" selected onSelect={() => onChange(value)} />
-              )}
+            <div className="grid min-w-0 grid-cols-1 items-end gap-3 @md:grid-cols-[minmax(0,1fr)_5rem_10rem]">
+              <VoiceCard
+                playable={
+                  defaultVoice.data
+                    ? {
+                        id: defaultVoice.data.speaker,
+                        name: defaultVoice.data.speaker,
+                        language: defaultVoice.data.language,
+                      }
+                    : undefined
+                }
+                label="Default voice"
+                detail={
+                  defaultVoice.data
+                    ? `System default · ${defaultVoice.data.speaker}`
+                    : defaultVoice.isError
+                      ? "System default voice · preview unavailable"
+                      : "Loading system default…"
+                }
+                selected={!value}
+                onSelect={() => onChange("")}
+                preview={preview}
+              />
+              <Field label="Pace" className="w-full @md:w-20">
+                <TextInput
+                  type="number"
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  value={previewPace}
+                  onChange={(event) => {
+                    const pace = event.target.valueAsNumber;
+                    if (Number.isFinite(pace) && pace >= 0.5 && pace <= 2) setPreviewPace(pace);
+                  }}
+                  aria-label="Voice preview pace"
+                />
+              </Field>
+              <Field label="Sample rate" className="w-full @md:w-40">
+                <Select
+                  value={previewSampleRate}
+                  onChange={(event) => setPreviewSampleRate(Number(event.target.value) as SpeechSampleRate)}
+                  aria-label="Stock voice preview sample rate"
+                >
+                  {SPEECH_SAMPLE_RATES.map((rate) => (
+                    <option key={rate} value={rate}>
+                      {rate.toLocaleString()} Hz
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
+            {selectedMissing && (
+              <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @xl:grid-cols-3">
+                <VoiceCard label={value} detail="Current voice · not in either list" selected onSelect={() => onChange(value)} />
+              </div>
+            )}
 
             {customVoices.length > 0 && (
               <section className="space-y-2">
                 <GroupLabel>Custom voices</GroupLabel>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @xl:grid-cols-3">
                   {shownCustom.map((v) => (
                     <VoiceCard
                       key={v.id}
@@ -258,7 +317,7 @@ export default function VoicePicker({
                   onScroll={handleStockScroll}
                   className="h-80 overflow-y-auto overscroll-contain rounded-md border border-hairline p-2"
                 >
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @xl:grid-cols-3">
                     {shownPage.map((v) => (
                       <VoiceCard
                         key={v.voice_id}
@@ -551,7 +610,12 @@ function useAudioDuration(file: File | null) {
  * voice's own language (falling back to the agent's). Clips are kept per voice,
  * language and text, so replaying doesn't generate (and store) a new sample.
  */
-function usePreview(text: string, agentLanguage: string) {
+function usePreview(
+  text: string,
+  agentLanguage: string,
+  pace: number,
+  speechSampleRate: SpeechSampleRate,
+) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const clips = useRef(new Map<string, string>());
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -576,7 +640,7 @@ function usePreview(text: string, agentLanguage: string) {
     const language =
       voice.language && /^[a-z]{2}-[A-Z]{2}$/.test(voice.language) ? voice.language : agentLanguage || "en-IN";
     const spoken = `Hi, I'm ${voice.name}. ${text}`.slice(0, 1000);
-    const key = `${voice.id}|${language}|${spoken}`;
+    const key = `${voice.id}|${language}|${spoken}|${pace}|${speechSampleRate}`;
     let url = clips.current.get(key);
     if (!url) {
       setLoadingId(voice.id);
@@ -584,7 +648,16 @@ function usePreview(text: string, agentLanguage: string) {
         const audio = voice.custom
           ? await speakWithCustomVoice({ voiceId: voice.id, text: spoken, language })
           : await getSpeakAudio(
-              (await speakSample({ text: spoken, speaker: voice.id, target_language_code: language, output_audio_codec: "mp3" })).id,
+              (
+                await speakSample({
+                  text: spoken,
+                  speaker: voice.id,
+                  target_language_code: language,
+                  pace,
+                  speech_sample_rate: speechSampleRate,
+                  output_audio_codec: "mp3",
+                })
+              ).id,
             );
         url = URL.createObjectURL(audio);
         clips.current.set(key, url);

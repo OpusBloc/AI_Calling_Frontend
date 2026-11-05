@@ -7,6 +7,7 @@ import type {
   CampaignScheduleResult,
   CallOutcome,
   CallOutcomeResult,
+  CampaignCallDetail,
   ScheduledCampaignCall,
   CampaignUpdate,
   CallCost,
@@ -182,9 +183,14 @@ export const setCampaignDispatch = (campaignId: string, enabled: boolean) =>
     body: { enabled },
   });
 
-/** Totals plus every call with all its attempts */
+/** Campaign totals plus compact per-call cost and attempt summaries */
 export const getCampaignReport = (id: string) =>
   api<CampaignReport>(`/campaigns/${encodeURIComponent(id)}/report`);
+
+export const getCampaignCallDetail = (campaignId: string, callId: string) =>
+  api<CampaignCallDetail>(
+    `/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}`,
+  );
 
 // AI usage cost (INR)
 export const getCallCostSummary = (days?: number) =>

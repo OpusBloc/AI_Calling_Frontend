@@ -109,7 +109,9 @@ export default function CampaignCosts({ calls, callsLoading }: { calls: Schedule
                 <tr key={c.call_uuid}>
                   <td className="px-4 py-3 font-medium text-heading">{c.owner!.lead}</td>
                   <td className="tnum whitespace-nowrap px-4 py-3 text-body">{c.owner!.phone || "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.started_at ?? c.created_at)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">
+                    {new Date(c.started_at ?? c.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
+                  </td>
                   <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(c.duration_seconds)}</td>
                   <td className="tnum px-4 py-3 text-body">{rupees(c.total_cost, 3)}</td>
                   <td className="tnum px-4 py-3 text-body">{c.plivoCost == null ? "—" : formatMoney(c.plivoCost, 4)}</td>

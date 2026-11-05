@@ -22,6 +22,7 @@ import {
   getCampaign,
   getCampaignCalls,
   getCampaignReport,
+  getCampaignCallDetail,
   scheduleCampaign,
   postCampaignCallOutcome,
 } from "@/lib/api";
@@ -49,7 +50,7 @@ import {
   type ClassificationCallsResponse,
   type ClassificationCallsParams,
 } from "@/lib/callingAgentApi";
-import type { CallOutcome, Campaign, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
+import type { CallOutcome, Campaign, CampaignCallDetail, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
@@ -72,6 +73,17 @@ export const useCampaign = (id: string, enabled = true) =>
 
 export const useCampaignReport = (id: string, enabled = true) =>
   useQuery<CampaignReport>({ queryKey: ["campaign-report", id], queryFn: () => getCampaignReport(id), enabled: Boolean(id) && enabled, retry: false });
+
+export const useCampaignCallDetail = (campaignId: string, callId: string | null) =>
+  useQuery<CampaignCallDetail>({
+    queryKey: ["campaign-call-detail", campaignId, callId],
+    queryFn: () => {
+      if (!callId) throw new Error("A call must be selected to load its details.");
+      return getCampaignCallDetail(campaignId, callId);
+    },
+    enabled: Boolean(campaignId && callId),
+    retry: false,
+  });
 
 export const useCampaignCalls = (id: string, enabled = true) =>
   useQuery<ScheduledCampaignCall[]>({ queryKey: [...CAMPAIGN_CALLS_KEY, id], queryFn: () => getCampaignCalls(id), enabled: Boolean(id) && enabled, retry: false });
@@ -96,6 +108,9 @@ export const usePostCampaignCallOutcome = () => {
     onSuccess: async (_result, variables) => {
       await qc.invalidateQueries({ queryKey: [...CAMPAIGN_CALLS_KEY, variables.campaignId] });
       await qc.invalidateQueries({ queryKey: ["campaign-report", variables.campaignId] });
+      await qc.invalidateQueries({
+        queryKey: ["campaign-call-detail", variables.campaignId, variables.callId],
+      });
     },
   });
 };
@@ -315,4 +330,3 @@ export const useDeleteWhatsAppMessage = () => {
     onSuccess: refresh,
   });
 };
-

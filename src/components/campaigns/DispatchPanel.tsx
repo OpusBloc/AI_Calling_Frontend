@@ -79,7 +79,6 @@ export default function DispatchPanel({ campaignId }: { campaignId: string }) {
         { label: "Ready to send", value: data.ready_outbox },
         { label: "Uncertain attempts", value: data.uncertain_attempts, tone: data.uncertain_attempts > 0 ? "bad" : undefined },
         { label: "Live calling", value: data.live_calls_enabled ? "Enabled" : "Disabled", tone: data.live_calls_enabled ? "good" : "bad" },
-        { label: "Queue (Redis)", value: data.redis_connected ? "Connected" : "Disconnected", tone: data.redis_connected ? "good" : "bad" },
       ]
     : [];
 
@@ -91,11 +90,15 @@ export default function DispatchPanel({ campaignId }: { campaignId: string }) {
           {data && <StatusBadge status={data.enabled ? "active" : "paused"} label={data.enabled ? "Placing calls" : "Not placing calls"} />}
         </span>
       }
-      description={data ? `Refreshes every 10 seconds while on · updated ${formatDate(data.updated_at)}` : "Whether this campaign is placing calls."}
+      description={
+        data
+          ? `Refreshes every 10 seconds while on · updated ${new Date(data.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`
+          : "Whether this campaign is placing calls."
+      }
     >
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {status.isLoading
-          ? Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-14 rounded-md" />)
+          ? Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-14 rounded-md" />)
           : stats.map((s) => (
               <div key={s.label} className="rounded-md bg-raised px-3 py-2.5">
                 <dt className="text-xs text-muted">{s.label}</dt>

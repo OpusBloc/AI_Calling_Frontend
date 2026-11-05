@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Clock } from "lucide-react";
+import clsx from "clsx";
 
 import { Drawer, Button, formatDuration, formatDate } from "@/components/ui";
 import { useClassificationCalls, useUnclassifiedCalls } from "@/hooks/hooks";
@@ -39,6 +40,36 @@ export default function ClassificationCallsDrawer({
   const calls: ClassificationCall[] = query.data?.calls ?? [];
   const total = query.data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  const transcriptEntries = (transcript: unknown): Array<{ role: string; content: string }> => {
+    let value = transcript;
+    if (typeof value === "string") {
+      try {
+        value = JSON.parse(value);
+      } catch {
+        return value.trim() ? [{ role: "Transcript", content: value }] : [];
+      }
+    }
+
+    if (typeof value === "string") return value.trim() ? [{ role: "Transcript", content: value }] : [];
+    const entries = Array.isArray(value) ? value : value && typeof value === "object" ? [value] : [];
+    return entries.flatMap((entry) => {
+      if (typeof entry === "string") return [{ role: "user", content: entry }];
+      if (!entry || typeof entry !== "object") return [];
+
+      const line = entry as Record<string, unknown>;
+      const rawContent = line.content ?? line.text ?? line.message;
+      const content =
+        typeof rawContent === "string"
+          ? rawContent
+          : rawContent == null
+            ? ""
+            : JSON.stringify(rawContent);
+      if (!content) return [];
+      const role = line.role ?? line.speaker ?? line.name ?? "user";
+      return [{ role: String(role), content }];
+    });
+  };
 
   return (
     <Drawer
@@ -107,16 +138,34 @@ export default function ClassificationCallsDrawer({
               </div>
             )}
 
-            {Boolean(call.transcript) && (
+            {call.transcript != null && (
               <details className="group pt-1">
                 <summary className="cursor-pointer text-xs font-medium text-[#8f7a3c] hover:text-[#1b1b2f]">
                   View Transcript
                 </summary>
-                <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-[#efe7d2] bg-[#fbf8f0] p-3 text-xs leading-relaxed font-mono whitespace-pre-wrap text-[#1b1b2f]">
-                  {typeof call.transcript === "string"
-                    ? call.transcript
-                    : JSON.stringify(call.transcript, null, 2)}
-                </div>
+                <ol
+                  aria-label="Call transcript"
+                  className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-lg border border-[#efe7d2] bg-[#fbf8f0] p-3"
+                >
+                  {transcriptEntries(call.transcript).map((line, index) => {
+                    const agent = ["assistant", "agent"].includes(line.role.toLowerCase());
+                    return (
+                      <li key={index} className={clsx("flex", agent ? "justify-start" : "justify-end")}>
+                        <div
+                          className={clsx(
+                            "max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-relaxed",
+                            agent ? "bg-white text-[#1b1b2f]" : "bg-[#eee4c9] text-[#1b1b2f]",
+                          )}
+                        >
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-[#8f8566]">
+                            {agent ? "Agent" : line.role.toLowerCase() === "user" ? "User" : line.role}
+                          </span>
+                          {line.content}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
               </details>
             )}
           </div>

@@ -47,7 +47,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-hairline bg-surface transition-transform duration-200 ease-out md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col border-r border-hairline bg-surface transition-transform duration-200 ease-out md:translate-x-0",
           open ? "translate-x-0 shadow-lg" : "-translate-x-full",
         )}
       >
