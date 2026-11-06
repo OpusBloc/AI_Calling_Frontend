@@ -4,11 +4,13 @@
 import { useMemo, useState } from "react";
 import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 
-import { Button } from "@/components/ui";
+import { Button, Drawer, ErrorState, Skeleton } from "@/components/ui";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { showSuccessNotification } from "@/hooks/useNotification";
+import { setApiRequestInUrl } from "@/lib/apiUrlState";
 import {
   useClassifications,
+  useClassification,
   useCreateClassification,
   useDeleteClassification,
   useUpdateClassification,
@@ -82,6 +84,7 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
     classificationId?: string | null;
     title: string;
   } | null>(null);
+  const [viewingDetails, setViewingDetails] = useState<string | null>(null);
 
   // Unified list of rows
   const allRows: UnifiedItem[] = useMemo(() => {
@@ -110,6 +113,34 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
 
   const pending = !isNew && (createRemote.isPending || updateRemote.isPending || deleteRemote.isPending);
   const serverError = !isNew ? (createRemote.error ?? updateRemote.error ?? deleteRemote.error)?.message ?? null : null;
+
+  function openCalls(classificationId: string | null, title: string) {
+    if (!agentId) return;
+    setViewingCalls({ classificationId, title });
+    const callsPath = classificationId
+      ? `/api/agents/${encodeURIComponent(agentId)}/classifications/${encodeURIComponent(classificationId)}/calls`
+      : `/api/agents/${encodeURIComponent(agentId)}/classifications/unclassified/calls`;
+    setApiRequestInUrl({ method: "GET", endpoint: `${callsPath}?page=1&page_size=20` });
+  }
+
+  function openDetails(classificationId: string) {
+    if (!agentId) return;
+    setViewingDetails(classificationId);
+    setApiRequestInUrl({
+      method: "GET",
+      endpoint: `/api/agents/${encodeURIComponent(agentId)}/classifications/${encodeURIComponent(classificationId)}`,
+    });
+  }
+
+  function closeDetails() {
+    setViewingDetails(null);
+    setApiRequestInUrl(null);
+  }
+
+  function closeCalls() {
+    setViewingCalls(null);
+    setApiRequestInUrl(null);
+  }
 
   function openCreate() {
     setFormName("");
@@ -229,12 +260,7 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
               <span className="text-[#d8c68d]">|</span>
               <button
                 type="button"
-                onClick={() =>
-                  setViewingCalls({
-                    classificationId: null,
-                    title: "Unclassified Calls",
-                  })
-                }
+                onClick={() => openCalls(null, "Unclassified Calls")}
                 className="hover:underline text-[#8f7a3c] font-medium"
               >
                 Unclassified: <strong className="text-[#1b1b2f]">{summary.data.unclassified_calls}</strong>
@@ -350,15 +376,22 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
                 </td>
                 <td className="px-5 py-4 align-top">
                   <div className="flex flex-wrap justify-end gap-3 text-[#8f8566]">
+                    {!isNew && (
+                      <button
+                        type="button"
+                        onClick={() => openDetails(c.id)}
+                        aria-label={`View details for ${c.name}`}
+                        title="View details"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#8f7a3c] hover:text-[#1b1b2f]"
+                      >
+                        <Eye size={16} aria-hidden />
+                        Details
+                      </button>
+                    )}
                     {!isNew && (c.calls ?? 0) > 0 && (
                       <button
                         type="button"
-                        onClick={() =>
-                          setViewingCalls({
-                            classificationId: c.id,
-                            title: `Calls: ${c.name}`,
-                          })
-                        }
+                        onClick={() => openCalls(c.id, `Calls: ${c.name}`)}
                         aria-label={`View calls for ${c.name}`}
                         title="View calls"
                         className="inline-flex items-center gap-1 text-xs font-medium text-[#8f7a3c] hover:text-[#1b1b2f]"
@@ -437,9 +470,75 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
           agentId={agentId}
           classificationId={viewingCalls.classificationId}
           title={viewingCalls.title}
-          onClose={() => setViewingCalls(null)}
+          onClose={closeCalls}
         />
       )}
+      {viewingDetails && agentId && (
+        <ClassificationDetailsDrawer
+          agentId={agentId}
+          classificationId={viewingDetails}
+          onClose={closeDetails}
+        />
+      )}
+    </div>
+  );
+}
+
+function ClassificationDetailsDrawer({
+  agentId,
+  classificationId,
+  onClose,
+}: {
+  agentId: string;
+  classificationId: string;
+  onClose: () => void;
+}) {
+  const classification = useClassification(agentId, classificationId);
+
+  return (
+    <Drawer
+      title={classification.data?.name ?? "Classification details"}
+      description="Classification information and call totals."
+      onClose={onClose}
+    >
+      {classification.isLoading ? (
+        <div className="space-y-4" role="status" aria-label="Loading classification details">
+          <Skeleton className="h-20 rounded-lg" />
+          <Skeleton className="h-32 rounded-lg" />
+        </div>
+      ) : classification.isError ? (
+        <ErrorState
+          title="Couldn't load classification"
+          message={classification.error.message}
+          onRetry={() => void classification.refetch()}
+        />
+      ) : classification.data ? (
+        <div className="space-y-4">
+          <section className="rounded-xl border border-hairline bg-raised p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Description</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-heading">
+              {classification.data.description || "No description provided."}
+            </p>
+          </section>
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-hairline p-4">
+              <dt className="text-xs text-muted">Classified calls</dt>
+              <dd className="mt-1 text-lg font-semibold text-heading">{classification.data.calls}</dd>
+            </div>
+            <ClassificationDate label="Created" value={classification.data.created_at} />
+            <ClassificationDate label="Last updated" value={classification.data.updated_at} />
+          </dl>
+        </div>
+      ) : null}
+    </Drawer>
+  );
+}
+
+function ClassificationDate({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-hairline p-4">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-heading">{value ? formatDate(value) : "—"}</dd>
     </div>
   );
 }

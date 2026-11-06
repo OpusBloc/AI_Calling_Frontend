@@ -3,17 +3,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Check, Loader2, Play, Plus, Square, UploadCloud } from "lucide-react";
+import { Check, ChevronDown, Clock3, Eye, Loader2, Pause, Play, Plus, Square, Trash2, UploadCloud } from "lucide-react";
 
 import {
+  type CatalogVoice,
+  deleteSpeakSample,
+  deleteVoiceCatalog,
+  deleteVoiceCatalogEntry,
   getSpeakAudio,
+  getSpeakSample,
+  listSpeakSamples,
   listVoiceCatalog,
   speakSample,
+  type VoiceSample,
+  type VoiceSamplesResponse,
   uploadVoiceCatalog,
 } from "@/lib/callingAgentApi";
-import { createVoice, listVoices } from "@/lib/api/voices";
+import { createVoice, deleteVoice, getVoice, listVoices, type Voice } from "@/lib/api/voices";
+import { setApiRequestInUrl } from "@/lib/apiUrlState";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { showSuccessNotification } from "@/hooks/useNotification";
-import { Button, Drawer, ErrorBanner, ErrorState, Field, FileDrop, SearchInput, Select, Skeleton, TextInput } from "@/components/ui";
+import { Button, Drawer, ErrorBanner, ErrorState, Field, FileDrop, IconButton, SearchInput, Select, Skeleton, TextInput, formatDate } from "@/components/ui";
 
 const LANGUAGES: Record<string, string> = {
   "as-IN": "Assamese",
@@ -38,6 +48,8 @@ const NAME_PLACEHOLDER = /\{\{\s*@?\s*name\s*\}\}/gi;
 
 const catalogKey = ["voice-catalog"];
 const customKey = ["custom-voices"];
+const samplesKey = ["voice-samples"];
+const samplesEndpoint = "/api/voices/speak?limit=500";
 /** Height of the sticky group headers (rem) */
 const GROUP_REM = 2;
 const VOICE_PAGE_SIZE = 12;
@@ -68,6 +80,11 @@ export default function VoicePicker({
   const queryClient = useQueryClient();
   const catalog = useQuery({ queryKey: catalogKey, queryFn: listVoiceCatalog, retry: false });
   const custom = useQuery({ queryKey: customKey, queryFn: () => listVoices({ limit: 200 }), retry: false });
+  const samples = useQuery({
+    queryKey: samplesKey,
+    queryFn: () => listSpeakSamples({ limit: 500 }),
+    retry: false,
+  });
   const voices = useMemo(() => catalog.data?.voices ?? [], [catalog.data]);
   const customVoices = useMemo(() => custom.data ?? [], [custom.data]);
   const defaultVoice = useMemo(
@@ -76,6 +93,9 @@ export default function VoicePicker({
   );
   const defaultVoiceId = defaultVoice?.id;
   const [adding, setAdding] = useState(false);
+  const [showSamples, setShowSamples] = useState(false);
+  const [voiceDetailsId, setVoiceDetailsId] = useState<string | null>(null);
+  const samplesButtonRef = useRef<HTMLDivElement>(null);
   const [visibleStockCount, setVisibleStockCount] = useState(VOICE_PAGE_SIZE);
   const stockListRef = useRef<HTMLDivElement>(null);
   const lastLoadScrollTop = useRef(0);
@@ -138,6 +158,47 @@ export default function VoicePicker({
   const [previewPace, setPreviewPace] = useState(1);
   const [previewSampleRate, setPreviewSampleRate] = useState<SpeechSampleRate>(24000);
   const preview = usePreview(previewText, agentLanguage, previewPace, previewSampleRate);
+  const selectedCustomVoice = customVoices.find((voice) => voice.id === value);
+  const selectedCatalogVoice = voices.find((voice) => voice.voice_id === value);
+  const currentVoiceName = selectedCustomVoice?.name ?? selectedCatalogVoice?.speaker ?? defaultVoice?.name;
+
+  const removeCustomVoice = useMutation({
+    mutationFn: deleteVoice,
+    onSuccess: async (_result, voiceId) => {
+      await queryClient.invalidateQueries({ queryKey: customKey });
+      if (value === voiceId) onChange("");
+      showSuccessNotification("The custom voice was deleted.", { title: "Voice deleted" });
+    },
+  });
+  const removeWholeCatalog = useMutation({
+    mutationFn: deleteVoiceCatalog,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: catalogKey });
+      if (voices.some((voice) => voice.voice_id === value)) onChange("");
+      showSuccessNotification("The stock voice catalog was cleared.", { title: "Catalog cleared" });
+    },
+  });
+  const removeStockVoice = useMutation({
+    mutationFn: deleteVoiceCatalogEntry,
+    onSuccess: async (_result, voiceId) => {
+      await queryClient.invalidateQueries({ queryKey: catalogKey });
+      if (value === voiceId) onChange("");
+      showSuccessNotification("The stock voice was removed from the catalog.", { title: "Voice deleted" });
+    },
+  });
+  const confirmVoiceDelete = async (voiceName: string, isStock: boolean, voiceId: string) => {
+    const confirmed = await confirmDialog({
+      title: isStock ? "Remove stock voice?" : "Delete custom voice?",
+      message: isStock
+        ? `"${voiceName}" will be removed from the stock voice catalog.`
+        : `"${voiceName}" will be permanently deleted.`,
+      confirmLabel: isStock ? "Remove" : "Delete",
+    });
+    if (confirmed) {
+      (isStock ? removeStockVoice : removeCustomVoice).mutate(voiceId);
+    }
+  };
+  const deleteError = removeCustomVoice.error ?? removeStockVoice.error ?? removeWholeCatalog.error;
 
   const upload = useMutation({
     mutationFn: (file: File) => {
@@ -195,12 +256,39 @@ export default function VoicePicker({
           {greeting.trim() ? "Edit greeting" : "Add a greeting"}
         </button>
       </div>
+      {deleteError && <ErrorBanner message={deleteError instanceof Error ? deleteError.message : "The voice could not be deleted."} />}
       {custom.isLoading && <p role="status" className="text-sm text-muted">Loading saved voices…</p>}
       {custom.isError && (
         <ErrorState
           title="Couldn't load saved voices"
           message={(custom.error as Error).message}
           onRetry={() => custom.refetch()}
+        />
+      )}
+      {showSamples && (
+        <VoiceSamplesDrawer
+          samples={samples.data?.samples ?? []}
+          isLoading={samples.isLoading}
+          loadError={samples.error}
+          onRetry={() => void samples.refetch()}
+          selectedVoiceId={value}
+          customVoices={customVoices}
+          catalogVoices={voices}
+          onSetDefault={onChange}
+          onClose={() => {
+            setShowSamples(false);
+            setApiRequestInUrl(null);
+            samplesButtonRef.current?.querySelector("button")?.focus();
+          }}
+        />
+      )}
+      {voiceDetailsId && (
+        <VoiceDetailsDrawer
+          voiceId={voiceDetailsId}
+          onClose={() => {
+            setVoiceDetailsId(null);
+            setApiRequestInUrl(null);
+          }}
         />
       )}
       {catalog.isError ? (
@@ -213,41 +301,54 @@ export default function VoicePicker({
         </div>
       ) : (
         <>
-          {voices.length + customVoices.length > 0 && (
-            <div className="grid min-w-0 grid-cols-1 gap-3 @md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+          <div className="grid min-w-0 grid-cols-1 gap-3 @md:grid-cols-2 @xl:grid-cols-[minmax(0,1fr)_12rem_12rem_auto]">
+            <div className="@md:col-span-2 @xl:col-span-1">
               <SearchInput value={search} onChange={setSearch} placeholder="Search voices…" label="Search voices" />
-              <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
-                <option value="">All languages</option>
-                {languages.map((code) => (
-                  <option key={code} value={code}>
-                    {languageName(code)}
-                  </option>
-                ))}
-              </Select>
-              <Select value={activeStyle} onChange={(e) => setStyle(e.target.value)} aria-label="Style">
-                <option value="">All styles</option>
-                {styles.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </option>
-                ))}
-              </Select>
             </div>
-          )}
+            <Select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Language">
+              <option value="">All languages</option>
+              {languages.map((code) => (
+                <option key={code} value={code}>
+                  {languageName(code)}
+                </option>
+              ))}
+            </Select>
+            <Select value={activeStyle} onChange={(e) => setStyle(e.target.value)} aria-label="Style">
+              <option value="">All styles</option>
+              {styles.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </Select>
+            <div ref={samplesButtonRef} className="w-full @md:col-span-2 @xl:col-span-1 @xl:w-auto">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-10 w-full whitespace-nowrap @md:w-auto"
+                onClick={() => {
+                  setShowSamples(true);
+                  setApiRequestInUrl({ method: "GET", endpoint: samplesEndpoint });
+                }}
+              >
+                <Clock3 size={15} aria-hidden /> Saved samples ({samples.data?.total ?? 0})
+              </Button>
+            </div>
+          </div>
 
           <div role="radiogroup" aria-label="Agent voice" className="space-y-3 rounded-lg border border-hairline bg-surface p-3">
             <div className="grid min-w-0 grid-cols-1 items-end gap-3 @md:grid-cols-[minmax(0,1fr)_5rem_10rem]">
               <VoiceCard
                 label="Default voice"
                 detail={
-                  defaultVoice
-                    ? `Default · ${defaultVoice.name}`
+                  currentVoiceName
+                    ? `Default · ${currentVoiceName}`
                     : custom.isLoading
                       ? "Loading saved voices…"
                       : "No saved default voice"
                 }
-                selected={!!defaultVoice && value === defaultVoice.id}
-                onSelect={() => defaultVoice && onChange(defaultVoice.id)}
+                selected={!!value && known.includes(value)}
+                onSelect={() => onChange(value && known.includes(value) ? value : defaultVoice?.id ?? "")}
               />
               <Field label="Pace" className="w-full @md:w-20">
                 <TextInput
@@ -288,13 +389,37 @@ export default function VoicePicker({
                 <GroupLabel>Custom voices</GroupLabel>
                 <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @xl:grid-cols-3">
                   {shownCustom.map((v) => (
-                    <VoiceCard
-                      key={v.id}
-                      label={v.name}
-                      detail={[v.language && languageName(v.language), v.gender, "Custom"].filter(Boolean).join(" · ")}
-                      selected={value === v.id}
-                      onSelect={() => onChange(v.id)}
-                    />
+                    <div key={v.id} className="relative min-w-0">
+                      <VoiceCard
+                        label={v.name}
+                        detail={[v.language && languageName(v.language), v.gender, "Custom"].filter(Boolean).join(" · ")}
+                        selected={value === v.id}
+                        onSelect={() => onChange(v.id)}
+                        className="pr-20"
+                      />
+                      <IconButton
+                        label={`Delete custom voice ${v.name}`}
+                        tone="danger"
+                        disabled={removeCustomVoice.isPending || removeStockVoice.isPending || removeWholeCatalog.isPending}
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                        onClick={() => void confirmVoiceDelete(v.name, false, v.id)}
+                      >
+                        <Trash2 size={16} />
+                      </IconButton>
+                      <IconButton
+                        label={`View details for ${v.name}`}
+                        className="absolute right-12 top-1/2 -translate-y-1/2"
+                        onClick={() => {
+                          setVoiceDetailsId(v.id);
+                          setApiRequestInUrl({
+                            method: "GET",
+                            endpoint: `/api/voices/${encodeURIComponent(v.id)}`,
+                          });
+                        }}
+                      >
+                        <Eye size={16} />
+                      </IconButton>
+                    </div>
                   ))}
                   {filtered && shownCustom.length === 0 && <NoMatch />}
                 </div>
@@ -302,7 +427,28 @@ export default function VoicePicker({
             )}
 
             <section className="space-y-2">
-              <GroupLabel>Stock voices</GroupLabel>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Stock voices</p>
+                {voices.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="border-amber-400 bg-amber-800 text-amber-950 hover:border-amber-500 hover:bg-amber-500"
+                    disabled={removeWholeCatalog.isPending || removeStockVoice.isPending}
+                    loading={removeWholeCatalog.isPending}
+                    onClick={() => void (async () => {
+                      const confirmed = await confirmDialog({
+                        title: "Delete entire stock voice catalog?",
+                        message: "All stock voices will be removed from the catalog. Custom voices will not be affected.",
+                        confirmLabel: "Delete catalog",
+                      });
+                      if (confirmed) removeWholeCatalog.mutate();
+                    })()}
+                  >
+                    <Trash2 size={14} aria-hidden /> Delete catalog
+                  </Button>
+                )}
+              </div>
               {voices.length === 0 ? (
                 <RowMessage>No stock voices yet. Import the voice list (CSV or Excel).</RowMessage>
               ) : shown.length === 0 ? (
@@ -315,15 +461,26 @@ export default function VoicePicker({
                 >
                   <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @xl:grid-cols-3">
                     {shownPage.map((v) => (
-                      <VoiceCard
-                        key={v.voice_id}
-                        playable={{ id: v.voice_id, name: v.speaker || v.voice_id, language: v.language_code }}
-                        label={v.speaker || v.voice_id}
-                        detail={[languageName(v.language_code), v.style].filter(Boolean).join(" · ")}
-                        selected={value === v.voice_id}
-                        onSelect={() => onChange(v.voice_id)}
-                        preview={preview}
-                      />
+                      <div key={v.voice_id} className="relative min-w-0">
+                        <VoiceCard
+                          playable={{ id: v.voice_id, name: v.speaker || v.voice_id, language: v.language_code }}
+                          label={v.speaker || v.voice_id}
+                          detail={[languageName(v.language_code), v.style].filter(Boolean).join(" · ")}
+                          selected={value === v.voice_id}
+                          onSelect={() => onChange(v.voice_id)}
+                          preview={preview}
+                          className="pr-12"
+                        />
+                        <IconButton
+                          label={`Remove ${v.speaker || v.voice_id} from stock catalog`}
+                          tone="danger"
+                          disabled={removeCustomVoice.isPending || removeStockVoice.isPending || removeWholeCatalog.isPending}
+                          className="absolute right-2 top-1/2 -translate-y-1/2"
+                          onClick={() => void confirmVoiceDelete(v.speaker || v.voice_id, true, v.voice_id)}
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </div>
                     ))}
                     {hasMoreVoices && (
                       <div role="status" aria-live="polite" className="col-span-full py-3 text-center text-xs text-muted">
@@ -362,6 +519,631 @@ export default function VoicePicker({
   );
 }
 
+function VoiceDetailsDrawer({ voiceId, onClose }: { voiceId: string; onClose: () => void }) {
+  const voice = useQuery({
+    queryKey: ["custom-voice", voiceId],
+    queryFn: () => getVoice(voiceId),
+    retry: false,
+  });
+  const response = voice.data ?? {};
+  const payload = response.data;
+  const details = recordValue(payload) ? payload : response;
+  const name = stringValue(details.name) ?? "Custom voice";
+  const language = stringValue(details.language);
+  const gender = stringValue(details.gender);
+  const accent = stringValue(details.accent);
+  const status = stringValue(details.status);
+  const source = stringValue(details.source);
+  const creator =
+    stringValue(details.created_by_name) ??
+    stringValue(details.created_by_email) ??
+    stringValue(details.created_by);
+  const createdAt = stringValue(details.created_at);
+  const sampleDuration = Number(details.sample_duration_seconds);
+  const referenceText = stringValue(details.reference_text);
+  const previewAudioUrl = stringValue(details.preview_audio_url);
+  const referenceAudioUrl = stringValue(details.reference_audio_url);
+  const isFavorited = details.is_favorited === true;
+
+  return (
+    <Drawer
+      title={voice.isSuccess ? name : "Custom voice details"}
+      description="Voice profile and preview"
+      onClose={onClose}
+    >
+      {voice.isLoading ? (
+        <p role="status" className="text-sm text-muted">Loading voice details…</p>
+      ) : voice.isError ? (
+        <ErrorState
+          title="Couldn't load voice details"
+          message={voice.error instanceof Error ? voice.error.message : "An unexpected error occurred."}
+          onRetry={() => voice.refetch()}
+        />
+      ) : (
+        <div className="space-y-4">
+          <section className="rounded-lg border border-hairline bg-raised p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {status && (
+                <span
+                  className={clsx(
+                    "rounded-full px-2.5 py-1 text-xs font-medium capitalize",
+                    status.toLowerCase() === "active" ? "bg-gain-bg text-gain" : "bg-surface text-muted",
+                  )}
+                >
+                  {status}
+                </span>
+              )}
+              {source && (
+                <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-medium capitalize text-muted">
+                  {source}
+                </span>
+              )}
+              {isFavorited && (
+                <span className="rounded-full bg-accent-bg px-2.5 py-1 text-xs font-medium text-accent-text">
+                  Favorite
+                </span>
+              )}
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+              {language && <VoiceDetail label="Language" value={languageName(language)} />}
+              {gender && <VoiceDetail label="Gender" value={gender} capitalize />}
+              {accent && <VoiceDetail label="Accent" value={accent} />}
+              {Number.isFinite(sampleDuration) && sampleDuration > 0 && (
+                <VoiceDetail label="Sample duration" value={`${sampleDuration.toFixed(1)} seconds`} />
+              )}
+              {creator && <VoiceDetail label="Created by" value={creator} />}
+              {createdAt && <VoiceDetail label="Created" value={formatDate(createdAt)} />}
+            </dl>
+          </section>
+
+          {referenceText && (
+            <section className="rounded-lg border border-hairline p-4">
+              <h3 className="text-sm font-medium text-heading">Reference text</h3>
+              <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-body">
+                {referenceText}
+              </p>
+            </section>
+          )}
+
+          {(previewAudioUrl || referenceAudioUrl) && (
+            <section className="space-y-3 rounded-lg border border-hairline p-4">
+              <h3 className="text-sm font-medium text-heading">Audio</h3>
+              {previewAudioUrl && (
+                <VoiceAudio label="Voice preview" src={previewAudioUrl} />
+              )}
+              {referenceAudioUrl && (
+                <VoiceAudio label="Reference recording" src={referenceAudioUrl} />
+              )}
+            </section>
+          )}
+        </div>
+      )}
+    </Drawer>
+  );
+}
+
+function recordValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function VoiceDetail({
+  label,
+  value,
+  capitalize = false,
+}: {
+  label: string;
+  value: string;
+  capitalize?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className={clsx("mt-1 break-words text-sm font-medium text-heading", capitalize && "capitalize")}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function SampleSpokenText({ text }: { text: string }) {
+  return (
+    <>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Text spoken</p>
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-[1.5] text-body">{text}</p>
+    </>
+  );
+}
+
+function formatSampleTimestamp(value: string) {
+  const parts = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(new Date(value));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("month")} ${part("day")}, ${part("hour")}:${part("minute")} ${part("dayPeriod")}`;
+}
+
+function SampleDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-sm text-body">{value}</dd>
+    </div>
+  );
+}
+
+function VoiceAudio({ label, src }: { label: string; src: string }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs text-muted">{label}</p>
+      <audio controls preload="none" className="h-10 w-full" src={src}>
+        Your browser does not support audio playback.
+      </audio>
+    </div>
+  );
+}
+
+function VoiceSamplesDrawer({
+  samples,
+  isLoading,
+  loadError,
+  onRetry,
+  selectedVoiceId,
+  customVoices,
+  catalogVoices,
+  onSetDefault,
+  onClose,
+}: {
+  samples: VoiceSample[];
+  isLoading: boolean;
+  loadError: Error | null;
+  onRetry: () => void;
+  selectedVoiceId: string;
+  customVoices: Voice[];
+  catalogVoices: CatalogVoice[];
+  onSetDefault: (voiceId: string) => void;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedSampleId, setExpandedSampleId] = useState<string | null>(null);
+  const sampleDetails = useQuery({
+    queryKey: ["voice-sample", expandedSampleId],
+    queryFn: () => {
+      if (!expandedSampleId) throw new Error("Select a sample to view its details.");
+      return getSpeakSample(expandedSampleId);
+    },
+    enabled: expandedSampleId !== null,
+    retry: false,
+  });
+  const [manualDefault, setManualDefault] = useState<{ voiceId: string; sampleId: string } | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingAudioId, setLoadingAudioId] = useState<string | null>(null);
+  const [loadedAudioId, setLoadedAudioId] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioErrorId, setAudioErrorId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrls = useRef(new Map<string, string>());
+  const audioRequest = useRef(0);
+  const voiceLabel = (sample: VoiceSample) =>
+    customVoices.find((voice) => voice.id === sample.speaker)?.name ??
+    catalogVoices.find((voice) => voice.voice_id === sample.speaker)?.speaker ??
+    sample.speaker;
+  const orderedSamples = useMemo(
+    () => [...samples].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
+    [samples],
+  );
+  const filteredSamples = orderedSamples.filter((sample) =>
+    `${sample.speaker} ${voiceLabel(sample)}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const defaultSampleId =
+    manualDefault?.voiceId === selectedVoiceId && samples.some((sample) => sample.id === manualDefault.sampleId)
+      ? manualDefault.sampleId
+      : orderedSamples.find((sample) => sample.speaker === selectedVoiceId)?.id;
+  const removeSample = useMutation({
+    mutationFn: deleteSpeakSample,
+    onSuccess: async (_result, sampleId) => {
+      queryClient.setQueryData<VoiceSamplesResponse>(samplesKey, (current) =>
+        current
+          ? {
+              ...current,
+              total: Math.max(0, current.total - 1),
+              samples: current.samples.filter((sample) => sample.id !== sampleId),
+            }
+          : current,
+      );
+      if (playingId === sampleId) {
+        audioRef.current?.pause();
+        setPlayingId(null);
+      }
+      if (loadedAudioId === sampleId) {
+        audioRef.current?.removeAttribute("src");
+        setLoadedAudioId(null);
+        const url = audioUrls.current.get(sampleId);
+        if (url) URL.revokeObjectURL(url);
+        audioUrls.current.delete(sampleId);
+      }
+      if (expandedSampleId === sampleId) {
+        setExpandedSampleId(null);
+        setApiRequestInUrl({ method: "GET", endpoint: samplesEndpoint });
+      }
+      queryClient.removeQueries({ queryKey: ["voice-sample", sampleId] });
+      setDeletingId(null);
+      await queryClient.invalidateQueries({ queryKey: samplesKey });
+      showSuccessNotification("The sample was deleted.", { title: "Sample deleted" });
+    },
+  });
+
+  useEffect(() => {
+    const audioUrlsOnUnmount = audioUrls.current;
+    return () => {
+      audioRequest.current += 1;
+      audioRef.current?.pause();
+      audioUrlsOnUnmount.forEach((url) => URL.revokeObjectURL(url));
+      audioUrlsOnUnmount.clear();
+    };
+  }, []);
+
+  const toggleAudio = async (sample: VoiceSample) => {
+    if (playingId === sample.id && audioRef.current) {
+      audioRef.current.pause();
+      setPlayingId(null);
+      return;
+    }
+    if (loadedAudioId === sample.id && audioRef.current) {
+      setAudioError(null);
+      setAudioErrorId(null);
+      try {
+        await audioRef.current.play();
+        setPlayingId(sample.id);
+      } catch (error) {
+        setAudioError(error instanceof Error ? error.message : "The sample audio couldn't be played.");
+        setAudioErrorId(sample.id);
+      }
+      return;
+    }
+    const requestId = ++audioRequest.current;
+    audioRef.current?.pause();
+    setPlayingId(null);
+    setAudioError(null);
+    setAudioErrorId(null);
+    setLoadedAudioId(null);
+    try {
+      let url = audioUrls.current.get(sample.id);
+      if (!url) {
+        setLoadingAudioId(sample.id);
+        const blob = await getSpeakAudio(sample.id);
+        if (requestId !== audioRequest.current) return;
+        url = URL.createObjectURL(blob);
+        audioUrls.current.set(sample.id, url);
+      }
+      if (requestId !== audioRequest.current) return;
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+      audio.src = url;
+      setLoadedAudioId(sample.id);
+      audio.onended = () => {
+        setPlayingId(null);
+      };
+      audio.onerror = () => {
+        setAudioError("The sample audio couldn't be played.");
+        setAudioErrorId(sample.id);
+      };
+      await audio.play();
+      setPlayingId(sample.id);
+    } catch (error) {
+      if (requestId === audioRequest.current) {
+        setAudioError(error instanceof Error ? error.message : "The sample audio couldn't be played.");
+        setAudioErrorId(sample.id);
+      }
+    } finally {
+      if (requestId === audioRequest.current) setLoadingAudioId(null);
+    }
+  };
+
+  const selectable = (sample: VoiceSample) =>
+    customVoices.some((voice) => voice.id === sample.speaker) ||
+    catalogVoices.some((voice) => voice.voice_id === sample.speaker);
+
+  const confirmDelete = (sample: VoiceSample) => {
+    if (playingId === sample.id || loadingAudioId === sample.id || loadedAudioId === sample.id) {
+      audioRequest.current += 1;
+      audioRef.current?.pause();
+      setPlayingId(null);
+      setLoadingAudioId(null);
+      setLoadedAudioId(null);
+    }
+    removeSample.mutate(sample.id);
+  };
+
+  return (
+    <Drawer
+      title="Saved samples"
+      description="Voice samples you've generated. Play, pick, or delete them."
+      onClose={onClose}
+    >
+      <div className="space-y-4">
+        {removeSample.error && (
+          <ErrorBanner message={removeSample.error instanceof Error ? removeSample.error.message : "The sample could not be deleted."} />
+        )}
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by voice name" label="Search by voice name" />
+        {isLoading ? (
+          <div className="space-y-2" role="status" aria-label="Loading saved samples">
+            <Skeleton className="h-24 rounded-md" />
+            <Skeleton className="h-24 rounded-md" />
+          </div>
+        ) : loadError ? (
+          <ErrorState title="Couldn't load saved samples" message={loadError.message} onRetry={onRetry} />
+        ) : samples.length === 0 ? (
+          <p className="rounded-md border border-hairline bg-raised p-5 text-center text-sm text-muted">
+            No saved samples yet. Play a voice to create one.
+          </p>
+        ) : filteredSamples.length === 0 ? (
+          <p className="py-5 text-center text-sm text-muted">No samples match that voice name.</p>
+        ) : (
+          <div className="overflow-hidden border-y-[0.5px] border-hairline">
+            {filteredSamples.map((sample) => {
+              const isDefault = defaultSampleId === sample.id;
+              const canSelect = selectable(sample);
+              return (
+                <div
+                  key={sample.id}
+                  role="radio"
+                  aria-checked={isDefault}
+                  aria-disabled={!canSelect}
+                  tabIndex={canSelect ? 0 : -1}
+                  onClick={() => {
+                    if (!canSelect) return;
+                    setManualDefault({ voiceId: sample.speaker, sampleId: sample.id });
+                    onSetDefault(sample.speaker);
+                  }}
+                  onKeyDown={(event) => {
+                    if (canSelect && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault();
+                      setManualDefault({ voiceId: sample.speaker, sampleId: sample.id });
+                      onSetDefault(sample.speaker);
+                    }
+                  }}
+                  className={clsx(
+                    "cursor-pointer border-b-[0.5px] border-hairline transition-colors last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
+                    isDefault ? "bg-accent-bg" : "bg-surface hover:bg-surface-hover",
+                    !canSelect && "cursor-not-allowed opacity-75",
+                  )}
+                >
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={!canSelect}
+                      aria-label="Select voice"
+                      aria-pressed={isDefault}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (!canSelect) return;
+                        setManualDefault({ voiceId: sample.speaker, sampleId: sample.id });
+                        onSetDefault(sample.speaker);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      className={clsx(
+                        "inline-flex h-6 w-6 min-h-0 min-w-0 flex-none items-center justify-center rounded-full border-2 bg-transparent p-0 text-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed",
+                        isDefault ? "border-accent bg-accent text-white" : "border-hairline-strong",
+                      )}
+                    >
+                      <Check size={14} strokeWidth={3} aria-hidden />
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <h3 className="min-w-0 flex-1 truncate text-[15px] font-medium leading-5 text-heading">
+                          {voiceLabel(sample)}
+                        </h3>
+                        <span className="flex-none rounded-[6px] border-[0.5px] border-hairline-strong px-1.5 text-[11px] leading-4 text-muted">
+                          {sample.target_language_code}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 flex min-w-0 overflow-hidden whitespace-nowrap text-xs leading-4 text-muted">
+                        <span className="flex-none">
+                          {formatSampleTimestamp(sample.created_at)} ·{" "}
+                        </span>
+                        <span className="min-w-0 truncate">{sample.text}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex flex-none items-center gap-2">
+                      <button
+                        type="button"
+                        className={clsx(
+                          "group relative inline-flex h-9 w-9 min-h-0 min-w-0 flex-none items-center justify-center rounded-full border p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-wait disabled:opacity-70",
+                          playingId === sample.id
+                            ? "border-accent bg-accent text-white"
+                            : "border-hairline-strong bg-surface text-heading hover:border-accent hover:bg-accent-bg",
+                        )}
+                        aria-label={playingId === sample.id ? "Pause sample" : "Play sample"}
+                        aria-pressed={playingId === sample.id}
+                        aria-busy={loadingAudioId === sample.id}
+                        disabled={loadingAudioId === sample.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void toggleAudio(sample);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {playingId === sample.id && (
+                          <span
+                            aria-hidden
+                            className="absolute inset-0 rounded-full bg-accent opacity-20 animate-ping motion-reduce:animate-none"
+                          />
+                        )}
+                        {loadingAudioId === sample.id ? (
+                          <Loader2 size={16} className="relative animate-spin" aria-hidden />
+                        ) : playingId === sample.id ? (
+                          <Pause size={16} className="relative" fill="currentColor" aria-hidden />
+                        ) : (
+                          <Play size={16} className="relative ml-0.5" fill="currentColor" aria-hidden />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label={expandedSampleId === sample.id ? "Hide sample details" : "View sample details"}
+                        aria-expanded={expandedSampleId === sample.id}
+                        aria-controls={`sample-details-${sample.id}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const isOpen = expandedSampleId === sample.id;
+                          setExpandedSampleId(isOpen ? null : sample.id);
+                          setApiRequestInUrl(
+                            isOpen
+                              ? { method: "GET", endpoint: samplesEndpoint }
+                              : {
+                                  method: "GET",
+                                  endpoint: `/api/voices/speak/${encodeURIComponent(sample.id)}`,
+                                },
+                          );
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="inline-flex h-8 min-h-0 w-auto min-w-0 flex-none items-center justify-center gap-1 rounded-lg border-0 bg-transparent px-2 py-0 text-[13px] font-medium text-accent-text transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent max-[420px]:w-8 max-[420px]:rounded-full max-[420px]:px-0"
+                      >
+                        <span className="max-[420px]:sr-only">Details</span>
+                        <ChevronDown
+                          size={14}
+                          className={clsx("flex-none transition-transform", expandedSampleId === sample.id && "rotate-180")}
+                          aria-hidden
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label="Delete sample"
+                        disabled={removeSample.isPending}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeletingId(deletingId === sample.id ? null : sample.id);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="ml-1 inline-flex h-8 w-8 min-h-0 min-w-0 flex-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-muted transition-colors hover:bg-loss-bg hover:text-loss focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed"
+                      >
+                        <Trash2 size={17} strokeWidth={1.8} aria-hidden />
+                      </button>
+                    </div>
+                  </div>
+
+                  {expandedSampleId === sample.id && (
+                    <div
+                      id={`sample-details-${sample.id}`}
+                      className="pb-4 pl-[52px] pr-4 pt-0.5"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {sampleDetails.isLoading ? (
+                        <div>
+                          {sample.text && <SampleSpokenText text={sample.text} />}
+                          <div className="my-3 border-t-[0.5px] border-hairline" />
+                          <div className="grid grid-cols-2 gap-3" role="status" aria-label="Loading sample details">
+                            <Skeleton className="h-9 rounded" />
+                            <Skeleton className="h-9 rounded" />
+                            <Skeleton className="h-9 rounded" />
+                            <Skeleton className="h-9 rounded" />
+                          </div>
+                        </div>
+                      ) : sampleDetails.isError ? (
+                        <div>
+                          {sample.text && <SampleSpokenText text={sample.text} />}
+                          <div className="my-3 border-t-[0.5px] border-hairline" />
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <p role="alert" className="text-loss">
+                              {sampleDetails.error instanceof Error
+                                ? sampleDetails.error.message
+                                : "Couldn't load sample details."}
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => void sampleDetails.refetch()}
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              Retry
+                            </Button>
+                          </div>
+                        </div>
+                      ) : sampleDetails.data ? (
+                        <div>
+                          {sample.text && <SampleSpokenText text={sample.text} />}
+                          <div className="my-3 border-t-[0.5px] border-hairline" />
+                          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            {sampleDetails.data.model && (
+                              <SampleDetail label="Model" value={sampleDetails.data.model} />
+                            )}
+                            {Number.isFinite(sampleDetails.data.pace) && (
+                              <SampleDetail label="Pace" value={`${sampleDetails.data.pace}×`} />
+                            )}
+                            {(sampleDetails.data.output_audio_codec || sampleDetails.data.speech_sample_rate) && (
+                              <SampleDetail
+                                label="Audio format"
+                                value={[
+                                  sampleDetails.data.output_audio_codec?.toUpperCase(),
+                                  sampleDetails.data.speech_sample_rate
+                                    ? `${sampleDetails.data.speech_sample_rate.toLocaleString()} Hz`
+                                    : "",
+                                ].filter(Boolean).join(" · ")}
+                              />
+                            )}
+                            {sampleDetails.data.size_bytes > 0 && (
+                              <SampleDetail
+                                label="File size"
+                                value={`${(sampleDetails.data.size_bytes / 1024).toFixed(1)} KB`}
+                              />
+                            )}
+                          </dl>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {audioError && audioErrorId === sample.id && (
+                    <p role="alert" className="mt-2 text-xs text-loss">{audioError}</p>
+                  )}
+                  {deletingId === sample.id && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t-[0.5px] border-hairline px-4 py-3">
+                      <span className="text-sm text-heading">Delete this sample?</span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={removeSample.isPending}
+                          onClick={(event) => { event.stopPropagation(); setDeletingId(null); }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          loading={removeSample.isPending}
+                          onClick={(event) => { event.stopPropagation(); confirmDelete(sample); }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Drawer>
+  );
+}
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p
@@ -390,6 +1172,7 @@ function VoiceCard({
   selected,
   onSelect,
   preview,
+  className,
 }: {
   playable?: Playable;
   label: string;
@@ -397,6 +1180,7 @@ function VoiceCard({
   selected: boolean;
   onSelect: () => void;
   preview?: ReturnType<typeof usePreview>;
+  className?: string;
 }) {
   const playing = !!playable && preview?.playingId === playable.id;
   const loading = !!playable && preview?.loadingId === playable.id;
@@ -422,6 +1206,7 @@ function VoiceCard({
       className={clsx(
         "flex min-w-0 cursor-pointer items-center gap-3 rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         selected ? "border-accent bg-accent-bg" : "border-hairline hover:bg-surface-hover",
+        className,
       )}
     >
       <span
@@ -481,8 +1266,9 @@ function CustomVoiceDrawer({
 
   useEffect(() => {
     if (!audioUrl) return;
+    const audioElementForUrl = audioElement.current;
     return () => {
-      audioElement.current?.pause();
+      audioElementForUrl?.pause();
       URL.revokeObjectURL(audioUrl);
     };
   }, [audioUrl]);
@@ -651,6 +1437,7 @@ function usePreview(
   pace: number,
   speechSampleRate: SpeechSampleRate,
 ) {
+  const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const clips = useRef(new Map<string, string>());
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -682,18 +1469,16 @@ function usePreview(
     if (!url) {
       setLoadingId(voice.id);
       try {
-        const audio = await getSpeakAudio(
-          (
-            await speakSample({
-              text: spoken,
-              speaker: voice.id,
-              target_language_code: language,
-              pace,
-              speech_sample_rate: speechSampleRate,
-              output_audio_codec: "mp3",
-            })
-          ).id,
-        );
+        const sample = await speakSample({
+          text: spoken,
+          speaker: voice.id,
+          target_language_code: language,
+          pace,
+          speech_sample_rate: speechSampleRate,
+          output_audio_codec: "mp3",
+        });
+        await queryClient.invalidateQueries({ queryKey: samplesKey });
+        const audio = await getSpeakAudio(sample.id);
         url = URL.createObjectURL(audio);
         clips.current.set(key, url);
       } catch (previewError) {

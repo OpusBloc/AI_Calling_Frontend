@@ -37,6 +37,26 @@ export interface WhatsAppMessageInput {
   template_id: string;
 }
 
+export interface WhatsAppDelivery {
+  id: string;
+  whatsapp_message_id: string | null;
+  template_id: string;
+  message_name: string;
+  recipient: string;
+  attempt_id: string | null;
+  twilio_message_sid: string | null;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  accepted_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  failed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -100,9 +120,38 @@ export interface CatalogVoice {
   style?: string | null;
 }
 
-export const listVoiceCatalog = () => api<{ total: number; voices: CatalogVoice[] }>("/voices/catalog");
+export interface VoiceCatalogResponse {
+  total: number;
+  voices: CatalogVoice[];
+}
+
+export interface VoiceSample {
+  id: string;
+  text: string;
+  speaker: string;
+  target_language_code: string;
+  model: string;
+  pace: number;
+  speech_sample_rate: number;
+  output_audio_codec: string;
+  size_bytes: number;
+  created_at: string;
+  audio_url: string;
+}
+
+export interface VoiceSamplesResponse {
+  total: number;
+  samples: VoiceSample[];
+}
+
+export const listVoiceCatalog = () => api<VoiceCatalogResponse>("/voices/catalog");
 /** Multipart `file` (.csv/.xlsx); replaces the whole list */
 export const uploadVoiceCatalog = (form: FormData) => api<unknown>("/voices/catalog", { method: "POST", body: form });
+/** Delete every stock voice from the catalog. */
+export const deleteVoiceCatalog = () => api<void>("/voices/catalog", { method: "DELETE" });
+/** Delete one stock voice from the catalog. */
+export const deleteVoiceCatalogEntry = (voiceId: string) =>
+  api<void>(`/voices/catalog/${encodeURIComponent(voiceId)}`, { method: "DELETE" });
 
 export interface SpeakInput {
   text: string;
@@ -116,6 +165,21 @@ export interface SpeakInput {
 }
 /** Speak `text` with a stock voice; the stored sample's audio is at /voices/speak/{id}/audio */
 export const speakSample = (body: SpeakInput) => api<{ id: string }>("/voices/speak", { method: "POST", body });
+/** List saved speech previews, newest first. */
+export const listSpeakSamples = (params: { speaker?: string; limit?: number } = {}) => {
+  const query = new URLSearchParams();
+  if (params.speaker) query.set("speaker", params.speaker);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const queryString = query.toString();
+  const suffix = queryString ? `?${queryString}` : "";
+  return api<VoiceSamplesResponse>(`/voices/speak${suffix}`);
+};
+/** Get metadata for one saved speech preview. */
+export const getSpeakSample = (sampleId: string) =>
+  api<VoiceSample>(`/voices/speak/${encodeURIComponent(sampleId)}`);
+/** Delete one saved speech preview. */
+export const deleteSpeakSample = (sampleId: string) =>
+  api<void>(`/voices/speak/${encodeURIComponent(sampleId)}`, { method: "DELETE" });
 export const getSpeakAudio = (id: string) =>
   api<Blob>(`/voices/speak/${encodeURIComponent(id)}/audio`, { responseType: "blob" });
 
@@ -315,6 +379,18 @@ export const getCampaignUnclassifiedCalls = (
 
 export const listWhatsAppMessages = () =>
   api<WhatsAppMessage[]>("/whatsapp-messages");
+export const listWhatsAppDeliveries = (params: { limit?: number; messageId?: string } = {}) => {
+  const query = new URLSearchParams();
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const queryString = query.toString();
+  const suffix = queryString ? `?${queryString}` : "";
+  const path = params.messageId
+    ? `/whatsapp-messages/${encodeURIComponent(params.messageId)}/deliveries${suffix}`
+    : `/whatsapp-messages/deliveries${suffix}`;
+  return api<WhatsAppDelivery[]>(path);
+};
+export const getWhatsAppDelivery = (id: string) =>
+  api<WhatsAppDelivery>(`/whatsapp-messages/deliveries/${encodeURIComponent(id)}`);
 
 export const listClassifications = (agentId: string, campaignId?: string) =>
   api(`/api/agents/${agentId}/classifications${campaignId ? `?campaign_id=${campaignId}` : ""}`);
