@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   ArrowLeft,
@@ -39,6 +39,7 @@ import {
   AgentPart,
   createAgent,
   deleteAgent,
+  getAgentModelOptions,
   updateAgent,
 } from "@/lib/callingAgentApi";
 import {
@@ -116,6 +117,30 @@ const isPart = (id: string): id is AgentPart =>
 // Maps any part name ("rules", "ending", …) or old saved tab id onto the tab that contains it
 const tabFor = (id: string) => (isPart(id) ? "prompt" : id);
 
+const withDefaultModels = (
+  draft: AgentDraft,
+  options: Awaited<ReturnType<typeof getAgentModelOptions>>,
+): AgentDraft => {
+  const llmProvider =
+    draft.llmProvider ||
+    (options.llm_provider.includes("sarvam")
+      ? "sarvam"
+      : options.llm_provider[0] ?? "");
+  const sttProvider =
+    draft.sttProvider ||
+    (options.stt_provider.includes("sarvam")
+      ? "sarvam"
+      : options.stt_provider[0] ?? "");
+
+  return {
+    ...draft,
+    llmProvider,
+    llmModel: draft.llmModel || options.llm_model[llmProvider]?.[0] || "",
+    sttProvider,
+    sttModel: draft.sttModel || options.stt_model[sttProvider]?.[0] || "",
+  };
+};
+
 const comparable = (d: AgentDraft) =>
   JSON.stringify({
     name: d.name,
@@ -123,6 +148,10 @@ const comparable = (d: AgentDraft) =>
     voice: d.voice,
     primary: d.primaryLanguage,
     secondary: d.secondaryLanguage,
+    llmProvider: d.llmProvider,
+    llmModel: d.llmModel,
+    sttProvider: d.sttProvider,
+    sttModel: d.sttModel,
     silenceCheck: d.silenceCheckSeconds,
     silencePrompt: d.silencePrompt,
     silenceHangup: d.silenceHangupSeconds,
@@ -141,11 +170,21 @@ export default function AgentEditor({
   const qc = useQueryClient();
   const agentId = initialAgent?.id ?? null;
   const isNew = agentId === null;
+  const modelOptions = useQuery({
+    queryKey: ["agent-model-options"],
+    queryFn: getAgentModelOptions,
+    retry: false,
+  });
 
   const [agent, setAgent] = useState(initialAgent);
   const baseline = useMemo(
-    () => (agent ? draftFromAgent(agent) : emptyDraft()),
-    [agent],
+    () => {
+      const draft = agent ? draftFromAgent(agent) : emptyDraft();
+      return modelOptions.data
+        ? withDefaultModels(draft, modelOptions.data)
+        : draft;
+    },
+    [agent, modelOptions.data],
   );
 
   // Restore an unsaved local draft if there is one
@@ -158,6 +197,12 @@ export default function AgentEditor({
   const [testing, setTesting] = useState(false);
   // Which sub-tab is open inside the Prompt tab
   const [promptPart, setPromptPart] = useState<AgentPart>(AGENT_PARTS[0]);
+
+  useEffect(() => {
+    if (modelOptions.data) {
+      setDraft((current) => withDefaultModels(current, modelOptions.data));
+    }
+  }, [modelOptions.data]);
 
   const dirty = comparable(draft) !== comparable(baseline);
   const missing = missingRequired(draft);
@@ -514,6 +559,91 @@ export default function AgentEditor({
                   The agent speaks only {languageList(draft)}. If a caller uses
                   another language, it politely says so and carries on in these.
                 </p>
+              )}
+            </div>
+
+            <div className="space-y-4 border-t border-hairline pt-5">
+              <div>
+                <h3 className="text-sm font-semibold text-heading">AI Model Settings</h3>
+                <p className="mt-0.5 text-xs text-muted">
+                  Choose the language model and speech-to-text provider and model. Sarvam is selected by default.
+                </p>
+              </div>
+              {modelOptions.isError ? (
+                <ErrorBanner message={errorMessage(modelOptions.error)} />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-4">
+                    <Field label="LLM model provider">
+                      <Select
+                        value={draft.llmProvider}
+                        disabled={!modelOptions.data}
+                        onChange={(e) => {
+                          const llmProvider = e.target.value;
+                          setDraft((d) => ({
+                            ...d,
+                            llmProvider,
+                            llmModel: modelOptions.data?.llm_model[llmProvider]?.[0] ?? "",
+                          }));
+                        }}
+                      >
+                        {(modelOptions.data?.llm_provider ?? []).map((provider) => (
+                          <option key={provider} value={provider}>{provider}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="LLM model" hint="The selected provider's first available model is selected by default.">
+                      <Select
+                        value={draft.llmModel}
+                        disabled={!draft.llmProvider || !modelOptions.data}
+                        onChange={(e) => setDraft((d) => ({ ...d, llmModel: e.target.value }))}
+                      >
+                        {draft.llmModel &&
+                          !(modelOptions.data?.llm_model[draft.llmProvider] ?? []).includes(draft.llmModel) && (
+                            <option value={draft.llmModel}>{draft.llmModel}</option>
+                          )}
+                        {(modelOptions.data?.llm_model[draft.llmProvider] ?? []).map((model) => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className="space-y-4">
+                    <Field label="Speech-to-text provider">
+                      <Select
+                        value={draft.sttProvider}
+                        disabled={!modelOptions.data}
+                        onChange={(e) => {
+                          const sttProvider = e.target.value;
+                          setDraft((d) => ({
+                            ...d,
+                            sttProvider,
+                            sttModel: modelOptions.data?.stt_model[sttProvider]?.[0] ?? "",
+                          }));
+                        }}
+                      >
+                        {(modelOptions.data?.stt_provider ?? []).map((provider) => (
+                          <option key={provider} value={provider}>{provider}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Speech-to-text model" hint="The selected provider's first available model is selected by default.">
+                      <Select
+                        value={draft.sttModel}
+                        disabled={!draft.sttProvider || !modelOptions.data}
+                        onChange={(e) => setDraft((d) => ({ ...d, sttModel: e.target.value }))}
+                      >
+                        {draft.sttModel &&
+                          !(modelOptions.data?.stt_model[draft.sttProvider] ?? []).includes(draft.sttModel) && (
+                            <option value={draft.sttModel}>{draft.sttModel}</option>
+                          )}
+                        {(modelOptions.data?.stt_model[draft.sttProvider] ?? []).map((model) => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -990,6 +1120,18 @@ function Review({
       tab: "details",
       label: "Languages",
       value: draft.primaryLanguage ? languageList(draft) : "System default",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Language model",
+      value: [draft.llmProvider, draft.llmModel].filter(Boolean).join(" / ") || "System default",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Speech-to-text",
+      value: [draft.sttProvider, draft.sttModel].filter(Boolean).join(" / ") || "System default",
       required: false,
     },
     {

@@ -47,6 +47,10 @@ export interface Agent {
   primary_language: string | null;
   /** Only other language the agent may switch to */
   secondary_language: string | null;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  stt_provider?: string | null;
+  stt_model?: string | null;
   silence_check_seconds?: number | null;
   silence_prompt?: string | null;
   silence_hangup_seconds?: number | null;
@@ -71,6 +75,13 @@ export interface Agent {
 
 export const listAgents = () => api<Agent[]>("/agents");
 export const getAgent = (id: string) => api<Agent>(`/agents/${id}`);
+export interface AgentModelOptions {
+  llm_provider: string[];
+  llm_model: Record<string, string[]>;
+  stt_provider: string[];
+  stt_model: Record<string, string[]>;
+}
+export const getAgentModelOptions = () => api<AgentModelOptions>("/agents/options");
 /** Multipart: `name`, `greeting`, `voice`, and per part either `<part>_file` or `<part>_text` */
 export const createAgent = (form: FormData) => api<Agent>("/agents", { method: "POST", body: form });
 /** Multipart, any subset of the create fields; parts not sent stay unchanged */
