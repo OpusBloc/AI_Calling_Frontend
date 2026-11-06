@@ -47,9 +47,14 @@ export interface Agent {
   primary_language: string | null;
   /** Only other language the agent may switch to */
   secondary_language: string | null;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  stt_provider?: string | null;
+  stt_model?: string | null;
   silence_check_seconds?: number | null;
   silence_prompt?: string | null;
   silence_hangup_seconds?: number | null;
+  interruption_min_words?: number | null;
   whatsapp_message_ids?: string[] | null;
   whatsapp_messages?: WhatsAppMessage[] | null;
   intro: string;
@@ -70,6 +75,13 @@ export interface Agent {
 
 export const listAgents = () => api<Agent[]>("/agents");
 export const getAgent = (id: string) => api<Agent>(`/agents/${id}`);
+export interface AgentModelOptions {
+  llm_provider: string[];
+  llm_model: Record<string, string[]>;
+  stt_provider: string[];
+  stt_model: Record<string, string[]>;
+}
+export const getAgentModelOptions = () => api<AgentModelOptions>("/agents/options");
 /** Multipart: `name`, `greeting`, `voice`, and per part either `<part>_file` or `<part>_text` */
 export const createAgent = (form: FormData) => api<Agent>("/agents", { method: "POST", body: form });
 /** Multipart, any subset of the create fields; parts not sent stay unchanged */
@@ -89,61 +101,8 @@ export interface CatalogVoice {
 }
 
 export const listVoiceCatalog = () => api<{ total: number; voices: CatalogVoice[] }>("/voices/catalog");
-export const getDefaultVoiceConfig = () =>
-  api<{ speaker: string; language: string }>("/voices/config/default-voice");
 /** Multipart `file` (.csv/.xlsx); replaces the whole list */
 export const uploadVoiceCatalog = (form: FormData) => api<unknown>("/voices/catalog", { method: "POST", body: form });
-
-/** A voice cloned from a recording (Sarvam voice library) */
-export interface CustomVoice {
-  id: string;
-  name: string;
-  language: string | null;
-  gender: string | null;
-}
-
-const asRecord = (v: unknown) => (typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {});
-const str = (v: unknown) => (typeof v === "string" && v ? v : null);
-
-/** Sarvam's list is passed through as-is, so accept its usual wrappers */
-export const listCustomVoices = async (): Promise<CustomVoice[]> => {
-  const root = asRecord(await api<unknown>("/voices?limit=200"));
-  const data = root.data ?? root;
-  const rows = Array.isArray(data) ? data : (asRecord(data).voices ?? asRecord(data).items ?? []);
-  return (Array.isArray(rows) ? rows : [])
-    .map((r) => {
-      const row = asRecord(r);
-      const id = str(row.voice_id) ?? str(row.id);
-      return id ? { id, name: str(row.name) ?? id, language: str(row.language), gender: str(row.gender) } : null;
-    })
-    .filter((v): v is CustomVoice => v !== null);
-};
-
-/**
- * Clone a voice from a 10–15 s recording and speak `text` with it. Returns the spoken
- * preview and the new voice's id (null when the X-Voice-Id header isn't readable).
- */
-export const createCustomVoice = async (input: { file: File; name: string; language: string; gender?: string; text: string }) => {
-  const form = new FormData();
-  form.set("file", input.file);
-  form.set("name", input.name);
-  form.set("language", input.language);
-  form.set("text", input.text);
-  form.set("output_audio_codec", "mp3");
-  if (input.gender) form.set("gender", input.gender);
-  const res = await api<Response>("/voices", { method: "POST", body: form, responseType: "response" });
-  return { voiceId: res.headers.get("X-Voice-Id"), audio: await res.blob() };
-};
-
-/** Speak `text` with a saved custom voice; returns the audio */
-export const speakWithCustomVoice = (input: { voiceId: string; text: string; language: string }) => {
-  const form = new FormData();
-  form.set("voice_id", input.voiceId);
-  form.set("text", input.text);
-  form.set("language_code", input.language);
-  form.set("output_audio_codec", "mp3");
-  return api<Blob>("/voices/clone", { method: "POST", body: form, responseType: "blob" });
-};
 
 export interface SpeakInput {
   text: string;

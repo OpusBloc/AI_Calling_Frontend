@@ -6,15 +6,12 @@ import clsx from "clsx";
 import { Check, Loader2, Play, Plus, Square, UploadCloud } from "lucide-react";
 
 import {
-  createCustomVoice,
-  getDefaultVoiceConfig,
   getSpeakAudio,
-  listCustomVoices,
   listVoiceCatalog,
   speakSample,
-  speakWithCustomVoice,
   uploadVoiceCatalog,
 } from "@/lib/callingAgentApi";
+import { createVoice, listVoices } from "@/lib/api/voices";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { Button, Drawer, ErrorBanner, ErrorState, Field, FileDrop, SearchInput, Select, Skeleton, TextInput } from "@/components/ui";
 
@@ -70,14 +67,14 @@ export default function VoicePicker({
 }) {
   const queryClient = useQueryClient();
   const catalog = useQuery({ queryKey: catalogKey, queryFn: listVoiceCatalog, retry: false });
-  const custom = useQuery({ queryKey: customKey, queryFn: listCustomVoices, retry: false });
-  const defaultVoice = useQuery({
-    queryKey: ["default-voice-config"],
-    queryFn: getDefaultVoiceConfig,
-    retry: false,
-  });
+  const custom = useQuery({ queryKey: customKey, queryFn: () => listVoices({ limit: 200 }), retry: false });
   const voices = useMemo(() => catalog.data?.voices ?? [], [catalog.data]);
   const customVoices = useMemo(() => custom.data ?? [], [custom.data]);
+  const defaultVoice = useMemo(
+    () => customVoices.find((voice) => voice.isDefault) ?? customVoices[0],
+    [customVoices],
+  );
+  const defaultVoiceId = defaultVoice?.id;
   const [adding, setAdding] = useState(false);
   const [visibleStockCount, setVisibleStockCount] = useState(VOICE_PAGE_SIZE);
   const stockListRef = useRef<HTMLDivElement>(null);
@@ -86,6 +83,9 @@ export default function VoicePicker({
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("");
   const [style, setStyle] = useState("");
+  useEffect(() => {
+    if (!value && defaultVoiceId) onChange(defaultVoiceId);
+  }, [defaultVoiceId, onChange, value]);
   const languages = useMemo(() => [...new Set(voices.map((v) => v.language_code))].sort(), [voices]);
   // Only styles that have at least one voice in the chosen language
   const styles = useMemo(
@@ -157,7 +157,7 @@ export default function VoicePicker({
         <div>
           <h2 className="text-lg font-semibold text-heading">Voice</h2>
           <p className="mt-0.5 text-sm text-muted">
-            The voice this agent speaks with on every call. Click a voice to select it and hear it say its name and your greeting.
+            The voice this agent speaks with on every call. Stock voices can be previewed; saved voices can be selected here.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -195,6 +195,14 @@ export default function VoicePicker({
           {greeting.trim() ? "Edit greeting" : "Add a greeting"}
         </button>
       </div>
+      {custom.isLoading && <p role="status" className="text-sm text-muted">Loading saved voices…</p>}
+      {custom.isError && (
+        <ErrorState
+          title="Couldn't load saved voices"
+          message={(custom.error as Error).message}
+          onRetry={() => custom.refetch()}
+        />
+      )}
       {catalog.isError ? (
         <ErrorState title="Couldn't load voices" message={(catalog.error as Error).message} onRetry={() => catalog.refetch()} />
       ) : catalog.isLoading ? (
@@ -230,26 +238,16 @@ export default function VoicePicker({
           <div role="radiogroup" aria-label="Agent voice" className="space-y-3 rounded-lg border border-hairline bg-surface p-3">
             <div className="grid min-w-0 grid-cols-1 items-end gap-3 @md:grid-cols-[minmax(0,1fr)_5rem_10rem]">
               <VoiceCard
-                playable={
-                  defaultVoice.data
-                    ? {
-                        id: defaultVoice.data.speaker,
-                        name: defaultVoice.data.speaker,
-                        language: defaultVoice.data.language,
-                      }
-                    : undefined
-                }
                 label="Default voice"
                 detail={
-                  defaultVoice.data
-                    ? `System default · ${defaultVoice.data.speaker}`
-                    : defaultVoice.isError
-                      ? "System default voice · preview unavailable"
-                      : "Loading system default…"
+                  defaultVoice
+                    ? `Default · ${defaultVoice.name}`
+                    : custom.isLoading
+                      ? "Loading saved voices…"
+                      : "No saved default voice"
                 }
-                selected={!value}
-                onSelect={() => onChange("")}
-                preview={preview}
+                selected={!!defaultVoice && value === defaultVoice.id}
+                onSelect={() => defaultVoice && onChange(defaultVoice.id)}
               />
               <Field label="Pace" className="w-full @md:w-20">
                 <TextInput
@@ -292,12 +290,10 @@ export default function VoicePicker({
                   {shownCustom.map((v) => (
                     <VoiceCard
                       key={v.id}
-                      playable={{ id: v.id, name: v.name, language: v.language, custom: true }}
                       label={v.name}
                       detail={[v.language && languageName(v.language), v.gender, "Custom"].filter(Boolean).join(" · ")}
                       selected={value === v.id}
                       onSelect={() => onChange(v.id)}
-                      preview={preview}
                     />
                   ))}
                   {filtered && shownCustom.length === 0 && <NoMatch />}
@@ -347,6 +343,7 @@ export default function VoicePicker({
             </span>
             <span>Previews use “{SAMPLE_NAME}” in place of {"{{name}}"}.</span>
           </p>
+          {preview.error && <ErrorBanner message={`Couldn't play voice preview: ${preview.error}`} />}
         </>
       )}
 
@@ -356,7 +353,7 @@ export default function VoicePicker({
           defaultLanguage={agentLanguage}
           onCreated={async (id) => {
             await queryClient.invalidateQueries({ queryKey: customKey });
-            if (id) onChange(id);
+            onChange(id);
           }}
           onClose={() => setAdding(false)}
         />
@@ -382,8 +379,8 @@ function RowMessage({ children }: { children: React.ReactNode }) {
 
 const NoMatch = () => <RowMessage>No voices match these filters.</RowMessage>;
 
-/** Stock voices speak through /voices/speak, custom (cloned) ones through /voices/clone */
-type Playable = { id: string; name: string; language: string | null; custom?: boolean };
+/** Stock voice previews use /voices/speak. Saved voices cannot be previewed by ID. */
+type Playable = { id: string; name: string; language: string | null };
 
 /** One voice as a card. Clicking it selects the voice and plays it (click again to stop). */
 function VoiceCard({
@@ -466,7 +463,7 @@ function CustomVoiceDrawer({
 }: {
   text: string;
   defaultLanguage: string;
-  onCreated: (voiceId: string | null) => Promise<void>;
+  onCreated: (voiceId: string) => Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState("");
@@ -475,37 +472,48 @@ function CustomVoiceDrawer({
   const [file, setFile] = useState<File | null>(null);
   const [tried, setTried] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
+  const [created, setCreated] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const audioElement = useRef<HTMLAudioElement>(null);
   const duration = useAudioDuration(file);
   const lengthOk = duration === null || (duration >= CLIP_MIN_SECONDS && duration <= CLIP_MAX_SECONDS);
 
   useEffect(() => {
     if (!audioUrl) return;
-    return () => URL.revokeObjectURL(audioUrl);
+    return () => {
+      audioElement.current?.pause();
+      URL.revokeObjectURL(audioUrl);
+    };
   }, [audioUrl]);
 
   const create = useMutation({
-    mutationFn: async () => {
-      const result = await createCustomVoice({ file: file!, name: name.trim(), language, gender, text });
-      // The X-Voice-Id header is only readable if the backend exposes it (CORS);
-      // otherwise take the newest voice with this name
-      const voiceId = result.voiceId ?? (await listCustomVoices()).find((v) => v.name === name.trim())?.id ?? null;
-      return { ...result, voiceId };
+    mutationFn: () => {
+      if (!file) throw new Error("Choose a reference recording.");
+      return createVoice({ file, name, language, gender, text });
     },
-    onSuccess: async ({ voiceId, audio }) => {
-      setAudioUrl(URL.createObjectURL(audio));
+    onSuccess: async ({ voiceId, audioBlob }) => {
+      setCreated(true);
+      setPreviewError(null);
+      setPreviewLoading(true);
+      setAudioUrl(URL.createObjectURL(audioBlob));
       await onCreated(voiceId);
-      showSuccessNotification(
-        voiceId ? `"${name.trim()}" is ready and selected for this agent.` : `"${name.trim()}" is ready. Pick it from the list.`,
-        { title: "Custom voice created" },
-      );
+      showSuccessNotification(`"${name.trim()}" is ready and selected for this agent.`, { title: "Custom voice created" });
     },
   });
 
-  const nameError = tried && !name.trim() ? "Give the voice a name." : null;
+  const nameError =
+    tried && !name.trim()
+      ? "Give the voice a name."
+      : tried && name.trim().length > 100
+        ? "Voice name must be 100 characters or fewer."
+        : null;
   const fileError = tried && !file ? "Choose a recording." : null;
   const submit = () => {
     setTried(true);
-    if (name.trim() && file) create.mutate();
+    if (name.trim() && name.trim().length <= 100 && file && text.trim().length > 0 && text.trim().length <= 1000) {
+      create.mutate();
+    }
   };
 
   return (
@@ -514,7 +522,7 @@ function CustomVoiceDrawer({
       description="Clone a voice from a short recording of one person speaking."
       onClose={onClose}
       footer={
-        audioUrl ? (
+        created ? (
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
@@ -528,12 +536,39 @@ function CustomVoiceDrawer({
         )
       }
     >
-      {audioUrl ? (
+      {created ? (
         <div className="space-y-3">
           <p className="text-sm text-body">
             <span className="font-medium text-heading">{name.trim()}</span> is ready. Here it is saying your greeting:
           </p>
-          <audio controls autoPlay src={audioUrl} className="w-full" />
+          {previewError && <ErrorBanner message={previewError} />}
+          {previewLoading && (
+            <p role="status" className="flex items-center gap-2 text-sm text-muted">
+              <Loader2 size={15} className="animate-spin" /> Loading preview…
+            </p>
+          )}
+          {audioUrl ? (
+            <audio
+              ref={audioElement}
+              controls
+              autoPlay
+              src={audioUrl}
+              className="w-full"
+              onCanPlay={() => setPreviewLoading(false)}
+              onPlay={() => setPreviewError(null)}
+              onEnded={() => {
+                setPreviewLoading(false);
+                setAudioUrl("");
+              }}
+              onError={() => {
+                setPreviewLoading(false);
+                setPreviewError("The voice was created, but its preview couldn't be played.");
+                setAudioUrl("");
+              }}
+            />
+          ) : (
+            <p className="text-sm text-muted">{previewError ? "Preview unavailable." : "Preview playback finished."}</p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -606,7 +641,7 @@ function useAudioDuration(file: File | null) {
 }
 
 /**
- * Speaks "Hi, I'm {name}." followed by `text` with a voice (stock or custom), in the
+ * Speaks "Hi, I'm {name}." followed by `text` with a stock voice, in the
  * voice's own language (falling back to the agent's). Clips are kept per voice,
  * language and text, so replaying doesn't generate (and store) a new sample.
  */
@@ -620,6 +655,7 @@ function usePreview(
   const clips = useRef(new Map<string, string>());
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const cache = clips.current;
@@ -637,6 +673,7 @@ function usePreview(
   const toggle = async (voice: Playable) => {
     if (playingId === voice.id) return stop();
     stop();
+    setError(null);
     const language =
       voice.language && /^[a-z]{2}-[A-Z]{2}$/.test(voice.language) ? voice.language : agentLanguage || "en-IN";
     const spoken = `Hi, I'm ${voice.name}. ${text}`.slice(0, 1000);
@@ -645,24 +682,23 @@ function usePreview(
     if (!url) {
       setLoadingId(voice.id);
       try {
-        const audio = voice.custom
-          ? await speakWithCustomVoice({ voiceId: voice.id, text: spoken, language })
-          : await getSpeakAudio(
-              (
-                await speakSample({
-                  text: spoken,
-                  speaker: voice.id,
-                  target_language_code: language,
-                  pace,
-                  speech_sample_rate: speechSampleRate,
-                  output_audio_codec: "mp3",
-                })
-              ).id,
-            );
+        const audio = await getSpeakAudio(
+          (
+            await speakSample({
+              text: spoken,
+              speaker: voice.id,
+              target_language_code: language,
+              pace,
+              speech_sample_rate: speechSampleRate,
+              output_audio_codec: "mp3",
+            })
+          ).id,
+        );
         url = URL.createObjectURL(audio);
         clips.current.set(key, url);
-      } catch {
-        return; // api() already shows the error
+      } catch (previewError) {
+        setError(previewError instanceof Error ? previewError.message : "The preview couldn't be generated.");
+        return;
       } finally {
         setLoadingId(null);
       }
@@ -672,8 +708,11 @@ function usePreview(
     audio.src = url;
     audio.onended = () => setPlayingId(null);
     setPlayingId(voice.id);
-    audio.play().catch(() => setPlayingId(null));
+    audio.play().catch((playError: unknown) => {
+      setPlayingId(null);
+      setError(playError instanceof Error ? playError.message : "The preview couldn't be played.");
+    });
   };
 
-  return { playingId, loadingId, toggle };
+  return { playingId, loadingId, error, toggle };
 }

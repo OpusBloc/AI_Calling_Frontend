@@ -212,6 +212,8 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
       title={campaign ? `Edit ${campaign.name}` : "New campaign"}
       description="Who to call, which agent talks, and when calls may go out."
       footer={actions}
+      showHeaderActions={false}
+      flushFooterToBottom
       error={submitted && !valid ? "Some fields need attention — they're marked below." : null}
     >
       <FormSection title="Basics" description="A name your team will recognise, and the AI agent that speaks on every call.">

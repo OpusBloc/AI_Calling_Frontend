@@ -29,6 +29,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public detail?: unknown,
   ) {
     super(message);
   }
@@ -91,7 +92,7 @@ export async function api<T>(
   if (!res.ok) {
     const data = await res.json().catch(() => null);
     // Every failed endpoint call surfaces as a notification; callers still get the error
-    const error = new ApiError(detailMessage(data?.detail, res.status), res.status);
+    const error = new ApiError(detailMessage(data?.detail, res.status), res.status, data?.detail);
     showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }

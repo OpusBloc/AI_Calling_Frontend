@@ -55,8 +55,8 @@ export default function Sidebar({
 
       <aside
         className={clsx(
-          "fixed inset-y-4 left-4 z-40 flex h-[calc(100vh-2rem)] w-[280px] shrink-0 flex-col rounded-2xl border border-hairline bg-surface  transition-transform duration-200 ease-out lg:static lg:h-full lg:w-full lg:translate-x-0 shadow-md",
-          open ? "translate-x-0 shadow-lg" : "-translate-x-[calc(100%+1rem)]",
+          "fixed inset-y-0 left-0 z-40 flex h-screen w-[280px] shrink-0 flex-col border border-hairline bg-surface transition-transform duration-200 ease-out lg:static lg:h-full lg:w-full lg:translate-x-0 shadow-md",
+          open ? "translate-x-0 shadow-lg" : "-translate-x-full",
         )}
       >
         {/* Brand */}
@@ -87,11 +87,9 @@ export default function Sidebar({
         {/* Navigation */}
         <nav
           aria-label="Main"
-          className="nav-scroll flex flex-1 flex-col overflow-y-auto px-3 pt-4"
+          className="nav-scroll no-scrollbar flex flex-1 flex-col overflow-y-auto px-3 pt-4"
         >
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
-            Menu
-          </p>
+
           <ul className="space-y-0.5">
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname.startsWith(href);

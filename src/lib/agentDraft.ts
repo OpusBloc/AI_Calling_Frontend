@@ -24,9 +24,14 @@ export interface AgentDraft {
   voice: string;
   primaryLanguage: string;
   secondaryLanguage: string;
+  llmProvider: string;
+  llmModel: string;
+  sttProvider: string;
+  sttModel: string;
   silenceCheckSeconds: number | null;
   silencePrompt: string;
   silenceHangupSeconds: number | null;
+  interruptionMinWords: number | null;
   whatsappMessageIds: string[];
   parts: Record<AgentPart, PartDraft>;
   classifications: ClassificationDraftItem[];
@@ -45,9 +50,14 @@ export const emptyDraft = (): AgentDraft => ({
   voice: "",
   primaryLanguage: "",
   secondaryLanguage: "",
+  llmProvider: "sarvam",
+  llmModel: "",
+  sttProvider: "sarvam",
+  sttModel: "",
   silenceCheckSeconds: null,
   silencePrompt: "",
   silenceHangupSeconds: null,
+  interruptionMinWords: null,
   whatsappMessageIds: [],
   parts: Object.fromEntries(AGENT_PARTS.map((p) => [p, blankPart()])) as AgentDraft["parts"],
   classifications: [],
@@ -60,9 +70,14 @@ export const draftFromAgent = (agent: Agent): AgentDraft => ({
   voice: agent.voice ?? "",
   primaryLanguage: agent.primary_language ?? "",
   secondaryLanguage: agent.secondary_language ?? "",
+  llmProvider: agent.llm_provider ?? "sarvam",
+  llmModel: agent.llm_model ?? "",
+  sttProvider: agent.stt_provider ?? "sarvam",
+  sttModel: agent.stt_model ?? "",
   silenceCheckSeconds: agent.silence_check_seconds ?? null,
   silencePrompt: agent.silence_prompt ?? "",
   silenceHangupSeconds: agent.silence_hangup_seconds ?? null,
+  interruptionMinWords: agent.interruption_min_words ?? null,
   whatsappMessageIds: agent.whatsapp_message_ids ?? [],
   parts: Object.fromEntries(
     AGENT_PARTS.map((p) => [p, { source: "text", text: agent[p] ?? "" }]),
@@ -87,9 +102,14 @@ export const loadDraft = (agentId: string | null): AgentDraft | null => {
     return {
       ...emptyDraft(),
       ...parsed,
+      llmProvider: parsed.llmProvider || "sarvam",
+      llmModel: parsed.llmModel ?? "",
+      sttProvider: parsed.sttProvider || "sarvam",
+      sttModel: parsed.sttModel ?? "",
       silenceCheckSeconds: parsed.silenceCheckSeconds ?? null,
       silencePrompt: parsed.silencePrompt ?? "",
       silenceHangupSeconds: parsed.silenceHangupSeconds ?? null,
+      interruptionMinWords: parsed.interruptionMinWords ?? null,
       whatsappMessageIds: parsed.whatsappMessageIds ?? [],
       classifications: parsed.classifications ?? [],
     };
@@ -161,6 +181,10 @@ export function toCreateForm(draft: AgentDraft): FormData {
   if (draft.voice) form.append("voice", draft.voice);
   if (draft.primaryLanguage) form.append("primary_language", draft.primaryLanguage);
   if (draft.secondaryLanguage) form.append("secondary_language", draft.secondaryLanguage);
+  if (draft.llmProvider) form.append("llm_provider", draft.llmProvider);
+  if (draft.llmModel) form.append("llm_model", draft.llmModel);
+  if (draft.sttProvider) form.append("stt_provider", draft.sttProvider);
+  if (draft.sttModel) form.append("stt_model", draft.sttModel);
 
   if (draft.silenceCheckSeconds !== null && draft.silenceCheckSeconds !== undefined && !isNaN(draft.silenceCheckSeconds)) {
     form.append("silence_check_seconds", String(draft.silenceCheckSeconds));
@@ -170,6 +194,9 @@ export function toCreateForm(draft: AgentDraft): FormData {
   }
   if (draft.silenceHangupSeconds !== null && draft.silenceHangupSeconds !== undefined && !isNaN(draft.silenceHangupSeconds)) {
     form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
+  }
+  if (draft.interruptionMinWords !== null && !isNaN(draft.interruptionMinWords)) {
+    form.append("interruption_min_words", String(draft.interruptionMinWords));
   }
 
   if (draft.whatsappMessageIds && draft.whatsappMessageIds.length > 0) {
@@ -204,6 +231,18 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
     form.append("primary_language", draft.primaryLanguage);
     form.append("secondary_language", draft.secondaryLanguage);
   }
+  if (draft.llmProvider !== (agent.llm_provider ?? "")) {
+    form.append("llm_provider", draft.llmProvider);
+    form.append("llm_model", draft.llmModel);
+  } else if (draft.llmModel !== (agent.llm_model ?? "")) {
+    form.append("llm_model", draft.llmModel);
+  }
+  if (draft.sttProvider !== (agent.stt_provider ?? "")) {
+    form.append("stt_provider", draft.sttProvider);
+    form.append("stt_model", draft.sttModel);
+  } else if (draft.sttModel !== (agent.stt_model ?? "")) {
+    form.append("stt_model", draft.sttModel);
+  }
 
   if (draft.silenceCheckSeconds !== (agent.silence_check_seconds ?? null)) {
     if (draft.silenceCheckSeconds !== null && !isNaN(draft.silenceCheckSeconds)) {
@@ -216,6 +255,11 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   if (draft.silenceHangupSeconds !== (agent.silence_hangup_seconds ?? null)) {
     if (draft.silenceHangupSeconds !== null && !isNaN(draft.silenceHangupSeconds)) {
       form.append("silence_hangup_seconds", String(draft.silenceHangupSeconds));
+    }
+  }
+  if (draft.interruptionMinWords !== (agent.interruption_min_words ?? null)) {
+    if (draft.interruptionMinWords !== null && !isNaN(draft.interruptionMinWords)) {
+      form.append("interruption_min_words", String(draft.interruptionMinWords));
     }
   }
 
