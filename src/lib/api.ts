@@ -19,6 +19,8 @@ import type {
   CreatePlivoPoolBody,
   PatchPlivoPoolBody,
   PlivoNumber,
+  PlivoNumberCandidate,
+  PlivoNumberUpdate,
   PlivoPool,
 } from "@/types/types";
 
@@ -58,7 +60,15 @@ export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/
  */
 export async function api<T>(
   path: string,
-  { method = "GET", body, responseType = "json" }: { method?: string; body?: unknown; responseType?: "json" | "blob" | "response" } = {},
+  {
+    method = "GET",
+    body,
+    responseType = "json",
+  }: {
+    method?: string;
+    body?: unknown;
+    responseType?: "json" | "blob" | "response";
+  } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -66,7 +76,9 @@ export async function api<T>(
 
   // FormData goes as multipart (the browser sets the boundary header itself)
   const isForm = body instanceof FormData;
-  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isForm) {
+    headers["Content-Type"] = "application/json";
+  }
 
   let res: Response;
   try {
@@ -110,6 +122,9 @@ export const getPlivoNumbers = () => api<PlivoNumber[]>("/plivo-numbers");
 export const syncPlivoNumbers = () =>
   api<Record<string, unknown>>("/plivo-numbers/sync", { method: "POST" });
 
+export const patchPlivoNumber = (phoneE164: string, body: PlivoNumberUpdate) =>
+  api<PlivoNumber>(`/plivo-numbers/${encodeURIComponent(phoneE164)}`, { method: "PATCH", body });
+
 export const getPlivoPools = () => api<PlivoPool[]>("/plivo-pools");
 
 export const getPlivoPool = (id: string) => api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`);
@@ -124,7 +139,7 @@ export const deletePlivoPool = (id: string) =>
   api<void>(`/plivo-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 export const getAvailablePlivoNumbers = (id: string) =>
-  api<PlivoNumber[]>(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`);
+  api<PlivoNumberCandidate[]>(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`);
 
 // Campaign endpoints
 export const getCampaigns = async (): Promise<Campaign[]> => {

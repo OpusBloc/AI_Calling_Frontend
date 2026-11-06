@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Pencil, Plus, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { History, MessageSquare, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { WhatsAppMessage } from "@/lib/callingAgentApi";
+import {
+  getWhatsAppDelivery,
+  listWhatsAppDeliveries,
+  type WhatsAppDelivery,
+  type WhatsAppMessage,
+} from "@/lib/callingAgentApi";
 import {
   useCreateWhatsAppMessage,
   useDeleteWhatsAppMessage,
@@ -12,22 +18,35 @@ import {
 } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
+import { setApiRequestInUrl } from "@/lib/apiUrlState";
 import {
   Button,
+  Badge,
+  Drawer,
   EmptyState,
   ErrorBanner,
   ErrorState,
   IconButton,
   Pagination,
   SectionHeader,
+  Skeleton,
   SkeletonRows,
   Table,
   errorMessage,
   usePagination,
+  formatDate,
 } from "@/components/ui";
 
 type FormState = { name: string; content: string; template_id: string };
 const EMPTY: FormState = { name: "", content: "", template_id: "" };
+type DeliveryView = { kind: "all" } | { kind: "message"; messageId: string };
+
+const deliveryTone = (status: string): "gain" | "info" | "warn" | "loss" | "neutral" => {
+  if (["read", "delivered", "sent", "accepted"].includes(status.toLowerCase())) return "gain";
+  if (["queued", "sending", "processing"].includes(status.toLowerCase())) return "info";
+  if (["failed", "undelivered", "canceled", "cancelled"].includes(status.toLowerCase())) return "loss";
+  return "neutral";
+};
 
 export default function WhatsAppMessagesTab() {
   const { data, error, isLoading, refetch } = useWhatsAppMessages();
@@ -38,6 +57,27 @@ export default function WhatsAppMessagesTab() {
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [deliveryView, setDeliveryView] = useState<DeliveryView | null>(null);
+  const [deliveryId, setDeliveryId] = useState<string | null>(null);
+  const deliveries = useQuery({
+    queryKey: ["whatsapp-deliveries", deliveryView],
+    queryFn: () =>
+      listWhatsAppDeliveries({
+        limit: 100,
+        messageId: deliveryView?.kind === "message" ? deliveryView.messageId : undefined,
+      }),
+    enabled: deliveryView !== null,
+    retry: false,
+  });
+  const delivery = useQuery({
+    queryKey: ["whatsapp-delivery", deliveryId],
+    queryFn: () => {
+      if (!deliveryId) throw new Error("Select a delivery first.");
+      return getWhatsAppDelivery(deliveryId);
+    },
+    enabled: !!deliveryId,
+    retry: false,
+  });
 
   const messages = data ?? [];
   const pagination = usePagination(messages);
@@ -107,6 +147,42 @@ export default function WhatsAppMessagesTab() {
       <Plus size={16} aria-hidden /> New message
     </Button>
   );
+  const closeDeliveryView = () => {
+    setDeliveryView(null);
+    setDeliveryId(null);
+    setApiRequestInUrl(null);
+  };
+  const openDeliveryActivity = () => {
+    setDeliveryView({ kind: "all" });
+    setDeliveryId(null);
+    setApiRequestInUrl({ method: "GET", endpoint: "/api/whatsapp-messages/deliveries?limit=100" });
+  };
+  const openMessageDeliveries = (messageId: string) => {
+    setDeliveryView({ kind: "message", messageId });
+    setDeliveryId(null);
+    setApiRequestInUrl({
+      method: "GET",
+      endpoint: `/api/whatsapp-messages/${encodeURIComponent(messageId)}/deliveries?limit=100`,
+    });
+  };
+  const openDeliveryDetails = (id: string) => {
+    setDeliveryId(id);
+    setApiRequestInUrl({
+      method: "GET",
+      endpoint: `/api/whatsapp-messages/deliveries/${encodeURIComponent(id)}`,
+    });
+  };
+  const backToDeliveries = () => {
+    setDeliveryId(null);
+    setApiRequestInUrl(
+      deliveryView?.kind === "message"
+        ? {
+            method: "GET",
+            endpoint: `/api/whatsapp-messages/${encodeURIComponent(deliveryView.messageId)}/deliveries?limit=100`,
+          }
+        : { method: "GET", endpoint: "/api/whatsapp-messages/deliveries?limit=100" },
+    );
+  };
 
   const inputCls =
     "w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm text-body focus:outline-none focus:ring-2 focus:ring-gray-400";
@@ -116,7 +192,14 @@ export default function WhatsAppMessagesTab() {
       <SectionHeader
         title="WhatsApp messages"
         description="Template messages agents can send to the customer during or after a call. Attach them to an agent."
-        action={newButton}
+        action={
+          <>
+            <Button variant="secondary" onClick={openDeliveryActivity}>
+              <History size={16} aria-hidden /> Delivery activity
+            </Button>
+            {newButton}
+          </>
+        }
       />
 
       <div className="space-y-3">
@@ -178,8 +261,8 @@ export default function WhatsAppMessagesTab() {
         {error && !data ? (
           <ErrorState message={errorMessage(error)} onRetry={() => refetch()} />
         ) : isLoading && !data ? (
-          <Table head={["Name", "Template ID", "Content", "Updated", ""]}>
-            <SkeletonRows cols={5} />
+          <Table head={["Name", "Template ID", "Content", "Updated", "Deliveries", ""]}>
+            <SkeletonRows cols={6} />
           </Table>
         ) : messages.length === 0 ? (
           <EmptyState
@@ -190,7 +273,7 @@ export default function WhatsAppMessagesTab() {
           />
         ) : (
           <>
-            <Table head={["Name", "Template ID", "Content", "Updated", ""]} label="WhatsApp messages">
+            <Table head={["Name", "Template ID", "Content", "Updated", "Deliveries", ""]} label="WhatsApp messages">
               {pagination.pageItems.map((m) => (
                 <tr key={m.id}>
                   <td className="px-4 py-3 font-medium text-heading">{m.name}</td>
@@ -202,6 +285,17 @@ export default function WhatsAppMessagesTab() {
                     {m.updated_at
                       ? new Date(m.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
                       : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        openMessageDeliveries(m.id);
+                      }}
+                    >
+                      <History size={14} aria-hidden /> View
+                    </Button>
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex justify-end gap-1">
@@ -224,6 +318,129 @@ export default function WhatsAppMessagesTab() {
           </>
         )}
       </div>
+
+      {deliveryView && (
+        <Drawer
+          title={deliveryId ? "Delivery details" : deliveryView.kind === "all" ? "Delivery activity" : "Message deliveries"}
+          description={
+            deliveryId
+              ? "Status and provider response for this WhatsApp delivery."
+              : deliveryView.kind === "all"
+                ? "Recent WhatsApp template delivery attempts."
+                : `Delivery attempts for ${messages.find((message) => message.id === deliveryView.messageId)?.name ?? "this message"}.`
+          }
+          onClose={closeDeliveryView}
+        >
+          <div className="space-y-3">
+            {deliveryId ? (
+              <>
+                <Button size="sm" variant="secondary" onClick={backToDeliveries}>
+                  Back to deliveries
+                </Button>
+                {delivery.isLoading ? (
+                  <div className="space-y-2" role="status" aria-label="Loading delivery details">
+                    <Skeleton className="h-20 rounded-md" />
+                    <Skeleton className="h-28 rounded-md" />
+                  </div>
+                ) : delivery.isError ? (
+                  <ErrorState
+                    title="Couldn't load delivery"
+                    message={errorMessage(delivery.error)}
+                    onRetry={() => void delivery.refetch()}
+                  />
+                ) : delivery.data ? (
+                  <DeliveryDetails delivery={delivery.data} />
+                ) : null}
+              </>
+            ) : deliveries.isLoading ? (
+              <div className="space-y-2" role="status" aria-label="Loading deliveries">
+                <Skeleton className="h-20 rounded-md" />
+                <Skeleton className="h-20 rounded-md" />
+              </div>
+            ) : deliveries.isError ? (
+              <ErrorState
+                title="Couldn't load deliveries"
+                message={errorMessage(deliveries.error)}
+                onRetry={() => void deliveries.refetch()}
+              />
+            ) : !deliveries.data?.length ? (
+              <p className="rounded-md border border-hairline bg-raised p-5 text-center text-sm text-muted">
+                No WhatsApp deliveries found.
+              </p>
+            ) : (
+              deliveries.data.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => openDeliveryDetails(item.id)}
+                  className="w-full rounded-md border border-hairline bg-surface p-3 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-heading">{item.message_name || item.template_id}</span>
+                      <span className="mt-1 block text-xs text-muted">{item.recipient} · {formatDate(item.created_at)}</span>
+                    </span>
+                    <Badge tone={deliveryTone(item.status)}>{item.status}</Badge>
+                  </div>
+                  {item.error_message && <span className="mt-2 block line-clamp-2 text-xs text-loss">{item.error_message}</span>}
+                </button>
+              ))
+            )}
+          </div>
+        </Drawer>
+      )}
     </section>
+  );
+}
+
+function DeliveryDetails({ delivery }: { delivery: WhatsAppDelivery }) {
+  const timestamps: Array<{ label: string; value: string }> = [
+    { label: "Accepted", value: delivery.accepted_at ?? "" },
+    { label: "Sent", value: delivery.sent_at ?? "" },
+    { label: "Delivered", value: delivery.delivered_at ?? "" },
+    { label: "Read", value: delivery.read_at ?? "" },
+    { label: "Failed", value: delivery.failed_at ?? "" },
+  ].filter((entry) => entry.value.length > 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-hairline bg-raised p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-medium text-heading">{delivery.message_name || delivery.template_id}</h3>
+          <Badge tone={deliveryTone(delivery.status)}>{delivery.status}</Badge>
+        </div>
+        <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <DeliveryField label="Recipient" value={delivery.recipient} />
+          <DeliveryField label="Template ID" value={delivery.template_id} />
+          <DeliveryField label="Twilio message SID" value={delivery.twilio_message_sid || "—"} />
+          <DeliveryField label="Attempt ID" value={delivery.attempt_id || "—"} />
+          <DeliveryField label="Created" value={formatDate(delivery.created_at)} />
+          <DeliveryField label="Updated" value={formatDate(delivery.updated_at)} />
+        </dl>
+      </div>
+      {timestamps.length > 0 && (
+        <div className="rounded-md border border-hairline p-4">
+          <h3 className="text-sm font-medium text-heading">Timeline</h3>
+          <dl className="mt-3 space-y-2">
+            {timestamps.map(({ label, value }) => <DeliveryField key={label} label={label} value={formatDate(value)} />)}
+          </dl>
+        </div>
+      )}
+      {(delivery.error_code || delivery.error_message) && (
+        <div role="alert" className="rounded-md border border-loss/30 bg-loss-bg p-4 text-sm text-loss">
+          {delivery.error_code && <p className="font-medium">Error {delivery.error_code}</p>}
+          {delivery.error_message && <p className="mt-1 whitespace-pre-wrap">{delivery.error_message}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeliveryField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="mt-0.5 break-all text-sm text-heading">{value}</dd>
+    </div>
   );
 }

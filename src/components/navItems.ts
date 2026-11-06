@@ -1,4 +1,4 @@
-import { Bot, LayoutDashboard, Megaphone, Phone,  MessageSquare } from "lucide-react";
+import { Bot, LayoutDashboard, Megaphone, Phone, MessageSquare } from "lucide-react";
 
 export const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },

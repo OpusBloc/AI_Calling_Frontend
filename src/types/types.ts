@@ -288,6 +288,8 @@ export interface PlivoNumber {
   plivo_pool_id?: string | null;
   daily_attempt_limit: number;
   max_concurrent_calls: number;
+  health_status: PlivoHealthStatus;
+  health_checked_at?: string | null;
 }
 
 export interface PlivoPool {
@@ -302,6 +304,10 @@ export interface PlivoPool {
   created_at: string;
   updated_at: string;
 }
+
+export type PlivoNumberUpdate = components["schemas"]["PlivoNumberUpdate"];
+export type PlivoNumberCandidate = components["schemas"]["PlivoNumberCandidate"];
+export type PlivoHealthStatus = components["schemas"]["PlivoHealthStatus"];
 
 export interface CreatePlivoPoolBody {
   name: string;

@@ -95,6 +95,14 @@ export const listVoices = async (params: ListVoicesParams = {}): Promise<Voice[]
     .filter((voice): voice is Voice => voice !== null);
 };
 
+/** Get the upstream voice details, including any signed preview URLs. */
+export const getVoice = (voiceId: string) =>
+  api<Record<string, unknown>>(`/voices/${encodeURIComponent(voiceId)}`);
+
+/** Delete a saved custom voice. */
+export const deleteVoice = (voiceId: string) =>
+  api<void>(`/voices/${encodeURIComponent(voiceId)}`, { method: "DELETE" });
+
 export const createVoice = async (input: CreateVoiceInput): Promise<CreateVoiceResult> => {
   const name = input.name.trim();
   const text = input.text.trim();

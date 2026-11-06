@@ -772,12 +772,16 @@ const [selectedCallId, setSelectedCallId] = useState<string | null>(null); // "L
 const openCall = (callId: string) => {
   const params = new URLSearchParams(searchParams.toString()); // keeps tab=calls
   params.set("call", callId);
+  params.set("api_method", "GET");
+  params.set("api_endpoint", `/api/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}`);
   router.push(`${pathname}?${params.toString()}`, { scroll: false });
 };
 
 const closeCall = () => {
   const params = new URLSearchParams(searchParams.toString());
   params.delete("call");
+  params.delete("api_method");
+  params.delete("api_endpoint");
   router.push(`${pathname}?${params.toString()}`, { scroll: false });
 };
 
