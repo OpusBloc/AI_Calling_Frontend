@@ -8,7 +8,8 @@ import type {
   CallOutcome,
   CallOutcomeResult,
   CampaignCallDetail,
-  ScheduledCampaignCall,
+  CampaignCallsResponse,
+  // ScheduledCampaignCall,
   CampaignUpdate,
   CallCost,
   CallCostSummary,
@@ -163,8 +164,11 @@ export const getCampaign = (id: string) =>
 export const scheduleCampaign = (id: string) =>
   api<CampaignScheduleResult>(`/campaigns/${encodeURIComponent(id)}/schedule`, { method: "POST" });
 
+// export const getCampaignCalls = (id: string) =>
+//   api<ScheduledCampaignCall[]>(`/campaigns/${encodeURIComponent(id)}/calls`);
+
 export const getCampaignCalls = (id: string) =>
-  api<ScheduledCampaignCall[]>(`/campaigns/${encodeURIComponent(id)}/calls`);
+  api<CampaignCallsResponse>(`/campaigns/${encodeURIComponent(id)}/calls`);
 
 export const postCampaignCallOutcome = (campaignId: string, callId: string, outcome: CallOutcome) =>
   api<CallOutcomeResult>(`/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}/outcome`, {

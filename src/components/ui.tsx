@@ -126,10 +126,10 @@ export function Button({
         variant === "primary" &&
           "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
         variant === "secondary" &&
-          "border border-hairline-strong bg-surface text-heading shadow-sm hover:bg-surface-hover",
+          "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
         variant === "danger" && "bg-loss text-white shadow-sm hover:opacity-90",
         variant === "ghost" &&
-          "text-body hover:bg-surface-hover hover:text-heading",
+          "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
         className,
       )}
     >

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check } from "lucide-react";
 
 import { createCampaign, updateCampaign } from "@/lib/api";
 import type { Campaign, CampaignCreate, CampaignUpdate, Weekday } from "@/types/types";
@@ -10,10 +11,16 @@ import { useAgents, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import MultiSelect from "@/components/MultiSelect";
 import { WEEKDAYS, formatDays } from "@/components/campaigns/CampaignsTab";
-import { Button, Field, FileDrop, FormPage, FormSection, Select, TextInput, humanize } from "@/components/ui";
+import { Button, Card, Field, FileDrop, FormPage, Select, TextInput, humanize } from "@/components/ui";
 
 export const CAMPAIGN_STATUSES: Campaign["status"][] = ["draft", "scheduled", "running", "paused", "completed", "cancelled"];
 const RETRY_CONDITIONS = ["no_answer", "not_connected", "busy", "failed"] as const;
+const CAMPAIGN_STEPS = [
+  { id: "details", label: "Details & Leads" },
+  { id: "calling", label: "Calling & Retries" },
+  { id: "timing", label: "Timing" },
+] as const;
+type CampaignStep = (typeof CAMPAIGN_STEPS)[number]["id"];
 
 // Same header names the backend accepts
 const PHONE_HEADERS = ["phone", "phone_number", "phone_e164", "mobile", "mobile_number", "number"];
@@ -62,6 +69,14 @@ async function checkSheet(file: File): Promise<SheetCheck> {
   return { rows: lines.length - 1, phoneColumn, hasName: headers.some((h) => NAME_HEADERS.includes(h)) };
 }
 
+function Panel({ title, description, children }: { title: string; description: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Card title={title} description={description}>
+      <div className="space-y-5">{children}</div>
+    </Card>
+  );
+}
+
 /**
  * Full-page create/edit form (`/campaigns/new`, `/campaigns/[id]/edit`). `campaign` null = create.
  */
@@ -94,6 +109,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [maxLiveCalls, setMaxLiveCalls] = useState(String(campaign?.max_live_calls ?? 50));
   const [callsPerSecond, setCallsPerSecond] = useState(String(campaign?.calls_per_second ?? 2));
   const [submitted, setSubmitted] = useState(false);
+  const [activeStep, setActiveStep] = useState<CampaignStep>("details");
 
   const CAMPAIGN_DRAFT_KEY="CampaignDraft";
   const[draftLoaded,setDraftLoaded] = useState(false);
@@ -141,6 +157,12 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
     : null,
   };
   const valid = Object.values(errors).every((e) => !e);
+  const stepErrors: Record<CampaignStep, boolean> = {
+    details: Boolean(errors.name || errors.agent || errors.leads),
+    calling: Boolean(errors.plivo || errors.transferTimeout || errors.retryInterval || errors.retryCount),
+    timing: Boolean(errors.window || errors.concurrency || errors.callsPerSecond || errors.maxLive),
+  };
+  const activeStepIndex = CAMPAIGN_STEPS.findIndex((step) => step.id === activeStep);
   // Only nag after the first save attempt (a bad file is flagged right away)
   const show = (error: string | null) => (submitted ? error : null);
   
@@ -199,7 +221,12 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   
   const submit = () => {
     setSubmitted(true);
-    if (valid) mutation.mutate();
+    if (valid) {
+      mutation.mutate();
+      return;
+    }
+    const firstInvalidStep = CAMPAIGN_STEPS.find((step) => stepErrors[step.id]);
+    if (firstInvalidStep) setActiveStep(firstInvalidStep.id);
   };
 
   const actions = (
@@ -207,9 +234,20 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
       <Button variant="secondary" onClick={() => router.replace(backHref)}>
         Cancel
       </Button>
-      <Button onClick={submit} loading={mutation.isPending}>
-        {campaign ? "Save changes" : "Create campaign"}
-      </Button>
+      {activeStepIndex > 0 && (
+        <Button variant="secondary" onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex - 1].id)}>
+          Back
+        </Button>
+      )}
+      {activeStepIndex < CAMPAIGN_STEPS.length - 1 ? (
+        <Button onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex + 1].id)}>
+          Continue
+        </Button>
+      ) : (
+        <Button onClick={submit} loading={mutation.isPending}>
+          {campaign ? "Save changes" : "Create campaign"}
+        </Button>
+      )}
     </>
   );
 
@@ -338,7 +376,7 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
   retryCount,
   retryInterval,
   retryOn
-])
+]);
 
   return (
     <FormPage
@@ -354,211 +392,276 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
       flushFooterToBottom
       error={submitted && !valid ? "Some fields need attention — they're marked below." : null}
     >
-      <FormSection title="Basics" description="A name your team will recognise, and the AI agent that speaks on every call.">
-        <Field label="Campaign name" required error={show(errors.name)}>
-          <TextInput value={name} maxLength={255} onChange={(e) => setName(e.target.value)} placeholder="e.g. October renewals" aria-invalid={!!show(errors.name)} />
-        </Field>
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Calling agent" required error={show(errors.agent)}>
-            <Select value={agentId} onChange={(e) => setAgentId(e.target.value)} aria-invalid={!!show(errors.agent)}>
-              <option value="">{agents.isLoading ? "Loading…" : "Select an agent"}</option>
-              {agents.data?.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Status" hint="Scheduled starts calling straight away (or at the start time). A draft waits until you schedule it.">
-            <Select value={status} onChange={(e) => setStatus(e.target.value as Campaign["status"])}>
-              {CAMPAIGN_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {humanize(s)}
-                </option>
-              ))}
-            </Select>
-          </Field>
+      <div className="mt-5">
+        <div
+          role="tablist"
+          aria-label="Campaign setup"
+          className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline"
+        >
+          {CAMPAIGN_STEPS.map((step, index) => {
+            const selected = step.id === activeStep;
+            const hasError = submitted && stepErrors[step.id];
+            const complete = !stepErrors[step.id];
+            return (
+              <button
+                key={step.id}
+                id={`campaign-tab-${step.id}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls="campaign-step-panel"
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setActiveStep(step.id)}
+                onKeyDown={(event) => {
+                  const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+                  if (!direction) return;
+                  event.preventDefault();
+                  const nextIndex = (index + direction + CAMPAIGN_STEPS.length) % CAMPAIGN_STEPS.length;
+                  const nextStep = CAMPAIGN_STEPS[nextIndex];
+                  setActiveStep(nextStep.id);
+                  document.getElementById(`campaign-tab-${nextStep.id}`)?.focus();
+                }}
+                className={`-mb-px flex h-12 items-center gap-2 whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors ${
+                  selected
+                    ? "border-accent text-accent-text"
+                    : hasError
+                      ? "border-transparent text-loss hover:text-loss"
+                      : "border-transparent text-muted hover:text-heading"
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                    hasError
+                      ? "bg-loss-bg text-loss"
+                      : selected
+                        ? "bg-accent text-on-accent"
+                        : complete
+                          ? "bg-gain-bg text-gain"
+                          : "bg-chip text-muted"
+                  }`}
+                >
+                  {complete && !selected && !hasError ? <Check size={12} strokeWidth={3} /> : index + 1}
+                </span>
+                {step.label}
+              </button>
+            );
+          })}
         </div>
-      </FormSection>
 
-      <FormSection
-        title="Leads"
-        description={
-          campaign
-            ? "The leads were imported when this campaign was created."
-            : "Upload a CSV, Excel, or XML file, or import from a file link. Leads need a phone value; names are optional."
-        }
-      >
-        {campaign ? (
-          <p className="text-sm text-body">
-            Leads can&apos;t be changed after a campaign is created. To call a different list, create a new campaign with that sheet.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex gap-2" role="group" aria-label="Leads source">
-              <Button
-                type="button"
-                variant={leadsSource === "file" ? "primary" : "secondary"}
-                onClick={() => setLeadsSource("file")}
-              >
-                Upload file
-              </Button>
-              <Button
-                type="button"
-                variant={leadsSource === "link" ? "primary" : "secondary"}
-                onClick={() => setLeadsSource("link")}
-              >
-                Link
-              </Button>
+        <div
+          id="campaign-step-panel"
+          role="tabpanel"
+          aria-labelledby={`campaign-tab-${activeStep}`}
+          className="pt-6"
+        >
+          {activeStep === "details" && (
+              <div className="space-y-6">
+            <Panel title="Details" description="A name your team will recognise, and the AI agent that speaks on every call.">
+            <Field label="Campaign name" required error={show(errors.name)}>
+              <TextInput value={name} maxLength={255} onChange={(e) => setName(e.target.value)} placeholder="e.g. October renewals" aria-invalid={!!show(errors.name)} />
+            </Field>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Calling agent" required error={show(errors.agent)}>
+                <Select value={agentId} onChange={(e) => setAgentId(e.target.value)} aria-invalid={!!show(errors.agent)}>
+                  <option value="">{agents.isLoading ? "Loading…" : "Select an agent"}</option>
+                  {agents.data?.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Status" hint="Scheduled starts calling straight away (or at the start time). A draft waits until you schedule it.">
+                <Select value={status} onChange={(e) => setStatus(e.target.value as Campaign["status"])}>
+                  {CAMPAIGN_STATUSES.map((s) => (
+                    <option key={s} value={s}>{humanize(s)}</option>
+                  ))}
+                </Select>
+              </Field>
             </div>
-            {leadsSource === "file" ? (
-              <FileDrop
-                label="Upload leads sheet"
-                accept=".csv,.xlsx,.xml"
-                file={leadsFile}
-                onChange={chooseFile}
-                error={show(errors.leads)}
-                details={
-                  sheet && "rows" in sheet ? (
-                    <span className="text-gain">
-                      {sheet.rows} lead{sheet.rows === 1 ? "" : "s"} · phone column “{sheet.phoneColumn}”{sheet.hasName ? " · names included" : ""}
-                    </span>
-                  ) : null
-                }
-                hint={
-                  <>
-                    Columns: <code className="tnum">phone</code> (or phone_number, mobile, phone_e164) and optional{" "}
-                    <code className="tnum">name</code>. 10-digit numbers get +91 added. Duplicates are skipped.
-                  </>
-                }
-              />
+          </Panel>
+         
+          <Panel
+            title="Leads"
+            description={
+              campaign
+                ? "The leads were imported when this campaign was created."
+                : "Upload a CSV, Excel, or XML file, or import from a file link. Leads need a phone value; names are optional."
+            }
+          >
+            {campaign ? (
+              <p className="text-sm text-body">
+                Leads can&apos;t be changed after a campaign is created. To call a different list, create a new campaign with that sheet.
+              </p>
             ) : (
-              <Field
-                label="Leads file URL"
-                error={show(errors.leads)}
-                hint="Use a direct, publicly accessible link to a CSV, Excel (.xlsx), or XML file. XML lead entries need a phone field and may include a name. The file is fetched and imported when you create the campaign."
-              >
-                <TextInput
-                  type="url"
-                  value={leadsUrl}
-                  onChange={(event) => setLeadsUrl(event.target.value)}
-                  placeholder="https://example.com/leads.xlsx"
-                  aria-invalid={!!show(errors.leads)}
-                />
+              <div className="space-y-4">
+                <div className="flex gap-2" role="group" aria-label="Leads source">
+                  <Button type="button" variant={leadsSource === "file" ? "primary" : "secondary"} onClick={() => setLeadsSource("file")}>
+                    Upload file
+                  </Button>
+                  <Button type="button" variant={leadsSource === "link" ? "primary" : "secondary"} onClick={() => setLeadsSource("link")}>
+                    Link
+                  </Button>
+                </div>
+                {leadsSource === "file" ? (
+                  <FileDrop
+                    label="Upload leads sheet"
+                    accept=".csv,.xlsx,.xml"
+                    file={leadsFile}
+                    onChange={chooseFile}
+                    error={show(errors.leads)}
+                    details={
+                      sheet && "rows" in sheet ? (
+                        <span className="text-gain">
+                          {sheet.rows} lead{sheet.rows === 1 ? "" : "s"} · phone column “{sheet.phoneColumn}”{sheet.hasName ? " · names included" : ""}
+                        </span>
+                      ) : null
+                    }
+                    hint={
+                      <>
+                        Columns: <code className="tnum">phone</code> (or phone_number, mobile, phone_e164) and optional{" "}
+                        <code className="tnum">name</code>. 10-digit numbers get +91 added. Duplicates are skipped.
+                      </>
+                    }
+                  />
+                ) : (
+                  <Field
+                    label="Leads file URL"
+                    error={show(errors.leads)}
+                    hint="Use a direct, publicly accessible link to a CSV, Excel (.xlsx), or XML file. XML lead entries need a phone field and may include a name. The file is fetched and imported when you create the campaign."
+                  >
+                    <TextInput
+                      type="url"
+                      value={leadsUrl}
+                      onChange={(event) => setLeadsUrl(event.target.value)}
+                      placeholder="https://example.com/leads.xlsx"
+                      aria-invalid={!!show(errors.leads)}
+                    />
+                  </Field>
+                )}
+              </div>
+            )}
+          </Panel>
+          </div>
+          )}
+
+
+
+{activeStep === "calling" && (
+  <div className="space-y-6">
+    <Panel title="Calling from" description="Choose the Plivo pools to call from and who receives transferred leads.">
+      <MultiSelect
+        label="Plivo pools"
+        required
+        loading={plivoPools.isLoading}
+        options={(plivoPools.data ?? []).map((p) => ({ id: p.id, label: p.name, detail: `${p.pool_size} numbers` }))}
+        selected={plivoPoolIds}
+        onChange={setPlivoPoolIds}
+        error={show(errors.plivo)}
+        hint="Calls use the numbers in these pools as caller ID."
+      />
+      <MultiSelect
+        label="Call transfer agents"
+        loading={representatives.isLoading}
+        options={(representatives.data ?? []).map((r) => ({ id: r.id, label: r.name, detail: r.phone_e164 }))}
+        selected={representativeIds}
+        onChange={setRepresentativeIds}
+        hint="Leave empty to ring every active transfer agent."
+      />
+      <Field label="Transfer ring time (seconds)" error={show(errors.transferTimeout)} hint="How long each representative's phone rings, 5–120.">
+        <TextInput type="number" inputMode="numeric" min={5} max={120} step={1} value={transferTimeout} onChange={(e) => setTransferTimeout(e.target.value)} aria-invalid={!!show(errors.transferTimeout)} className="sm:max-w-[12rem]" />
+      </Field>
+    </Panel>
+
+    <Panel title="Retries" description="Choose what happens when a lead doesn't pick up.">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Retry attempts" error={show(errors.retryCount)} hint="0 means call each lead once.">
+          <TextInput type="number" inputMode="numeric" min={0} step={1} value={retryCount} onChange={(e) => setRetryCount(e.target.value)} aria-invalid={!!show(errors.retryCount)} />
+        </Field>
+        <Field label="Minutes between retries" error={show(errors.retryInterval)}>
+          <TextInput type="number" inputMode="numeric" min={0} step={1} value={retryInterval} onChange={(e) => setRetryInterval(e.target.value)} aria-invalid={!!show(errors.retryInterval)} />
+        </Field>
+      </div>
+      <MultiSelect
+        label="Retry when the call is"
+        options={RETRY_CONDITIONS.map((c) => ({ id: c, label: humanize(c) }))}
+        selected={retryOn}
+        onChange={setRetryOn}
+      />
+    </Panel>
+  </div>
+)}
+
+          {activeStep === "timing" && (
+            <Panel title="Timing" description="Set when calls may go out. Times are India Standard Time.">
+            {status === "scheduled" && (
+              <Field label="Start at" hint="Leave empty to start as soon as the campaign is saved.">
+                <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="sm:max-w-xs" />
               </Field>
             )}
-          </div>
-        )}
-      </FormSection>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Calling hours start" hint="Leave both empty to call any time.">
+                <TextInput type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} aria-invalid={!!show(errors.window)} />
+              </Field>
+              <Field label="Calling hours end" error={show(errors.window)}>
+                <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} />
+              </Field>
+            </div>
+            <fieldset>
+              <legend className="text-sm font-medium text-heading">Call days</legend>
+              <p className="mt-0.5 text-xs text-muted">
+                Calls go out only on these days, within the calling hours, week after week until every lead is done. Pick none to call every day.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {WEEKDAYS.map((d) => {
+                  const on = callDays.includes(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setCallDays((days) => (on ? days.filter((x) => x !== d.id) : [...days, d.id]))}
+                      className={
+                        on
+                          ? "h-9 min-w-12 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-on-accent transition-colors"
+                          : "h-9 min-w-12 rounded-md border border-hairline-strong bg-surface px-3 text-sm font-medium text-heading transition-colors hover:bg-surface-hover"
+                      }
+                    >
+                      {d.short}
+                    </button>
+                  );
+                })}
+                <span className="ml-1 text-sm text-muted">{formatDays(callDays)}</span>
+              </div>
+              <div className="mt-2 flex gap-3 text-sm">
+                {(
+                  [
+                    ["Every day", [] as Weekday[]],
+                    ["Mon–Fri", WEEKDAYS.slice(0, 5).map((d) => d.id)],
+                    ["Weekends", WEEKDAYS.slice(5).map((d) => d.id)],
+                  ] as const
+                ).map(([label, days]) => (
+                  <button key={label} type="button" onClick={() => setCallDays([...days])} className="font-medium text-accent-text hover:underline">
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Parallel calls" error={show(errors.concurrency)} hint="How many leads are dialled at once. Can be changed while running.">
+                <TextInput type="number" inputMode="numeric" min={1} step={1} value={concurrencyLimit} onChange={(e) => setConcurrencyLimit(e.target.value)} aria-invalid={!!show(errors.concurrency)} />
+              </Field>
+              <Field label="Max live calls" error={show(errors.maxLive)} hint="Safety ceiling on calls connected at the same moment.">
+                <TextInput type="number" inputMode="numeric" min={1} step={1} value={maxLiveCalls} onChange={(e) => setMaxLiveCalls(e.target.value)} aria-invalid={!!show(errors.maxLive)} />
+              </Field>
+              <Field label="New calls per second" error={show(errors.callsPerSecond)} hint="How fast calls are started. Keep within your Plivo account limit.">
+                <TextInput type="number" inputMode="numeric" min={1} step={1} value={callsPerSecond} onChange={(e) => setCallsPerSecond(e.target.value)} aria-invalid={!!show(errors.callsPerSecond)} />
+              </Field>
+            </div>
+            </Panel>
+          )}
 
-      <FormSection title="Calling from" description="Plivo pools the calls are placed from, and who interested leads are transferred to.">
-        <MultiSelect
-          label="Plivo pools"
-          required
-          loading={plivoPools.isLoading}
-          options={(plivoPools.data ?? []).map((p) => ({ id: p.id, label: p.name, detail: `${p.pool_size} numbers` }))}
-          selected={plivoPoolIds}
-          onChange={setPlivoPoolIds}
-          error={show(errors.plivo)}
-          hint="Calls use the numbers in these pools as caller ID."
-        />
-        <MultiSelect
-          label="Call transfer agents"
-          loading={representatives.isLoading}
-          options={(representatives.data ?? []).map((r) => ({ id: r.id, label: r.name, detail: r.phone_e164 }))}
-          selected={representativeIds}
-          onChange={setRepresentativeIds}
-          hint="Leave empty to ring every active transfer agent."
-        />
-        <Field label="Transfer ring time (seconds)" error={show(errors.transferTimeout)} hint="How long each representative's phone rings, 5–120.">
-          <TextInput type="number" inputMode="numeric" min={5} max={120} step={1} value={transferTimeout} onChange={(e) => setTransferTimeout(e.target.value)} aria-invalid={!!show(errors.transferTimeout)} className="sm:max-w-[12rem]" />
-        </Field>
-      </FormSection>
-
-      <FormSection title="Timing" description="When calls may go out. Times are India Standard Time.">
-        {status === "scheduled" && (
-          <Field label="Start at" hint="Leave empty to start as soon as the campaign is saved.">
-            <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="sm:max-w-xs" />
-          </Field>
-        )}
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Calling hours start" hint="Leave both empty to call any time.">
-            <TextInput type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} aria-invalid={!!show(errors.window)} />
-          </Field>
-          <Field label="Calling hours end" error={show(errors.window)}>
-            <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} />
-          </Field>
         </div>
-        <fieldset>
-          <legend className="text-sm font-medium text-heading">Call days</legend>
-          <p className="mt-0.5 text-xs text-muted">
-            Calls go out only on these days, within the calling hours, week after week until every lead is done. Pick none to call
-            every day.
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {WEEKDAYS.map((d) => {
-              const on = callDays.includes(d.id);
-              return (
-                <button
-                  key={d.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setCallDays((days) => (on ? days.filter((x) => x !== d.id) : [...days, d.id]))}
-                  className={
-                    on
-                      ? "h-9 min-w-12 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-on-accent transition-colors"
-                      : "h-9 min-w-12 rounded-md border border-hairline-strong bg-surface px-3 text-sm font-medium text-heading transition-colors hover:bg-surface-hover"
-                  }
-                >
-                  {d.short}
-                </button>
-              );
-            })}
-            <span className="ml-1 text-sm text-muted">{formatDays(callDays)}</span>
-          </div>
-          <div className="mt-2 flex gap-3 text-sm">
-            {(
-              [
-                ["Every day", [] as Weekday[]],
-                ["Mon–Fri", WEEKDAYS.slice(0, 5).map((d) => d.id)],
-                ["Weekends", WEEKDAYS.slice(5).map((d) => d.id)],
-              ] as const
-            ).map(([label, days]) => (
-              <button key={label} type="button" onClick={() => setCallDays([...days])} className="font-medium text-accent-text hover:underline">
-                {label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Parallel calls" error={show(errors.concurrency)} hint="How many leads are dialled at once. Can be changed while running.">
-            <TextInput type="number" inputMode="numeric" min={1} step={1} value={concurrencyLimit} onChange={(e) => setConcurrencyLimit(e.target.value)} aria-invalid={!!show(errors.concurrency)} />
-          </Field>
-          <Field label="Max live calls" error={show(errors.maxLive)} hint="Safety ceiling on calls connected at the same moment.">
-            <TextInput type="number" inputMode="numeric" min={1} step={1} value={maxLiveCalls} onChange={(e) => setMaxLiveCalls(e.target.value)} aria-invalid={!!show(errors.maxLive)} />
-          </Field>
-          <Field label="New calls per second" error={show(errors.callsPerSecond)} hint="How fast calls are started. Keep within your Plivo account limit.">
-            <TextInput type="number" inputMode="numeric" min={1} step={1} value={callsPerSecond} onChange={(e) => setCallsPerSecond(e.target.value)} aria-invalid={!!show(errors.callsPerSecond)} />
-          </Field>
-        </div>
-      </FormSection>
-
-      <FormSection title="Retries" description="What happens when a lead doesn't pick up.">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Retry attempts" error={show(errors.retryCount)} hint="0 means call each lead once.">
-            <TextInput type="number" inputMode="numeric" min={0} step={1} value={retryCount} onChange={(e) => setRetryCount(e.target.value)} aria-invalid={!!show(errors.retryCount)} />
-          </Field>
-          <Field label="Minutes between retries" error={show(errors.retryInterval)}>
-            <TextInput type="number" inputMode="numeric" min={0} step={1} value={retryInterval} onChange={(e) => setRetryInterval(e.target.value)} aria-invalid={!!show(errors.retryInterval)} />
-          </Field>
-        </div>
-        <MultiSelect
-          label="Retry when the call is"
-          options={RETRY_CONDITIONS.map((c) => ({ id: c, label: humanize(c) }))}
-          selected={retryOn}
-          onChange={setRetryOn}
-        />
-      </FormSection>
+      </div>
     </FormPage>
   );
 }

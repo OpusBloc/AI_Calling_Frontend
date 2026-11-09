@@ -51,7 +51,7 @@
      canvas. The dark theme restores the design system's own values below.
      The low-alpha *-bg tints are hue-only and work on either canvas. */
   --gain: #2b7252;
-  --loss: #a8443e;
+  --loss: #eb746e;
   --info: #3d6b8a;
   --warn: #7d5f18;
   --gain-bg: rgba(111, 181, 138, 0.18);

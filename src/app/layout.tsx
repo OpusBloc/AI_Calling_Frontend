@@ -5,6 +5,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import LayoutShell from "@/components/LayoutShell";
 
+
 // Exposed as the CSS variables globals.css reads (--font-syne, --font-plex-mono)
 const syne = Syne({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-syne", display: "swap" });
 const plexMono = IBM_Plex_Mono({
