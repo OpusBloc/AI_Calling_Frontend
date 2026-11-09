@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
-import type { CampaignCallDetailAttempt, CampaignCallSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
+import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
 import {
   useAgents,
   useCampaign,
@@ -98,6 +98,8 @@ const formatDateWithSeconds = (value: string | null | undefined) =>
   value
     ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
     : "—";
+const getCampaignAiCost = (report: CampaignReport | undefined) =>
+  (report?.calls ?? []).reduce((total, call) => total + call.sarvam_cost, 0);
 
 const TABS = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -127,7 +129,7 @@ function CampaignDetails() {
   const exists = ids.data?.includes(id) ?? false;
   const campaignQuery = useCampaign(id, ids.isSuccess && exists);
   const report = useCampaignReport(id, campaignQuery.isSuccess);
-  const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && tab === "costs");
+ const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && (tab === "costs" || tab === "overview"));
   const schedule = useScheduleCampaign();
   const campaign = campaignQuery.data;
   const dispatch = useToggleDispatch(id, campaign?.name ?? "Campaign");
@@ -250,7 +252,7 @@ function CampaignDetails() {
           onChange={setTab}
         />
         <div role="tabpanel" className="space-y-6 pt-6">
-          {tab === "overview" && <Overview campaignId={id} report={report.data} loading={report.isLoading} error={report.isError ? (report.error as Error).message : null} onRetry={() => report.refetch()} lastSchedule={schedule.data} />}
+{tab === "overview" && <Overview campaignId={id} report={report.data} callsSummary={costCalls.data?.summary} callsLoading={costCalls.isLoading} loading={report.isLoading} error={report.isError ? (report.error as Error).message : null} onRetry={() => report.refetch()} lastSchedule={schedule.data} />}
           {tab === "calls" && (
             <CallsCard
               campaignId={id}
@@ -260,7 +262,16 @@ function CampaignDetails() {
               onRetry={() => report.refetch()}
             />
           )}
-          {tab === "costs" && <CampaignCosts calls={costCalls.data} callsLoading={costCalls.isLoading} />}
+          {tab === "costs" && (
+            <CampaignCosts
+              calls={costCalls.data?.calls}
+              summary={costCalls.data?.summary}
+              callsLoading={costCalls.isLoading}
+              totalAiCost={getCampaignAiCost(report.data)}
+              totalPlivoBilling={report.data?.summary.total_billing}
+              billingLoading={report.isLoading}
+            />
+          )}
           {tab === "classification" && (
             <CampaignClassificationChart campaignId={id} agentId={campaign.agent_id} />
           )}
@@ -696,6 +707,8 @@ function ClassificationCallDrawer({
 function Overview({
   campaignId,
   report,
+  callsSummary,
+  callsLoading,
   loading,
   error,
   onRetry,
@@ -703,6 +716,8 @@ function Overview({
 }: {
   campaignId: string;
   report: CampaignReport | undefined;
+  callsSummary?: CampaignCallsSummary;
+  callsLoading: boolean;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -712,7 +727,11 @@ function Overview({
   const s = report?.summary;
   const v = (n: React.ReactNode) => (loading || !s ? "—" : n);
   const pct = (n: number) => (s && s.total_calls ? ` · ${Math.round((n / s.total_calls) * 100)}%` : "");
-
+  const aiCost = callsSummary?.ai_costs?.total_cost_inr_including_tax;
+  const plivoBilling = callsSummary?.total_plivo_cost_inr;
+  const totalCampaignCost =
+    aiCost !== undefined && plivoBilling !== undefined ? aiCost + plivoBilling : undefined;
+  const c = (n: React.ReactNode) => (callsLoading || callsSummary === undefined ? "—" : n);
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -722,7 +741,9 @@ function Overview({
         <StatTile label="Not reached" value={v(s?.failed_calls)} icon={<PhoneOff size={16} />} hint={s ? `Failed, busy or no answer${pct(s.failed_calls)}` : undefined} />
         <StatTile label="Live right now" value={v(s?.live_calls)} icon={<Radio size={16} />} hint="Dialing, ringing or talking" />
         <StatTile label="Talk time" value={v(formatDuration(s?.total_call_seconds))} icon={<Clock size={16} />} hint={s ? `${s.total_call_minutes} min across all attempts` : undefined} />
-        <StatTile label="Plivo billing" value={v(formatMoney(s?.total_billing, 4))} icon={<Receipt size={16} />} hint="Telephony charges, as billed by Plivo" />
+        <StatTile label="Plivo billing" value={c(formatMoney(plivoBilling, 2))} icon={<Receipt size={16} />} hint="Telephony charges, as billed by Plivo" />
+<StatTile label="AI cost" value={c(formatMoney(aiCost, 2))} icon={<IndianRupee size={16} />} hint="STT, LLM, TTS and tax" />
+<StatTile label="Total campaign cost" value={c(totalCampaignCost === undefined ? "—" : formatMoney(totalCampaignCost, 2))} icon={<IndianRupee size={16} />} hint="AI cost + Plivo billing" />
         <StatTile label="Running for" value={v(formatDuration(s?.total_run_seconds))} icon={<Timer size={16} />} hint="Since the campaign started" />
       </div>
 
@@ -1034,7 +1055,7 @@ function CallDrawer({
             columns={3}
             items={[
               { label: "Attempts", value: <span className="tnum">{callDetail.attempt_count} of {callDetail.max_attempts}</span> },
-              { label: "Scheduled", value: formatDateWithSeconds(callDetail.scheduled_at) },
+              { label: "Scheduled_At", value: formatDateWithSeconds(callDetail.scheduled_at) },
               { label: "Called from", value: <span className="tnum">{callDetail.caller_number ?? "—"}</span> },
               { label: "Created", value: formatDateWithSeconds(callDetail.created_at) },
               { label: "Updated", value: formatDateWithSeconds(callDetail.updated_at) },
