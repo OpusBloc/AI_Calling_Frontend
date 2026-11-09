@@ -28,9 +28,18 @@ const toDateTimeInput = (value?: string | null) => {
 };
 const toIsoDateTime = (value: string) => (value ? new Date(value).toISOString() : null);
 
-const intBetween = (value: string, min: number, max = Infinity) => {
-  const n = Number(value);
-  return value.trim() !== "" && Number.isInteger(n) && n >= min && n <= max;
+const intBetween = (
+  value: string | number | null | undefined,
+  min: number,
+  max = Infinity
+) => {
+  const safeValue = String(value ?? "").trim();
+
+  if (!safeValue) return false;
+
+  const n = Number(safeValue);
+
+  return Number.isInteger(n) && n >= min && n <= max;
 };
 
 type SheetCheck = { rows: number; phoneColumn: string; hasName: boolean } | { error: string } | null;
@@ -86,34 +95,33 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [callsPerSecond, setCallsPerSecond] = useState(String(campaign?.calls_per_second ?? 2));
   const [submitted, setSubmitted] = useState(false);
 
-  // Default a new campaign to the first agent once they load
-  useEffect(() => {
-    if (!campaign && !agentId && agents.data?.length) setAgentId(agents.data[0].id);
-  }, [agentId, agents.data, campaign]);
+  const CAMPAIGN_DRAFT_KEY="CampaignDraft";
+  const[draftLoaded,setDraftLoaded] = useState(false);
+  
 
   const chooseFile = async (file: File | null) => {
     setLeadsFile(file);
     if (file) setLeadsSource("file");
     setSheet(file ? await checkSheet(file) : null);
   };
-
+  
   const sheetError = sheet && "error" in sheet ? sheet.error : null;
   const leadsUrlError = leadsUrl.trim() && !/^https?:\/\//i.test(leadsUrl.trim())
-    ? "Enter a link that starts with http:// or https://."
-    : null;
-  const hasPlivo = plivoPoolIds.length > 0 || (campaign?.plivo_numbers.length ?? 0) > 0;
+  ? "Enter a link that starts with http:// or https://."
+  : null;
+  const hasPlivo = (plivoPoolIds ?? []).length > 0 || (campaign?.plivo_numbers.length ?? 0) > 0;
   const errors = {
     name: !name.trim() ? "Give the campaign a name." : null,
     agent: !agentId ? "Choose the agent that will make the calls." : null,
     leads: campaign
-      ? null
-      : leadsSource === "file"
-        ? !leadsFile
-          ? "Upload the sheet of leads to call."
-          : sheetError
-        : !leadsUrl.trim()
-          ? "Paste a link to the leads file."
-          : leadsUrlError,
+    ? null
+    : leadsSource === "file"
+    ? !leadsFile
+    ? "Upload the sheet of leads to call."
+    : sheetError
+    : !leadsUrl.trim()
+    ? "Paste a link to the leads file."
+    : leadsUrlError,
     plivo: !hasPlivo ? "Pick at least one Plivo pool to call from." : null,
     transferTimeout: !intBetween(transferTimeout, 5, 120) ? "Between 5 and 120 seconds." : null,
     retryInterval: !intBetween(retryInterval, 0) ? "Whole number of minutes, 0 or more." : null,
@@ -121,21 +129,21 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
     concurrency: !intBetween(concurrencyLimit, 1) ? "Whole number, 1 or more." : null,
     callsPerSecond: !intBetween(callsPerSecond, 1) ? "Whole number, 1 or more." : null,
     maxLive: !intBetween(maxLiveCalls, 1)
-      ? "Whole number, 1 or more."
-      : Number(maxLiveCalls) < Number(concurrencyLimit)
-        ? "Should be at least the number of parallel calls."
-        : null,
+    ? "Whole number, 1 or more."
+    : Number(maxLiveCalls) < Number(concurrencyLimit)
+    ? "Should be at least the number of parallel calls."
+    : null,
     window:
-      !!windowStart !== !!windowEnd
-        ? "Set both a start and an end, or leave both empty."
-        : windowStart && windowEnd <= windowStart
-          ? "The window must end after it starts."
-          : null,
+    !!windowStart !== !!windowEnd
+    ? "Set both a start and an end, or leave both empty."
+    : windowStart && windowEnd <= windowStart
+    ? "The window must end after it starts."
+    : null,
   };
   const valid = Object.values(errors).every((e) => !e);
   // Only nag after the first save attempt (a bad file is flagged right away)
   const show = (error: string | null) => (submitted ? error : null);
-
+  
   const mutation = useMutation({
     mutationFn: () => {
       const shared = {
@@ -149,7 +157,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         window_start: windowStart || null,
         window_end: windowEnd || null,
         // All seven is the same as no restriction
-        call_days: callDays.length === 7 ? [] : WEEKDAYS.map((d) => d.id).filter((d) => callDays.includes(d)),
+        call_days: (callDays ?? []).length === 7 ? [] : WEEKDAYS.map((d) => d.id).filter((d) => callDays.includes(d)),
         retry_interval_minutes: Number(retryInterval),
         retry_count: Number(retryCount),
         concurrency_limit: Number(concurrencyLimit),
@@ -176,6 +184,9 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
       );
     },
     onSuccess: async (saved) => {
+  // Clear draft only after successfully creating a new campaign
+  if(!campaign) localStorage.removeItem(CAMPAIGN_DRAFT_KEY);
+
       queryClient.setQueryData(["campaigns", saved.id], saved);
       await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       await queryClient.invalidateQueries({ queryKey: ["campaign-ids"] });
@@ -185,7 +196,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
       router.replace(`/campaigns/${saved.id}`);
     },
   });
-
+  
   const submit = () => {
     setSubmitted(true);
     if (valid) mutation.mutate();
@@ -201,6 +212,133 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
       </Button>
     </>
   );
+
+    // Default a new campaign to the first agent once they load
+  useEffect(() => {
+    if (!campaign && !agentId && agents.data?.length) setAgentId(agents.data[0].id);
+  }, [agentId, agents.data, campaign]);
+  
+useEffect(()=>{
+  if(campaign &&!draftLoaded){
+    setDraftLoaded(true);
+    return;
+  }
+
+  try{
+   const saveDraft = localStorage.getItem(CAMPAIGN_DRAFT_KEY);
+   if(saveDraft){
+    const parsed: unknown = JSON.parse(saveDraft);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Campaign draft must be an object.");
+    }
+
+    const draft = parsed as Record<string, unknown>;
+    const value = (key: string, legacyKey: string) => draft[key] ?? draft[legacyKey];
+    const text = (key: string, legacyKey: string) => {
+      const restored = value(key, legacyKey);
+      return typeof restored === "string" || typeof restored === "number" ? String(restored) : undefined;
+    };
+    const strings = (key: string, legacyKey: string) => {
+      const restored = value(key, legacyKey);
+      return Array.isArray(restored)
+        ? restored.filter((item): item is string => typeof item === "string")
+        : undefined;
+    };
+
+    const restoredName = text("name", "name");
+    if (restoredName !== undefined) setName(restoredName);
+    const restoredAgentId = text("agentId", "calling_agent");
+    if (restoredAgentId !== undefined) setAgentId(restoredAgentId);
+    const restoredStatus = CAMPAIGN_STATUSES.find((candidate) => candidate === value("status", "status"));
+    if (restoredStatus) setStatus(restoredStatus);
+    const restoredPlivoPoolIds = strings("plivoPoolIds", "plivo_pools");
+    if (restoredPlivoPoolIds) setPlivoPoolIds(restoredPlivoPoolIds);
+    const restoredRepresentativeIds = strings("representativeIds", "call_transfor_agents");
+    if (restoredRepresentativeIds) setRepresentativeIds(restoredRepresentativeIds);
+    const restoredTransferTimeout = text("transferTimeout", "transfer_ring_time");
+    if (restoredTransferTimeout !== undefined) setTransferTimeout(restoredTransferTimeout);
+    const restoredStartAt = text("startAt", "start_at");
+    if (restoredStartAt !== undefined) setStartAt(restoredStartAt);
+    const restoredWindowStart = text("windowStart", "calling_houe_start");
+    if (restoredWindowStart !== undefined) setWindowStart(restoredWindowStart);
+    const restoredWindowEnd = text("windowEnd", "calling_hour_end");
+    if (restoredWindowEnd !== undefined) setWindowEnd(restoredWindowEnd);
+    const restoredCallDays = strings("callDays", "call_days");
+    if (restoredCallDays) setCallDays(
+      restoredCallDays.filter(
+        (day): day is Weekday => WEEKDAYS.some((weekday) => weekday.id === day),
+      ),
+    );
+    const restoredConcurrencyLimit = text("concurrencyLimit", "parallel_calls");
+    if (restoredConcurrencyLimit !== undefined) setConcurrencyLimit(restoredConcurrencyLimit);
+    const restoredMaxLiveCalls = text("maxLiveCalls", "max_live_calls");
+    if (restoredMaxLiveCalls !== undefined) setMaxLiveCalls(restoredMaxLiveCalls);
+    const restoredCallsPerSecond = text("callsPerSecond", "new_calls_per_second");
+    if (restoredCallsPerSecond !== undefined) setCallsPerSecond(restoredCallsPerSecond);
+    const restoredRetryCount = text("retryCount", "retry_attempts");
+    if (restoredRetryCount !== undefined) setRetryCount(restoredRetryCount);
+    const restoredRetryInterval = text("retryInterval", "minutes_between_retries");
+    if (restoredRetryInterval !== undefined) setRetryInterval(restoredRetryInterval);
+    const restoredRetryOn = strings("retryOn", "retry_when_the_call_is");
+    if (restoredRetryOn) setRetryOn(
+      restoredRetryOn.filter(
+        (condition) => RETRY_CONDITIONS.includes(condition as (typeof RETRY_CONDITIONS)[number]),
+      ),
+    );
+   }
+  }catch(error){
+  console.error("Failed to restore campaign data",error);
+  }finally{
+    setDraftLoaded(true);
+  }
+},[campaign,draftLoaded]);
+
+// UseEFfect to immediately after the restore effect:
+
+useEffect(()=>{
+  if(!draftLoaded) return;
+
+  const draft = {
+    name,
+    agentId,
+    status,
+    plivoPoolIds,
+    representativeIds,
+    transferTimeout,
+    startAt,
+    windowStart,
+    windowEnd,
+    callDays,
+    concurrencyLimit,
+    maxLiveCalls,
+    callsPerSecond,
+    retryCount,
+    retryInterval,
+    retryOn,
+  };
+
+localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
+
+
+},[
+  draftLoaded,
+  name,
+  agentId,
+  status,
+  plivoPoolIds,
+  representativeIds,
+  transferTimeout,
+  startAt,
+  windowStart,
+  windowEnd,
+  callDays,
+  concurrencyLimit,
+  maxLiveCalls,
+  callsPerSecond,
+  retryCount,
+  retryInterval,
+  retryOn
+])
 
   return (
     <FormPage
