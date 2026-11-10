@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bot, PenLine, Plus, Trash2 } from "lucide-react";
 
 import { loadDraft } from "@/lib/agentDraft";
-import { Agent, deleteAgent, listAgents } from "@/lib/callingAgentApi";
+import { Agent, deleteAgent, listAgents, listVoiceCatalog } from "@/lib/callingAgentApi";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -29,6 +29,7 @@ import {
 export default function AgentsTab() {
   const router = useRouter();
   const { data, error, loading, reload } = useLoad(listAgents);
+  const { data: voiceCatalog } = useLoad(listVoiceCatalog);
   const [actionError, setActionError] = useState<string | null>(null);
   const [newDraft] = useState(() => loadDraft(null));
 
@@ -73,8 +74,8 @@ export default function AgentsTab() {
         {error && !data ? (
           <ErrorState message={error} onRetry={reload} />
         ) : loading && !data ? (
-          <Table head={["Name", "Greeting", "Intro", "Updated", ""]}>
-            <SkeletonRows cols={5} />
+          <Table head={["Name", "LLM model", "Speech-to-text model", "Voice", "Updated", ""]}>
+            <SkeletonRows cols={6} />
           </Table>
         ) : agents.length === 0 ? (
           <EmptyState
@@ -85,7 +86,7 @@ export default function AgentsTab() {
           />
         ) : (
           <>
-            <Table head={["Name", "Greeting", "Intro", "Updated", ""]} label="Agents">
+            <Table head={["Name", "LLM model", "Speech-to-text model", "Voice", "Updated", ""]} label="Agents">
               {pagination.pageItems.map((agent) => {
                 const hasDraft = !!loadDraft(agent.id);
                 return (
@@ -96,13 +97,16 @@ export default function AgentsTab() {
                         {hasDraft && <Badge tone="neutral">Unsaved changes</Badge>}
                       </div>
                     </td>
-                    <td className="max-w-xs px-4 py-3 text-body">
-                      <span className="line-clamp-2">
-                        {agent.greeting || <span className="text-faint">Default</span>}
-                      </span>
+                    <td className="px-4 py-3 text-body">
+                      {agent.llm_model || <span className="text-faint">Default</span>}
                     </td>
-                    <td className="max-w-sm px-4 py-3 text-muted">
-                      <span className="line-clamp-2">{agent.intro}</span>
+                    <td className="px-4 py-3 text-body">
+                      {agent.stt_model || <span className="text-faint">Default</span>}
+                    </td>
+                    <td className="px-4 py-3 text-body">
+                      {agent.voice
+                        ? voiceCatalog?.voices.find((voice) => voice.voice_id === agent.voice)?.speaker ?? agent.voice
+                        : <span className="text-faint">Default</span>}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(agent.updated_at)}</td>
                     <td className="px-4 py-2">

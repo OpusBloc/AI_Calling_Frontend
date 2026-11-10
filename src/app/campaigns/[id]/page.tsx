@@ -426,6 +426,7 @@ function CampaignClassificationCalls({
 
   return (
     <ClassificationCallsPanel
+      campaignId={campaignId}
       title={classificationName}
       data={calls.data}
       loading={calls.isLoading}
@@ -446,6 +447,7 @@ function CampaignUnclassifiedCalls({ campaignId, onBack }: { campaignId: string;
 
   return (
     <ClassificationCallsPanel
+      campaignId={campaignId}
       title="Unclassified calls"
       data={calls.data}
       loading={calls.isLoading}
@@ -460,6 +462,7 @@ function CampaignUnclassifiedCalls({ campaignId, onBack }: { campaignId: string;
 }
 
 function ClassificationCallsPanel({
+  campaignId,
   title,
   data,
   loading,
@@ -470,6 +473,7 @@ function ClassificationCallsPanel({
   onBack,
   onRetry,
 }: {
+  campaignId: string;
   title: string;
   data: ClassificationCallsResponse | undefined;
   loading: boolean;
@@ -563,59 +567,32 @@ function ClassificationCallsPanel({
         )}
       </Card>
       {selectedCall && (
-        <ClassificationCallDrawer call={selectedCall} classificationName={title} onClose={() => setSelectedCall(null)} />
+        <ClassificationCallDrawer campaignId={campaignId} call={selectedCall} classificationName={title} onClose={() => setSelectedCall(null)} />
       )}
     </div>
   );
 }
 
-function transcriptText(value: unknown): string {
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (value == null) return "";
-  try {
-    return JSON.stringify(value) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function transcriptEntries(transcript: unknown): Array<{ role: string; content: string }> {
-  let value = transcript;
-  if (typeof value === "string") {
-    const text = value;
-    try {
-      value = JSON.parse(text);
-    } catch {
-      return text.trim() ? [{ role: "Transcript", content: text }] : [];
-    }
-  }
-
-  if (typeof value === "string") return value.trim() ? [{ role: "Transcript", content: value }] : [];
-  const entries = Array.isArray(value) ? value : value && typeof value === "object" ? [value] : [];
-  return entries
-    .map((entry) => {
-      if (typeof entry === "string") return { role: "Lead", content: entry };
-      if (!entry || typeof entry !== "object") return null;
-
-      const record = entry as Record<string, unknown>;
-      const content = record.content ?? record.text ?? record.message ?? record.transcript;
-      const role = record.role ?? record.speaker ?? record.name ?? "Lead";
-      const text = transcriptText(content ?? record);
-      return text ? { role: transcriptText(role) || "Lead", content: text } : null;
-    })
-    .filter((entry): entry is { role: string; content: string } => entry !== null);
-}
-
 function ClassificationCallDrawer({
+  campaignId,
   call,
   classificationName,
   onClose,
 }: {
+  campaignId: string;
   call: ClassificationCall;
   classificationName: string;
   onClose: () => void;
 }) {
-  const transcript = transcriptEntries(call.transcript);
+  const report = useCampaignReport(campaignId);
+  const reportCalls = report.data?.calls ?? [];
+  const normalizedPhone = (value: string | null | undefined) => value?.replace(/\D/g, "") ?? "";
+  const matchedCampaignCall = reportCalls.find((item) => item.call_id === call.call_uuid)
+    ?? reportCalls.find((item) => normalizedPhone(item.phone) === normalizedPhone(call.phone)
+      && item.lead_name?.trim().toLowerCase() === call.name?.trim().toLowerCase())
+    ?? reportCalls.find((item) => normalizedPhone(item.phone) === normalizedPhone(call.phone));
+  const detailsCallId = matchedCampaignCall?.call_id ?? null;
+  const details = useCampaignCallDetail(campaignId, detailsCallId);
   const callTime = call.classified_at ?? call.ended_at;
 
   return (
@@ -631,73 +608,59 @@ function ClassificationCallDrawer({
           { label: "Name", value: call.name || "Unnamed caller" },
           { label: "Mobile number", value: <span className="tnum">{call.phone || "—"}</span> },
           { label: "Status", value: call.status ? <StatusBadge status={call.status} /> : "—" },
-          {
-            label: "Duration",
-            value: (
-              <span className="tnum">
-                {call.duration_seconds != null ? formatDuration(call.duration_seconds) : "—"}
-              </span>
-            ),
-          },
           { label: "Classification", value: call.classification || classificationName },
           { label: "Time", value: formatDate(callTime) },
           { label: "Classified at", value: formatDate(call.classified_at) },
           { label: "Ended at", value: formatDate(call.ended_at) },
-          { label: "Hang-up cause", value: call.hangup_cause || "—" },
           { label: "Transfer status", value: call.transfer_status ? humanize(call.transfer_status) : "—" },
           { label: "Call ID", value: <span className="break-all font-mono text-xs">{call.call_uuid || "—"}</span> },
-          { label: "Attempt ID", value: <span className="break-all font-mono text-xs">{call.attempt_id || "—"}</span> },
         ]}
       />
 
-      {call.reason && (
-        <section className="space-y-2">
-          <h4 className="eyebrow">Classification reason</h4>
-          <p className="whitespace-pre-wrap rounded-md bg-raised p-3 text-sm text-body">{call.reason}</p>
-        </section>
-      )}
-
-      <section className="space-y-2">
-        <h4 className="eyebrow">Voice recording</h4>
-        {call.audio ? (
-          <audio controls preload="none" src={call.audio} className="w-full">
-            Your browser does not support audio.
-          </audio>
-        ) : (
-          <p className="rounded-md bg-raised p-3 text-sm text-muted">No recording is available for this call.</p>
-        )}
+      <section className="space-y-3">
+        {report.isLoading || details.isLoading ? (
+          <Loading label="Loading call details" />
+        ) : report.isError ? (
+          <ErrorState message={report.error.message} onRetry={() => report.refetch()} />
+        ) : details.isError ? (
+          <ErrorState message={details.error.message} onRetry={() => details.refetch()} />
+        ) : !detailsCallId ? (
+          <p className="rounded-md bg-raised p-3 text-sm text-muted">
+            Could not match this lead to a campaign call record.
+          </p>
+        ) : details.data ? (
+          <>
+            <DetailList
+              columns={2}
+              items={[
+                { label: "Attempts", value: <span className="tnum">{details.data.call.attempt_count} of {details.data.call.max_attempts}</span> },
+                { label: "Called from", value: <span className="tnum">{details.data.call.caller_number || "—"}</span> },
+                { label: "Created", value: formatDateWithSeconds(details.data.call.created_at) },
+                { label: "Updated", value: formatDateWithSeconds(details.data.call.updated_at) },
+                  { label: "Total cost", value: <span className="tnum">₹{formatMoney(details.data.call.total_plivo_cost + details.data.call.total_sarvam_cost, 2)}</span> },
+              ]}
+            />
+            {call.reason && (
+              <section className="mt-5 space-y-2">
+                <h4 className="eyebrow">Classification reason</h4>
+                <p className="whitespace-pre-wrap rounded-md bg-raised p-3 text-sm text-body">{call.reason}</p>
+              </section>
+            )}
+            <div className="space-y-3">
+              {details.data.attempts.map((attempt) => <AttemptCard key={attempt.attempt_id} attempt={attempt} showDuration={false} showRecordingUrl={false} />)}
+            </div>
+            {call.audio && details.data.attempts.every((attempt) => !attempt.recording_url) && (
+              <section className="space-y-2">
+                <h4 className="eyebrow">Recording</h4>
+                <audio controls preload="none" src={call.audio} className="w-full">
+                  Your browser does not support audio.
+                </audio>
+              </section>
+            )}
+          </>
+        ) : null}
       </section>
 
-      <section className="space-y-2">
-        <h4 className="eyebrow">Transcript</h4>
-        {transcript.length ? (
-          <ol
-            aria-label="Call transcript"
-            className="max-h-96 space-y-3 overflow-y-auto rounded-lg border border-hairline bg-raised p-4"
-          >
-            {transcript.map((line, index) => {
-              const role = line.role.toLowerCase();
-              const agent = role.includes("assistant") || role.includes("agent");
-              return (
-                <li key={index} className={`flex ${agent ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                      agent ? "bg-accent-bg text-heading" : "bg-surface text-body"
-                    }`}
-                  >
-                    <span className="mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-muted">
-                      {agent ? "Agent" : line.role}
-                    </span>
-                    <p className="whitespace-pre-wrap">{line.content}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="rounded-md bg-raised p-3 text-sm text-muted">No transcript is available for this call.</p>
-        )}
-      </section>
     </Drawer>
   );
 }
@@ -736,6 +699,7 @@ function Overview({
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Leads to call" value={v(s?.total_calls)} icon={<PhoneCall size={16} />} hint={s ? `${s.queued_calls} still queued` : undefined} />
+        <StatTile label="Calls made" value={c(callsSummary?.total_calls_made)} icon={<PhoneCall size={16} />} hint="Across all attempts" />
         <StatTile label="Answered" value={v(s?.answered_calls)} icon={<CheckCircle2 size={16} />} hint={s ? `Completed or hung up${pct(s.answered_calls)}` : undefined} />
         <StatTile label="Transferred" value={v(s?.transferred_calls)} icon={<PhoneForwarded size={16} />} hint={s ? `Handed to a transfer agent${pct(s.transferred_calls)}` : undefined} />
         <StatTile label="Not reached" value={v(s?.failed_calls)} icon={<PhoneOff size={16} />} hint={s ? `Failed, busy or no answer${pct(s.failed_calls)}` : undefined} />
@@ -1004,9 +968,9 @@ function CallRow({
         <StatusBadge status={call.status} />
       </td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(call.total_talk_seconds)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 4)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(call.sarvam_cost, 4)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(call.plivo_cost + call.sarvam_cost, 4)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 2)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(call.sarvam_cost, 2)}</td>
+      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(call.plivo_cost + call.sarvam_cost, 2)}</td>
     </tr>
   );
 }
@@ -1097,7 +1061,15 @@ function CallDrawer({
   );
 }
 
-function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
+function AttemptCard({
+  attempt: a,
+  showDuration = true,
+  showRecordingUrl = true,
+}: {
+  attempt: CampaignCallDetailAttempt;
+  showDuration?: boolean;
+  showRecordingUrl?: boolean;
+}) {
   const [showTranscript, setShowTranscript] = useState(false);
   const transcript = a.transcript ?? [];
   const whatsappMessages = a.whatsapp_messages ?? [];
@@ -1142,16 +1114,16 @@ function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
         <DetailList
           columns={3}
           items={[
-            { label: "Plivo cost", value: <span className="tnum">₹{formatMoney(plivoCost, 4)}</span> },
-            { label: "AI cost", value: <span className="tnum">₹{formatMoney(aiCost, 4)}</span> },
-            { label: "Total cost (Plivo + AI)", value: <span className="tnum font-semibold">₹{formatMoney(combinedCost, 4)}</span> },
+            { label: "Plivo cost", value: <span className="tnum">₹{formatMoney(plivoCost, 2)}</span> },
+            { label: "AI cost", value: <span className="tnum">₹{formatMoney(aiCost, 2)}</span> },
+            { label: "Total cost (Plivo + AI)", value: <span className="tnum font-semibold">₹{formatMoney(combinedCost, 2)}</span> },
           ]}
         />
         <DetailList
           columns={3}
           items={[
             { label: "Caller number", value: <span className="tnum">{a.caller_number ?? "—"}</span> },
-            { label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> },
+            ...(showDuration ? [{ label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> }] : []),
             { label: "Submitted", value: formatDateWithSeconds(a.submitted_at) },
             { label: "Ended", value: formatDateWithSeconds(a.ended_at) },
             { label: "Hang-up", value: a.plivo.hangup_cause_name ? `${a.plivo.hangup_cause_name}${a.plivo.hangup_source ? ` (by ${a.plivo.hangup_source.toLowerCase()})` : ""}` : "—" },
@@ -1166,7 +1138,7 @@ function AttemptCard({ attempt: a }: { attempt: CampaignCallDetailAttempt }) {
           <h4 className="eyebrow">Recording</h4>
           {a.recording_url ? (
             <>
-              <p className="break-all text-xs text-muted">{a.recording_url}</p>
+              {showRecordingUrl && <p className="break-all text-xs text-muted">{a.recording_url}</p>}
               <audio controls preload="none" src={a.recording_url} className="w-full">
                 <a href={a.recording_url}>Download recording</a>
               </audio>

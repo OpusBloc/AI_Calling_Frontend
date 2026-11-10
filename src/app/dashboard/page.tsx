@@ -196,7 +196,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
               label="Total AI cost"
               value={v(rupees(s?.total_cost))}
               icon={<IndianRupee size={16} />}
-              hint={s ? `${rupees(s.average_per_call.total_cost, 3)} per call on average` : undefined}
+              hint={s ? `${rupees(s.average_per_call.total_cost, 2)} per call on average` : undefined}
             />
             <StatTile label="Calls" value={v(s?.calls.toLocaleString())} icon={<PhoneCall size={16} />} />
             <StatTile
