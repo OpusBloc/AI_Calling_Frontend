@@ -50,7 +50,9 @@ import {
   type ClassificationCallsResponse,
   type ClassificationCallsParams,
 } from "@/lib/callingAgentApi";
-import type { CallOutcome, Campaign, CampaignCallDetail, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool, ScheduledCampaignCall } from "@/types/types";
+import type { CallOutcome, Campaign, CampaignCallDetail, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool,
+     CampaignCallsResponse,
+   } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
@@ -86,8 +88,13 @@ export const useCampaignCallDetail = (campaignId: string, callId: string | null)
   });
 
 export const useCampaignCalls = (id: string, enabled = true) =>
-  useQuery<ScheduledCampaignCall[]>({ queryKey: [...CAMPAIGN_CALLS_KEY, id], queryFn: () => getCampaignCalls(id), enabled: Boolean(id) && enabled, retry: false });
-
+  useQuery<CampaignCallsResponse>({
+    queryKey: [...CAMPAIGN_CALLS_KEY, id],
+    queryFn: () => getCampaignCalls(id),
+    enabled: Boolean(id) && enabled,
+    retry: false,
+  });
+  
 export const useScheduleCampaign = () => {
   const qc = useQueryClient();
   return useMutation<CampaignScheduleResult, Error, string>({

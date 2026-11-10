@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Check, ChevronDown, Clock3, Eye, Loader2, Pause, Play, Plus, Square, Trash2, UploadCloud } from "lucide-react";
+import { Check, ChevronDown, Clock3, Eye, Loader2, Pause, Play, Plus, Trash2, UploadCloud } from "lucide-react";
 
 import {
   type CatalogVoice,
@@ -339,6 +339,15 @@ export default function VoicePicker({
           <div role="radiogroup" aria-label="Agent voice" className="space-y-3 rounded-lg border border-hairline bg-surface p-3">
             <div className="grid min-w-0 grid-cols-1 items-end gap-3 @md:grid-cols-[minmax(0,1fr)_5rem_10rem]">
               <VoiceCard
+                playable={
+                  selectedCatalogVoice
+                    ? {
+                        id: selectedCatalogVoice.voice_id,
+                        name: selectedCatalogVoice.speaker || selectedCatalogVoice.voice_id,
+                        language: selectedCatalogVoice.language_code,
+                      }
+                    : undefined
+                }
                 label="Default voice"
                 detail={
                   currentVoiceName
@@ -349,6 +358,7 @@ export default function VoicePicker({
                 }
                 selected={!!value && known.includes(value)}
                 onSelect={() => onChange(value && known.includes(value) ? value : defaultVoice?.id ?? "")}
+                preview={preview}
               />
               <Field label="Pace" className="w-full @md:w-20">
                 <TextInput
@@ -1164,7 +1174,7 @@ const NoMatch = () => <RowMessage>No voices match these filters.</RowMessage>;
 /** Stock voice previews use /voices/speak. Saved voices cannot be previewed by ID. */
 type Playable = { id: string; name: string; language: string | null };
 
-/** One voice as a card. Clicking it selects the voice and plays it (click again to stop). */
+/** Select a voice independently from its play/pause preview control. */
 function VoiceCard({
   playable,
   label,
@@ -1185,51 +1195,53 @@ function VoiceCard({
   const playing = !!playable && preview?.playingId === playable.id;
   const loading = !!playable && preview?.loadingId === playable.id;
 
-  const activate = () => {
-    onSelect();
-    // Ignore the play part while another voice is still being generated
-    if (playable && preview && (!preview.loadingId || loading)) preview.toggle(playable);
-  };
-
   return (
     <div
-      role="radio"
-      aria-checked={selected}
-      tabIndex={0}
-      onClick={activate}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          activate();
-        }
-      }}
       className={clsx(
-        "flex min-w-0 cursor-pointer items-center gap-3 rounded-md border px-3 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "flex min-w-0 items-center gap-3 rounded-md border px-3 py-2 transition-colors",
         selected ? "border-accent bg-accent-bg" : "border-hairline hover:bg-surface-hover",
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={clsx(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
-          selected ? "border-accent bg-accent text-on-accent" : "border-hairline text-heading",
-        )}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        {loading ? (
-          <Loader2 size={15} className="animate-spin" />
-        ) : playing ? (
-          <Square size={13} fill="currentColor" />
-        ) : selected ? (
-          <Check size={15} strokeWidth={3} />
-        ) : playable ? (
-          <Play size={15} fill="currentColor" />
-        ) : null}
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-heading">{label}</span>
-        <span className="block truncate text-xs text-muted">{detail}</span>
-      </span>
+        <span
+          aria-hidden
+          className={clsx(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
+            selected ? "border-accent bg-accent text-on-accent" : "border-hairline text-heading",
+          )}
+        >
+          {selected && <Check size={15} strokeWidth={3} />}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium text-heading">{label}</span>
+          <span className="block truncate text-xs text-muted">{detail}</span>
+        </span>
+      </button>
+      {playable && preview && (
+        <button
+          type="button"
+          aria-label={`${playing ? "Pause" : "Play"} preview for ${label}`}
+          title={`${playing ? "Pause" : "Play"} voice preview`}
+          disabled={!!preview.loadingId}
+          onClick={() => void preview.toggle(playable)}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline text-heading transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : playing ? (
+            <Pause size={15} fill="currentColor" />
+          ) : (
+            <Play size={15} fill="currentColor" />
+          )}
+        </button>
+      )}
     </div>
   );
 }

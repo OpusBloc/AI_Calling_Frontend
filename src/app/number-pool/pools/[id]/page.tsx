@@ -106,7 +106,7 @@ export default function PlivoPoolPage() {
         description={`Created ${new Date(pool.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(pool.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
         actions={
           <>
-            <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="text-loss">
+            <Button variant="danger" onClick={handleDelete} loading={remove.isPending}>
               <Trash2 size={16} aria-hidden /> Delete
             </Button>
             <Button onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>

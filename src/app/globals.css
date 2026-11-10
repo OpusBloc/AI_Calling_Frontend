@@ -51,7 +51,7 @@
      canvas. The dark theme restores the design system's own values below.
      The low-alpha *-bg tints are hue-only and work on either canvas. */
   --gain: #2b7252;
-  --loss: #a8443e;
+  --loss: #eb746e;
   --info: #3d6b8a;
   --warn: #7d5f18;
   --gain-bg: rgba(111, 181, 138, 0.18);
@@ -592,6 +592,14 @@ summary {
   isolation: isolate;
   /* Same as Tailwind's rounded-md in this theme (--radius-md is inlined, not a CSS var) */
   border-radius: 10px;
+}
+
+/* Hide the browser's native search clear control; SearchInput provides its own. */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
 }
 
 .glow-field::before,

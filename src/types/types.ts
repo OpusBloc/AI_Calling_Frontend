@@ -35,27 +35,43 @@ export type CampaignUpdate = components["schemas"]["CampaignUpdate"] & {
 };
 export type CampaignScheduleResult = components["schemas"]["ScheduleResult"];
 
+
+/** Reasons a call is retried; the backend may add more, so keep it open-ended */
+export type RetryReason = "no_answer" | (string & {});
+
 /** One dial of a call, with Plivo's billing/CDR and the conversation */
 export interface CallAttempt {
   id: string;
   attempt_no: number;
   status: string;
+
   plivo_request_uuid?: string | null;
   plivo_call_uuid?: string | null;
   plivo_status?: string | null;
+
   submitted_at?: string | null;
   ended_at?: string | null;
   duration_seconds?: number | null;
+
   total_amount?: string | null;
   total_rate?: string | null;
+  currency?: string | null;
+
   hangup_cause_code?: number | null;
   hangup_cause_name?: string | null;
   hangup_source?: string | null;
-  hangup_response?: Record<string, unknown>;
+
   recording_url?: string | null;
+
+  // New API attributes
+  cdr?: Record<string, unknown> | null;
+  hangup_response?: Record<string, unknown> | null;
+
   transcript?: Array<Record<string, string>>;
+
   transfer_status?: string | null;
   transfer_reason?: string | null;
+
   whatsapp_messages?: SentWhatsAppMessage[];
 }
 
@@ -73,9 +89,26 @@ export type ScheduledCampaignCall = Omit<
   "attempt_history"
 > & {
   attempt_history?: CallAttempt[];
+
+  // New API attributes (GET /campaigns/{id}/calls -> calls[])
+  lead_id?: string | null;
+  lead_name?: string | null;
+  phone_e164?: string;
+  caller_number?: string | null;
+  last_outcome?: string | null;
+  dispatch_status?: string | null;
+  scheduled_at?: string | null;
+  /** Number of attempts made so far */
+  attempts?: number;
+  retry_count?: number;
+  retry_on?: RetryReason[];
+  retry_interval_minutes?: number;
+  created_at?: string;
+  plivo_request_ids?: string[];
+  hangup_responses?: Record<string, unknown> | null;
 };
 
-/** GET /campaigns/{id}/report */
+/** GET /campaigns/{id}/report -> calls[] (one row per lead) */
 export interface CampaignCallSummary {
   call_id: string;
   lead_name: string | null;
@@ -96,6 +129,41 @@ export interface CampaignCallSummary {
   }>;
 }
 
+/** GET /campaigns/{id}/calls -> summary.ai_costs */
+export interface AiCostsSummary {
+  attempts_with_costs?: number;
+  stt_cost_inr?: number;
+  tts_cost_inr?: number;
+  subtotal_cost_inr?: number;
+  tax_cost_inr?: number;
+  total_cost_inr_including_tax?: number;
+  llm_cost_by_provider?: Record<
+    string,
+    { currency?: string; amount?: number; basis?: string }
+  >;
+}
+
+/** GET /campaigns/{id}/calls -> summary */
+export interface CampaignCallsSummary {
+  total_call_records: number;
+  total_calls_made: number;
+  live_calls: number;
+  queued_calls: number;
+  failed_calls: number;
+  answered_calls: number;
+  total_talk_seconds: number;
+  total_talk_minutes: number;
+  total_plivo_cost_inr: number;
+  ai_costs: AiCostsSummary;
+}
+
+/** GET /campaigns/{id}/calls */
+export interface CampaignCallsResponse {
+  summary: CampaignCallsSummary;
+  calls: ScheduledCampaignCall[];
+}
+
+/** GET /campaigns/{id}/report */
 export interface CampaignReport {
   campaign: {
     id: string;

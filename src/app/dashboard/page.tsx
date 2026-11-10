@@ -9,7 +9,6 @@ import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Megaphone, P
 import { getCallCostSummary } from "@/lib/api";
 import CostSplit, { rupees } from "@/components/CostSplit";
 import { useAgents, useCampaigns, usePlivoNumbers, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
-import PageHeader from "@/components/PageHeader";
 import { formatWindow } from "@/components/campaigns/CampaignsTab";
 import {
   Card,
@@ -22,6 +21,7 @@ import {
   formatDate,
   formatDuration,
 } from "@/components/ui";
+
 
 const RECENT_HEAD = ["Campaign", "Status", "Calling hours", "Updated"];
 const PERIODS = [
@@ -55,7 +55,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Dashboard" description="Calls, spend and campaigns at a glance." backHref={null} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
@@ -197,7 +196,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
               label="Total AI cost"
               value={v(rupees(s?.total_cost))}
               icon={<IndianRupee size={16} />}
-              hint={s ? `${rupees(s.average_per_call.total_cost, 3)} per call on average` : undefined}
+              hint={s ? `${rupees(s.average_per_call.total_cost, 2)} per call on average` : undefined}
             />
             <StatTile label="Calls" value={v(s?.calls.toLocaleString())} icon={<PhoneCall size={16} />} />
             <StatTile
