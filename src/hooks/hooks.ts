@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getPlivoNumbers,
+  getPlivoNumberCallStats,
   syncPlivoNumbers,
   getPlivoPools,
   getPlivoPool,
@@ -127,6 +128,13 @@ export const usePlivoNumbers = () =>
   useQuery({
     queryKey: KEY,
     queryFn: getPlivoNumbers,
+  });
+
+export const usePlivoNumberCallStats = () =>
+  useQuery({
+    queryKey: ["plivo-number-call-stats"],
+    queryFn: getPlivoNumberCallStats,
+    retry: false,
   });
 
 // POST /sync -> pull numbers from Plivo, then refetch the list

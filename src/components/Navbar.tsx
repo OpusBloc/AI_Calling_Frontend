@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun } from "lucide-react";
 
-import { navItems } from "./navItems";
+import { navIcons, navItems } from "./navItems";
 
 const THEME_KEY = "theme";
 
 export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname();
   const current = navItems.find((item) => pathname.startsWith(item.href));
+  const CurrentIcon = current ? navIcons[current.icon] : null;
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
         </button>
         {current && (
           <span className="flex items-center gap-2 text-sm font-medium text-muted">
-            <current.icon size={16} />
+            {CurrentIcon && <CurrentIcon size={16} />}
             {current.label}
           </span>
         )}

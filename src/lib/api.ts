@@ -21,6 +21,7 @@ import type {
   PatchPlivoPoolBody,
   PlivoNumber,
   PlivoNumberCandidate,
+  PlivoNumberCallStat,
   PlivoNumberUpdate,
   PlivoPool,
 } from "@/types/types";
@@ -119,6 +120,7 @@ export async function api<T>(
 
 // Number Pool endpoints
 export const getPlivoNumbers = () => api<PlivoNumber[]>("/plivo-numbers");
+export const getPlivoNumberCallStats = () => api<PlivoNumberCallStat[]>("/plivo-numbers/call-stats");
 
 export const syncPlivoNumbers = () =>
   api<Record<string, unknown>>("/plivo-numbers/sync", { method: "POST" });

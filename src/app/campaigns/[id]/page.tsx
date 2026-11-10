@@ -484,11 +484,27 @@ function ClassificationCallsPanel({
   onBack: () => void;
   onRetry: () => void;
 }) {
-  const calls = data?.calls ?? [];
+  const calls = useMemo(() => data?.calls ?? [], [data?.calls]);
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const [search, setSearch] = useState("");
+  const [durationOrder, setDurationOrder] = useState<"normal" | "desc" | "asc">("normal");
   const [selectedCall, setSelectedCall] = useState<ClassificationCall | null>(null);
   const [lastOpenedCallId, setLastOpenedCallId] = useState<string | null>(null);
+  const visibleCalls = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = calls
+      .filter((call) => !term || [call.name, call.phone, call.status, call.classification]
+        .some((value) => value?.toLowerCase().includes(term)));
+    if (durationOrder === "normal") return filtered;
+    return filtered.sort((a, b) => {
+        const aDuration = a.duration_seconds ?? -1;
+        const bDuration = b.duration_seconds ?? -1;
+        if (aDuration < 0) return bDuration < 0 ? 0 : 1;
+        if (bDuration < 0) return -1;
+        return durationOrder === "desc" ? bDuration - aDuration : aDuration - bDuration;
+      });
+  }, [calls, durationOrder, search]);
 
   return (
     <div className="space-y-4">
@@ -509,8 +525,26 @@ function ClassificationCallsPanel({
           <EmptyState title="No calls in this classification" text="No call records are available yet." />
         ) : (
           <div className="space-y-4">
-            <Table head={["Name", "Mobile number", "Status", "Duration", "Time"]} label={`${title} calls`}>
-              {calls.map((call, index) => (
+            <div className="flex flex-wrap items-center gap-2">
+              <SearchInput value={search} onChange={(value) => { setSearch(value); onPageChange(1); }} placeholder="Search name, number or status" className="w-full sm:w-72" />
+            </div>
+            <Table head={[
+              "Name",
+              "Mobile number",
+              "Status",
+              <SortHead
+                key="duration-sort"
+                label="Duration"
+                active={durationOrder !== "normal"}
+                dir={durationOrder === "normal" ? null : durationOrder}
+                ariaSort={durationOrder === "normal" ? "none" : durationOrder === "asc" ? "ascending" : "descending"}
+                onClick={() => setDurationOrder((order) => order === "normal" ? "desc" : order === "desc" ? "asc" : "normal")}
+              />,
+              "Time",
+            ]} label={`${title} calls`}>
+              {visibleCalls.length === 0 ? (
+                <TableMessage cols={5}>No calls match your search.</TableMessage>
+              ) : visibleCalls.map((call, index) => (
                 <tr
                   key={call.call_uuid ?? call.attempt_id ?? `${page}-${index}`}
                   tabIndex={0}
@@ -1061,6 +1095,24 @@ function CallDrawer({
   );
 }
 
+function formatHangupCause(attempt: CampaignCallDetailAttempt): string {
+  const cause = attempt.plivo.hangup_cause_name?.trim();
+  if (!cause) return "—";
+
+  const readSource = (record: Record<string, unknown> | null | undefined) => {
+    if (!record) return null;
+    const value = record.hangup_source ?? record.hangupSource ?? record.HangupSource;
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  };
+  const rawSource = attempt.plivo.hangup_source
+    ?? readSource(attempt.plivo.cdr)
+    ?? readSource(attempt.plivo.callback);
+
+  if (!rawSource || /\(by\s+[^)]+\)$/i.test(cause)) return cause;
+  const source = rawSource.replace(/^by\s+/i, "").toLowerCase();
+  return `${cause} (by ${source})`;
+}
+
 function AttemptCard({
   attempt: a,
   showDuration = true,
@@ -1077,6 +1129,7 @@ function AttemptCard({
   const plivoCost = a.plivo.cost_inr;
   const aiCost = a.sarvam?.total_cost_inr ?? 0;
   const combinedCost = plivoCost + aiCost;
+  const hangupCause = formatHangupCause(a);
 
   return (
     <article className="rounded-lg border border-hairline bg-surface">
@@ -1126,7 +1179,7 @@ function AttemptCard({
             ...(showDuration ? [{ label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> }] : []),
             { label: "Submitted", value: formatDateWithSeconds(a.submitted_at) },
             { label: "Ended", value: formatDateWithSeconds(a.ended_at) },
-            { label: "Hang-up", value: a.plivo.hangup_cause_name ? `${a.plivo.hangup_cause_name}${a.plivo.hangup_source ? ` (by ${a.plivo.hangup_source.toLowerCase()})` : ""}` : "—" },
+            { label: "Hang-up", value: hangupCause },
             { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` — ${a.transfer_reason}` : ""}` : "None" },
             { label: "Transfer reason", value: a.transfer_reason ?? "—" },
             { label: "Plivo status", value: a.plivo.status ? humanize(a.plivo.status) : "—" },

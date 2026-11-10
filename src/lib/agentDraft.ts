@@ -31,6 +31,8 @@ export interface AgentDraft {
   silenceCheckSeconds: number | null;
   silencePrompt: string;
   silenceHangupSeconds: number | null;
+  secondLineYes: string;
+  secondLineNo: string;
   interruptionMinWords: number | null;
   whatsappMessageIds: string[];
   parts: Record<AgentPart, PartDraft>;
@@ -77,6 +79,8 @@ export const emptyDraft = (): AgentDraft => ({
   silenceCheckSeconds: null,
   silencePrompt: "",
   silenceHangupSeconds: null,
+  secondLineYes: "",
+  secondLineNo: "",
   interruptionMinWords: null,
   whatsappMessageIds: [],
   parts: Object.fromEntries(
@@ -99,6 +103,8 @@ export const draftFromAgent = (agent: Agent): AgentDraft => ({
   silenceCheckSeconds: agent.silence_check_seconds ?? null,
   silencePrompt: agent.silence_prompt ?? "",
   silenceHangupSeconds: agent.silence_hangup_seconds ?? null,
+  secondLineYes: agent.second_line_yes ?? "",
+  secondLineNo: agent.second_line_no ?? "",
   interruptionMinWords: agent.interruption_min_words ?? null,
   whatsappMessageIds: agent.whatsapp_message_ids ?? [],
   parts: Object.fromEntries(
@@ -132,6 +138,8 @@ export const loadDraft = (agentId: string | null): AgentDraft | null => {
       silenceCheckSeconds: parsed.silenceCheckSeconds ?? null,
       silencePrompt: parsed.silencePrompt ?? "",
       silenceHangupSeconds: parsed.silenceHangupSeconds ?? null,
+      secondLineYes: parsed.secondLineYes ?? "",
+      secondLineNo: parsed.secondLineNo ?? "",
       interruptionMinWords: parsed.interruptionMinWords ?? null,
       whatsappMessageIds: parsed.whatsappMessageIds ?? [],
       classifications: parsed.classifications ?? [],
@@ -234,6 +242,12 @@ export function toCreateForm(draft: AgentDraft): FormData {
   if (draft.silencePrompt && draft.silencePrompt.trim()) {
     form.append("silence_prompt", draft.silencePrompt.trim());
   }
+  if (draft.secondLineYes.trim()) {
+    form.append("second_line_yes", draft.secondLineYes.trim());
+  }
+  if (draft.secondLineNo.trim()) {
+    form.append("second_line_no", draft.secondLineNo.trim());
+  }
   if (
     draft.silenceHangupSeconds !== null &&
     draft.silenceHangupSeconds !== undefined &&
@@ -311,6 +325,12 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   }
   if (draft.silencePrompt.trim() !== (agent.silence_prompt ?? "").trim()) {
     form.append("silence_prompt", draft.silencePrompt.trim());
+  }
+  if (draft.secondLineYes.trim() !== (agent.second_line_yes ?? "").trim()) {
+    form.append("second_line_yes", draft.secondLineYes.trim());
+  }
+  if (draft.secondLineNo.trim() !== (agent.second_line_no ?? "").trim()) {
+    form.append("second_line_no", draft.secondLineNo.trim());
   }
   if (draft.silenceHangupSeconds !== (agent.silence_hangup_seconds ?? null)) {
     if (

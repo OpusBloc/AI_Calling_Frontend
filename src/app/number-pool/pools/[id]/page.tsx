@@ -2,9 +2,9 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Gauge, Megaphone, Pencil, Phone, Settings, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowDownUp, ArrowUp, Gauge, Megaphone, Pencil, Phone, Settings, Trash2 } from "lucide-react";
 
-import { useAvailablePlivoNumbers, useCampaigns, useDeletePlivoPool, usePlivoNumbers, usePlivoPool, usePlivoPools } from "@/hooks/hooks";
+import { useCampaigns, useDeletePlivoPool, usePlivoNumberCallStats, usePlivoNumbers, usePlivoPool, usePlivoPools } from "@/hooks/hooks";
 import { patchPlivoNumber } from "@/lib/api";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -30,8 +30,29 @@ import {
 } from "@/components/ui";
 import { useEffect, useState } from "react";
 
-const HEAD = ["Plivo number", "Type and location", "Capabilities", "Health and usage", "Limits", ""];
 const HEALTH_STATUSES: PlivoHealthStatus[] = ["unknown", "healthy", "degraded", "unhealthy"];
+
+function CallCountSortHeader({
+  order,
+  onClick,
+}: {
+  order: "normal" | "desc" | "asc";
+  ariaSort: "none" | "ascending" | "descending";
+  onClick: () => void;
+}) {
+  const SortIcon = order === "normal" ? ArrowDownUp : order === "desc" ? ArrowDown : ArrowUp;
+  return (
+    <button
+      type="button"
+      aria-label="Sort total calls: normal, high to low, low to high"
+      title={`Total calls: ${order === "normal" ? "normal order" : order === "desc" ? "high to low" : "low to high"}`}
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-muted hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      Total calls <SortIcon size={13} aria-hidden />
+    </button>
+  );
+}
 
 export default function PlivoPoolPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,10 +62,11 @@ export default function PlivoPoolPage() {
   const exists = pools.data?.some((p) => p.id === id) ?? false;
   const poolQuery = usePlivoPool(exists ? id : "");
   const numbers = usePlivoNumbers();
-  const availableNumbers = useAvailablePlivoNumbers(exists ? id : undefined);
+  const callStats = usePlivoNumberCallStats();
   const campaigns = useCampaigns();
   const remove = useDeletePlivoPool();
   const [editingNumber, setEditingNumber] = useState<PlivoNumber | null>(null);
+  const [callCountOrder, setCallCountOrder] = useState<"normal" | "desc" | "asc">("normal");
 
   const pool = poolQuery.data ?? pools.data?.find((p) => p.id === id);
   const crumbs = [{ label: "Number Pool", href: "/number-pool" }, { label: pool?.name ?? "Plivo pool" }];
@@ -84,6 +106,12 @@ export default function PlivoPoolPage() {
   }
 
   const details = new Map((numbers.data ?? []).map((n) => [n.phone_e164, n]));
+  const callCounts = new Map((callStats.data ?? []).map((stat) => [stat.phone_e164, stat.total_calls]));
+  const orderedPhones = [...pool.phone_numbers].sort((a, b) => {
+    if (callCountOrder === "normal") return 0;
+    const difference = (callCounts.get(a) ?? 0) - (callCounts.get(b) ?? 0);
+    return callCountOrder === "desc" ? -difference : difference;
+  });
   const usedBy = (campaigns.data ?? []).filter((c) => c.plivo_pool_ids.includes(pool.id));
 
   const handleDelete = async () => {
@@ -128,10 +156,21 @@ export default function PlivoPoolPage() {
             <EmptyState title="No numbers in this pool" text="Edit the pool to add numbers." action={<Button onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>Add numbers</Button>} />
           </div>
         ) : (
-          <Table bare head={HEAD} label="Pool numbers">
-            {pool.phone_numbers.map((phone) => {
+          <Table bare head={[
+            "Plivo number",
+            "Type and location",
+            "Capabilities",
+            <CallCountSortHeader
+              key="total-calls-sort"
+              ariaSort={callCountOrder === "normal" ? "none" : callCountOrder === "desc" ? "descending" : "ascending"}
+              order={callCountOrder}
+              onClick={() => setCallCountOrder((order) => order === "normal" ? "desc" : order === "desc" ? "asc" : "normal")}
+            />,
+            "Limits",
+            "",
+          ]} label="Pool numbers">
+            {orderedPhones.map((phone) => {
               const n = details.get(phone);
-              const availability = availableNumbers.data?.find((candidate) => candidate.phone_e164 === phone);
               const location = n?.region && n.country && !n.region.toLowerCase().includes(n.country.toLowerCase())
                 ? `${n.region}, ${n.country}`
                 : n?.region || n?.country || "—";
@@ -160,23 +199,13 @@ export default function PlivoPoolPage() {
                       <span className="text-faint">—</span>
                     )}
                   </td>
-                  <td className="min-w-[170px] px-3 py-3">
-                    {availability ? (
-                      <div className="space-y-1">
-                        <Badge tone={availability.health_status === "healthy" ? "gain" : availability.health_status === "unhealthy" ? "warn" : "neutral"}>
-                          {availability.health_status.replace("_", " ")}
-                        </Badge>
-                        <div className="flex flex-wrap gap-x-2 text-xs text-muted">
-                          <span>{availability.attempts_today}/{availability.daily_attempt_limit} attempts</span>
-                          <span>{availability.active_calls}/{availability.max_concurrent_calls} calls</span>
-                        </div>
-                      </div>
-                    ) : availableNumbers.isLoading ? (
+                  <td className="min-w-[110px] px-3 py-3">
+                    {callStats.isLoading ? (
                       <span className="text-xs text-muted">Loading…</span>
+                    ) : callStats.isError ? (
+                      <span className="text-xs text-muted">—</span>
                     ) : (
-                      <Badge tone={n?.health_status === "unhealthy" ? "warn" : "neutral"}>
-                        {(n?.health_status ?? "Unavailable").replace("_", " ")}
-                      </Badge>
+                      <span className="tnum text-sm font-medium text-heading">{(callCounts.get(phone) ?? 0).toLocaleString()}</span>
                     )}
                   </td>
                   <td className="min-w-[130px] px-3 py-3">
@@ -202,12 +231,12 @@ export default function PlivoPoolPage() {
             })}
           </Table>
         )}
-        {availableNumbers.isError && (
+        {callStats.isError && (
           <div className="p-4">
             <ErrorState
-              title="Couldn't load number availability"
-              message={(availableNumbers.error as Error).message}
-              onRetry={() => void availableNumbers.refetch()}
+              title="Couldn't load number call stats"
+              message={(callStats.error as Error).message}
+              onRetry={() => void callStats.refetch()}
             />
           </div>
         )}
