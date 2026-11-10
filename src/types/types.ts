@@ -282,15 +282,42 @@ export interface DispatchControlResponse {
 export interface CallCostSummary {
   calls: number;
   seconds: number;
+  turns?: number;
+  user_turns?: number;
+  bot_turns?: number;
+  customer_chars?: number;
+  agent_chars?: number;
+  tts_chars_reported?: number;
+  tts_requests?: number;
   total_chars: number;
   tts_chars: number;
   stt_seconds: number;
+  stt_reported_seconds?: number;
+  stream_seconds?: number;
   prompt_tokens: number;
   completion_tokens: number;
   stt_cost: number;
   llm_cost: number;
   tts_cost: number;
+  subtotal_cost?: number;
+  gst_cost?: number;
   total_cost: number;
+  sarvam_llm_cost?: number;
+  sarvam_cost?: number;
+  claude_cost_usd?: number;
+  plivo_cost_usd?: number;
+  plivo_cost_inr?: number;
+  plivo_billed_attempts?: number;
+  grand_total?: { INR: number; USD: number };
+  sarvam_llm_calls?: number;
+  claude_llm_calls?: number;
+  estimated_calls?: number;
+  by_provider?: {
+    sarvam?: { currency: string; calls: number; llm_cost: number; stt_cost: number; tts_cost: number; total_cost: number };
+    claude?: { currency: string; calls: number; llm_cost: number; total_cost: number };
+    plivo?: { currency: string; attempts: number; total_cost_usd: number; total_cost_inr: number };
+    ai_models_total?: { INR: number; USD: number };
+  };
   average_per_call: {
     seconds: number;
     total_chars: number;
@@ -299,6 +326,10 @@ export interface CallCostSummary {
     llm_cost: number;
     tts_cost: number;
     total_cost: number;
+    subtotal_cost?: number;
+    gst_cost?: number;
+    sarvam_cost?: number;
+    claude_cost_usd?: number;
   };
   days: number | null;
   rates: {
@@ -358,6 +389,11 @@ export interface PlivoNumber {
   max_concurrent_calls: number;
   health_status: PlivoHealthStatus;
   health_checked_at?: string | null;
+}
+
+export interface PlivoNumberCallStat {
+  phone_e164: string;
+  total_calls: number;
 }
 
 export interface PlivoPool {

@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Megaphone, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
 
 import { getCallCostSummary } from "@/lib/api";
 import CostSplit, { rupees } from "@/components/CostSplit";
+import CampaignsStatCard from "@/components/dashboard/CampaignsStatCard";
 import { useAgents, useCampaigns, usePlivoNumbers, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { formatWindow } from "@/components/campaigns/CampaignsTab";
 import {
@@ -56,14 +57,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          label="Campaigns"
-          value={count(campaigns)}
-          hint={campaigns.data ? `${running} running · ${scheduled} scheduled` : undefined}
-          icon={<Megaphone size={16} />}
-          href="/campaigns"
-        />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 [&>a]:relative [&>a]:z-0 [&>a]:shadow-sm [&>a]:transition-transform [&>a]:duration-200 [&>a:hover]:z-10 [&>a:hover]:scale-[1.03] [&>a:hover]:shadow-md motion-reduce:[&>a]:transition-none">
+        <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} />
         <StatTile label="Agents" value={count(agents)} icon={<Bot size={16} />} href="/calling-agent?tab=agents" />
         <StatTile
           label="Transfer agents"
@@ -164,9 +159,9 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="cost-heading" className="text-lg font-semibold text-heading">
-            AI call cost
+            Call costs
           </h2>
-          <p className="mt-0.5 text-sm text-muted">Speech-to-text, AI model and voice charges for every call, in rupees (before GST).</p>
+          <p className="mt-0.5 text-sm text-muted">Speech-to-text, AI model, voice, GST, and Plivo telephony costs from the call-cost summary.</p>
         </div>
         <div role="radiogroup" aria-label="Period" className="inline-flex rounded-md border border-hairline bg-surface-input p-0.5">
           {PERIODS.map((p) => (
@@ -191,12 +186,18 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
         <ErrorState title="Couldn't load call costs" message={(summary.error as Error).message} onRetry={() => summary.refetch()} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 [&>a]:relative [&>a]:z-0 [&>a]:shadow-sm [&>a]:transition-transform [&>a]:duration-200 [&>a:hover]:z-10 [&>a:hover]:scale-[1.03] [&>a:hover]:shadow-md motion-reduce:[&>a]:transition-none">
             <StatTile
               label="Total AI cost"
               value={v(rupees(s?.total_cost))}
               icon={<IndianRupee size={16} />}
               hint={s ? `${rupees(s.average_per_call.total_cost, 2)} per call on average` : undefined}
+            />
+            <StatTile
+              label="Plivo cost"
+              value={v(rupees(s?.plivo_cost_inr))}
+              icon={<Phone size={16} />}
+              hint={s?.plivo_billed_attempts !== undefined ? `${s.plivo_billed_attempts.toLocaleString()} billed attempts` : undefined}
             />
             <StatTile label="Calls" value={v(s?.calls.toLocaleString())} icon={<PhoneCall size={16} />} />
             <StatTile
@@ -215,7 +216,18 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
 
           <CostSplit
             loading={summary.isLoading}
-            parts={s ? { stt: s.stt_cost, llm: s.llm_cost, tts: s.tts_cost, models: { stt: s.rates.stt_model, llm: s.rates.llm_model, tts: s.rates.tts_model } } : undefined}
+            parts={s ? {
+              stt: s.stt_cost,
+              llm: s.llm_cost,
+              tts: s.tts_cost,
+              aiTotal: s.total_cost,
+              gst: s.gst_cost,
+              models: { stt: s.rates.stt_model, llm: s.rates.llm_model, tts: s.rates.tts_model },
+            } : undefined}
+            plivoBilling={s?.plivo_cost_inr ?? 0}
+            plivoAttempts={s?.plivo_billed_attempts}
+            totalOverride={s?.grand_total?.INR}
+            totalLabel="Total Campaigns cost"
           />
           <p className="text-xs text-muted">Per-call costs are on each campaign&apos;s Costs tab.</p>
         </>

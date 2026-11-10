@@ -10,18 +10,27 @@ export type CostParts = {
   llm: number;
   tts: number;
   aiTotal?: number;
+  gst?: number;
   models?: { stt?: string; llm?: string; tts?: string };
 };
 
 export default function CostSplit({
   parts: input,
   loading,
-  plivoBilling = 0,
+  plivoBilling,
+  plivoAttempts,
+  totalOverride,
+  totalLabel,
+  summaryCaption,
   description = "Breakdown of AI and telephony spending.",
 }: {
   parts: CostParts | undefined;
   loading: boolean;
   plivoBilling?: number;
+  plivoAttempts?: number;
+  totalOverride?: number;
+  totalLabel?: string;
+  summaryCaption?: string;
   description?: string;
 }) {
   const aiParts = input
@@ -33,11 +42,23 @@ export default function CostSplit({
     : [];
 
   const aiSubtotal = aiParts.reduce((sum, p) => sum + p.value, 0);
-  const aiTotal = input?.aiTotal ?? aiSubtotal;
-  const aiAdjustment = aiTotal - aiSubtotal;
+  const gst = input?.gst ?? 0;
+  const aiTotal = input?.aiTotal ?? aiSubtotal + gst;
+  const aiAdjustment = aiTotal - aiSubtotal - gst;
+  const hasPlivoBilling = plivoBilling !== undefined;
+  const plivoTotal = plivoBilling ?? 0;
 
   const allParts = [
     ...aiParts,
+    ...(gst > 0
+      ? [{
+          key: "gst",
+          label: "GST",
+          detail: "Goods and Services Tax",
+          value: gst,
+          color: "var(--series-4, var(--accent))",
+        }]
+      : []),
     ...(Math.abs(aiAdjustment) > 0.005
       ? [{
           key: "ai-adjustment",
@@ -47,16 +68,16 @@ export default function CostSplit({
           color: "var(--series-4, var(--accent))",
         }]
       : []),
-    {
+    ...(hasPlivoBilling ? [{
       key: "plivo",
       label: "Plivo billing",
-      detail: "Telephony charges",
-      value: plivoBilling,
+      detail: plivoAttempts === undefined ? "Telephony charges" : `${plivoAttempts.toLocaleString()} billed attempts`,
+      value: plivoTotal,
       color: "var(--series-5, var(--accent))",
-    },
+    }] : []),
   ];
 
-  const grandTotal = aiTotal + plivoBilling;
+  const grandTotal = totalOverride ?? aiTotal + plivoTotal;
 
   const share = (n: number) =>
     grandTotal > 0 ? Math.round((n / grandTotal) * 100) : 0;
@@ -76,12 +97,12 @@ export default function CostSplit({
         <div className="space-y-5">
           {/* Total cost */}
           <div className="rounded-lg border border-hairline bg-raised p-4">
-            <p className="text-sm text-muted">Total campaign cost</p>
+            <p className="text-sm text-muted">{totalLabel ?? (hasPlivoBilling ? "Total campaign cost" : "Total AI cost")}</p>
             <p className="mt-1 text-2xl font-semibold text-heading tnum">
               {rupees(grandTotal, 2)}
             </p>
             <p className="mt-1 text-xs text-muted">
-              AI cost {rupees(aiTotal, 2)} + Plivo {rupees(plivoBilling, 2)}
+              {summaryCaption ?? (hasPlivoBilling ? `AI cost ${rupees(aiTotal, 2)} + Plivo ${rupees(plivoTotal, 2)}` : "Includes the reported AI cost and applicable GST.")}
             </p>
           </div>
 

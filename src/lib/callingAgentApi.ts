@@ -74,6 +74,8 @@ export interface Agent {
   silence_check_seconds?: number | null;
   silence_prompt?: string | null;
   silence_hangup_seconds?: number | null;
+  second_line_yes?: string | null;
+  second_line_no?: string | null;
   interruption_min_words?: number | null;
   whatsapp_message_ids?: string[] | null;
   whatsapp_messages?: WhatsAppMessage[] | null;

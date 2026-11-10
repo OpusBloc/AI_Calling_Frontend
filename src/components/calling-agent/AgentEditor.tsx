@@ -155,6 +155,8 @@ const comparable = (d: AgentDraft) =>
     silenceCheck: d.silenceCheckSeconds,
     silencePrompt: d.silencePrompt,
     silenceHangup: d.silenceHangupSeconds,
+    secondLineYes: d.secondLineYes,
+    secondLineNo: d.secondLineNo,
     interruptionMinWords: d.interruptionMinWords,
     whatsapp: d.whatsappMessageIds,
     parts: d.parts,
@@ -754,6 +756,31 @@ export default function AgentEditor({
                   placeholder="e.g. Hello, are you still there? Please let me know how I can help."
                 />
               </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Second Line — Yes"
+                  hint="Optional follow-up line when the caller answers yes."
+                >
+                  <TextArea
+                    rows={2}
+                    value={draft.secondLineYes}
+                    onChange={(e) => setDraft((d) => ({ ...d, secondLineYes: e.target.value }))}
+                    placeholder="Enter the agent's second line for a yes response"
+                  />
+                </Field>
+                <Field
+                  label="Second Line — No"
+                  hint="Optional follow-up line when the caller answers no."
+                >
+                  <TextArea
+                    rows={2}
+                    value={draft.secondLineNo}
+                    onChange={(e) => setDraft((d) => ({ ...d, secondLineNo: e.target.value }))}
+                    placeholder="Enter the agent's second line for a no response"
+                  />
+                </Field>
+              </div>
             </div>
           </div>
         )}
@@ -1165,6 +1192,18 @@ function Review({
       tab: "details",
       label: "Silence Prompt",
       value: draft.silencePrompt.trim() || "Not set",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Second Line — Yes",
+      value: draft.secondLineYes.trim() || "Not set",
+      required: false,
+    },
+    {
+      tab: "details",
+      label: "Second Line — No",
+      value: draft.secondLineNo.trim() || "Not set",
       required: false,
     },
     {
