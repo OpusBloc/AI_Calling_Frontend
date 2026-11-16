@@ -9,7 +9,7 @@ import { patchPlivoNumber } from "@/lib/api";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import PageHeader from "@/components/PageHeader";
-import { deletePoolMessage } from "@/components/number-pool/pools-tab";
+import { deletePoolMessage } from "@/features/number-pool/components/pools-tab";
 import type { PlivoHealthStatus, PlivoNumber, PlivoNumberUpdate } from "@/types/types";
 import {
   Badge,
@@ -20,14 +20,13 @@ import {
   EmptyState,
   ErrorState,
   Field,
-  Loading,
   Select,
-  Skeleton,
   StatTile,
   StatusBadge,
   Table,
   TextInput,
 } from "@/components/ui";
+import { PoolDetailSkeleton, PoolNumberCountSkeleton, SkeletonBoundary, useSkeletonVisibility } from "@/components/skeletons";
 import { useEffect, useState } from "react";
 
 const HEALTH_STATUSES: PlivoHealthStatus[] = ["unknown", "healthy", "degraded", "unhealthy"];
@@ -67,23 +66,15 @@ export default function PlivoPoolPage() {
   const remove = useDeletePlivoPool();
   const [editingNumber, setEditingNumber] = useState<PlivoNumber | null>(null);
   const [callCountOrder, setCallCountOrder] = useState<"normal" | "desc" | "asc">("normal");
+  const showPoolSkeleton = useSkeletonVisibility(pools.isLoading);
 
   const pool = poolQuery.data ?? pools.data?.find((p) => p.id === id);
-  const crumbs = [{ label: "Number Pool", href: "/number-pool" }, { label: pool?.name ?? "Plivo pool" }];
-
-  if (pools.isLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title={<Skeleton className="h-8 w-56" />} />
-        <Loading label="Loading pool" />
-      </div>
-    );
-  }
+  if (pools.isLoading || showPoolSkeleton) return showPoolSkeleton ? <PoolDetailSkeleton /> : null;
 
   if (pools.isError || poolQuery.isError) {
     return (
       <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title="Plivo pool" />
+        <PageHeader title="Plivo pool" />
         <ErrorState
           message={((pools.error ?? poolQuery.error) as Error).message}
           onRetry={() => (pools.isError ? pools.refetch() : poolQuery.refetch())}
@@ -95,11 +86,10 @@ export default function PlivoPoolPage() {
   if (!pool) {
     return (
       <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title="Pool not found" />
+        <PageHeader title="Pool not found" />
         <EmptyState
           title="This pool doesn't exist"
           text="It may have been deleted, or the link is wrong."
-          action={<Button onClick={() => router.push("/number-pool")}>Back to pools</Button>}
         />
       </div>
     );
@@ -115,7 +105,7 @@ export default function PlivoPoolPage() {
   const usedBy = (campaigns.data ?? []).filter((c) => c.plivo_pool_ids.includes(pool.id));
 
   const handleDelete = async () => {
-    const ok = await confirmDialog({ title: "Delete Plivo pool?", message: deletePoolMessage(pool.name), confirmLabel: "Delete pool" });
+    const ok = await confirmDialog({ title: `Delete "${pool.name}"?`, message: deletePoolMessage(pool.name), confirmLabel: "Delete pool" });
     if (!ok) return;
     remove.mutate(pool.id, {
       onSuccess: () => {
@@ -128,35 +118,40 @@ export default function PlivoPoolPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumbs={crumbs}
         title={pool.name}
         meta={<StatusBadge status={pool.status} />}
         description={`Created ${new Date(pool.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(pool.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
         actions={
-          <>
-            <Button variant="danger" onClick={handleDelete} loading={remove.isPending}>
-              <Trash2 size={16} aria-hidden /> Delete
-            </Button>
-            <Button onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={remove.isPending}
+              className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-[var(--danger)] bg-transparent px-3 text-sm font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4"
+            >
+              <Trash2 size={16} aria-hidden />
+              Delete
+            </button>
+            <Button className="btn-blue-filled min-w-0 flex-1 sm:flex-none" onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>
               <Pencil size={16} aria-hidden /> Edit pool
             </Button>
-          </>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile label="Numbers" value={pool.phone_numbers.length} icon={<Phone size={16} />} />
         <StatTile label="Concurrency limit" value={pool.concurrency_limit} icon={<Gauge size={16} />} hint="Calls this pool can carry at once" />
-        <StatTile label="Used by campaigns" value={campaigns.isLoading ? "—" : usedBy.length} icon={<Megaphone size={16} />} />
+        <StatTile label="Used by campaigns" value={<SkeletonBoundary loading={campaigns.isLoading} skeleton={<PoolNumberCountSkeleton />}>{usedBy.length}</SkeletonBoundary>} icon={<Megaphone size={16} />} />
       </div>
 
       <Card flush title="Numbers" description="Plivo numbers in this pool. Calls are placed from these as the caller ID.">
         {pool.phone_numbers.length === 0 ? (
           <div className="p-5">
-            <EmptyState title="No numbers in this pool" text="Edit the pool to add numbers." action={<Button onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>Add numbers</Button>} />
+            <EmptyState title="No numbers in this pool" text="Edit the pool to add numbers." action={<Button className="btn-blue-filled" onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>Add numbers</Button>} />
           </div>
         ) : (
-          <Table bare head={[
+          <Table bare className="blue-table" head={[
             "Plivo number",
             "Type and location",
             "Capabilities",
@@ -200,13 +195,13 @@ export default function PlivoPoolPage() {
                     )}
                   </td>
                   <td className="min-w-[110px] px-3 py-3">
-                    {callStats.isLoading ? (
-                      <span className="text-xs text-muted">Loading…</span>
-                    ) : callStats.isError ? (
+                    <SkeletonBoundary loading={callStats.isLoading} skeleton={<PoolNumberCountSkeleton />}>
+                    {callStats.isError ? (
                       <span className="text-xs text-muted">—</span>
                     ) : (
                       <span className="tnum text-sm font-medium text-heading">{(callCounts.get(phone) ?? 0).toLocaleString()}</span>
                     )}
+                    </SkeletonBoundary>
                   </td>
                   <td className="min-w-[130px] px-3 py-3">
                     <p className="tnum text-sm font-medium text-heading">{n?.daily_attempt_limit ?? "—"} <span className="font-normal text-muted">daily</span></p>
@@ -217,9 +212,9 @@ export default function PlivoPoolPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        className=" p-0"
-                        aria-label={`Settings for ${phone}`}
-                        title={`Settings for ${phone}`}
+                        className="btn-blue p-0"
+                        aria-label={`Number settings for ${phone}`}
+                        title={`Number settings for ${phone}`}
                         onClick={() => setEditingNumber(n)}
                       >
                         <Settings size={16} aria-hidden />
@@ -319,12 +314,12 @@ function PlivoNumberSettingsDrawer({
       onClose={onClose}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} loading={updateNumber.isPending}>Save changes</Button>
+          <Button variant="secondary" className="btn-blue" onClick={onClose}>Cancel</Button>
+          <Button className="btn-blue-filled" onClick={save} loading={updateNumber.isPending}>Save changes</Button>
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="blue-fields space-y-4">
         <Field label="Daily attempt limit" hint="Set to 0 to prevent new attempts from this number.">
           <TextInput type="number" min={0} step={1} value={dailyLimit} onChange={(event) => setDailyLimit(event.target.value)} />
         </Field>

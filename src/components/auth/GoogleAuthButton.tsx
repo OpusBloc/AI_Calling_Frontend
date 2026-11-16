@@ -77,6 +77,11 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
         if (!res.ok) {
           throw new Error(data?.detail ?? `Request failed (${res.status})`);
         }
+
+      try {
+      sessionStorage.setItem("play_login_intro", "1");
+    } catch {}
+
         setUser(data.user);
         setToken(data.access_token);
         showSuccessNotification(`Signed in as ${data.user?.email ?? "your Google account"}.`, {

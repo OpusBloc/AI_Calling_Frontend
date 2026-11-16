@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { CircleAlert, Loader2, Search, X } from "lucide-react";
+import { CircleAlert, Search, X } from "lucide-react";
+import { ActionProgressSkeleton } from "../skeletons";
 
 /* -------------------------------- Controls -------------------------------- */
 
@@ -34,14 +35,14 @@ export function Button({
         variant === "primary" &&
           "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
         variant === "secondary" &&
-          "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
-        variant === "danger" && "bg-loss text-white shadow-sm hover:opacity-90",
+          "ring-1 ring-inset ring-[var(--button-secondary-border)] bg-[var(--button-secondary-bg)] text-[var(--button-secondary-text)] shadow-sm hover:bg-[var(--button-secondary-hover)]",
+        variant === "danger" && "bg-loss text-[var(--text-on-danger)] shadow-sm hover:opacity-90",
         variant === "ghost" &&
-          "bg-accent text-on-accent shadow-sm hover:bg-accent-strong",
+          "bg-[var(--button-ghost-bg)] text-[var(--button-ghost-text)] shadow-sm hover:bg-[var(--button-secondary-hover)]",
         className,
       )}
     >
-      {loading && <Loader2 size={16} className="animate-spin" aria-hidden />}
+      {loading && <ActionProgressSkeleton />}
       {children}
     </button>
   );
@@ -77,7 +78,7 @@ export function IconButton({
 }
 
 const inputClass =
-  "w-full min-w-0 rounded-md border border-hairline-strong bg-surface-input px-3 text-sm text-heading outline-none transition-[border-color,box-shadow] placeholder:text-faint hover:border-accent-strong focus:border-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-loss";
+  "w-full min-w-0 rounded-md border border-hairline-strong bg-surface-input px-3 text-sm text-heading outline-none transition-[border-color,box-shadow] placeholder:text-faint hover:border-[var(--input-glow)] focus:border-[var(--input-glow)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-loss";
 
 export function Field({
   label,
@@ -202,7 +203,7 @@ export function PhoneInput({
 }) {
   return (
     <GlowField className={className}>
-      <div className="flex h-10 w-full min-w-0 overflow-hidden rounded-md border border-hairline-strong bg-surface-input transition-colors hover:border-accent-strong focus-within:border-accent has-[[aria-invalid=true]]:border-loss">
+      <div className="flex h-10 w-full min-w-0 overflow-hidden rounded-md border border-hairline-strong bg-surface-input transition-colors hover:border-[var(--input-glow)] focus-within:border-[var(--input-glow)] has-[[aria-invalid=true]]:border-loss">
         <span className="tnum flex shrink-0 items-center border-r border-hairline-strong bg-raised px-3 text-sm font-medium text-body">
           {COUNTRY_CODE}
         </span>
@@ -292,7 +293,7 @@ export function Toggle({
     >
       <span
         className={clsx(
-          "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+          "inline-block h-5 w-5 rounded-full bg-surface shadow transition-transform",
           checked ? "translate-x-[22px]" : "translate-x-0.5",
         )}
       />

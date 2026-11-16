@@ -168,10 +168,12 @@ export interface SpeakInput {
 /** Speak `text` with a stock voice; the stored sample's audio is at /voices/speak/{id}/audio */
 export const speakSample = (body: SpeakInput) => api<{ id: string }>("/voices/speak", { method: "POST", body });
 /** List saved speech previews, newest first. */
-export const listSpeakSamples = (params: { speaker?: string; limit?: number } = {}) => {
+export const listSpeakSamples = (params: { speaker?: string; limit?: number; offset?: number; page?: number } = {}) => {
   const query = new URLSearchParams();
   if (params.speaker) query.set("speaker", params.speaker);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
+  if (params.offset !== undefined) query.set("offset", String(params.offset));
+  if (params.page !== undefined) query.set("page", String(params.page));
   const queryString = query.toString();
   const suffix = queryString ? `?${queryString}` : "";
   return api<VoiceSamplesResponse>(`/voices/speak${suffix}`);
@@ -395,7 +397,7 @@ export const getWhatsAppDelivery = (id: string) =>
   api<WhatsAppDelivery>(`/whatsapp-messages/deliveries/${encodeURIComponent(id)}`);
 
 export const listClassifications = (agentId: string, campaignId?: string) =>
-  api(`/api/agents/${agentId}/classifications${campaignId ? `?campaign_id=${campaignId}` : ""}`);
+  api(`/agents/${encodeURIComponent(agentId)}/classifications${campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : ""}`);
 
 export const getWhatsAppMessage = (id: string) =>
   api<WhatsAppMessage>(`/whatsapp-messages/${encodeURIComponent(id)}`);

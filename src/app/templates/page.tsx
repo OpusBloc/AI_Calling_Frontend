@@ -1,8 +1,8 @@
-import WhatsAppMessagesTab from "@/components/calling-agent/WhatsAppMessagesTab"; // adjust to where the file lives
+import WhatsAppMessagesTab from "@/features/calling-agent/components/WhatsAppMessagesTab";
 
 export default function TemplatesPage() {
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="space-y-6">
       <WhatsAppMessagesTab />
     </div>
   );

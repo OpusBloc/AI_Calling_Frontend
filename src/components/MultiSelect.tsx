@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import clsx from "clsx";
 import { Check, ChevronDown, Search, X } from "lucide-react";
+import { SkeletonBoundary, MultiSelectOptionsSkeleton } from "./skeletons";
 
 export type MultiSelectOption = { id: string; label: string; detail?: string };
 
@@ -82,7 +83,7 @@ export default function MultiSelect({
       </legend>
 
       <div className="relative">
-        <div ref={triggerRef} className="glow-field flex h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 transition-colors hover:border-accent-strong focus-within:border-accent">
+        <div ref={triggerRef} className="glow-field flex h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 transition-colors hover:border-[var(--input-glow)] focus-within:border-[var(--input-glow)]">
           <Search size={15} aria-hidden className="shrink-0 text-muted" />
           <input
             value={search}
@@ -98,7 +99,7 @@ export default function MultiSelect({
                 setOpen(false);
               }
             }}
-            placeholder={loading ? "Loading…" : `Search ${label.toLowerCase()}…`}
+            placeholder={`Search ${label.toLowerCase()}…`}
             aria-label={`Search ${label}`}
             aria-controls={listId}
             className="min-w-0 flex-1 bg-transparent text-sm text-heading outline-none placeholder:text-faint focus-visible:outline-none"
@@ -123,6 +124,7 @@ export default function MultiSelect({
               openUpwards ? "bottom-full mb-1" : "top-full mt-1",
             )}
           >
+            <SkeletonBoundary loading={!!loading} skeleton={<MultiSelectOptionsSkeleton />}>
             {filtered.length === 0 ? (
               <p className="px-2 py-3 text-sm text-muted">
                 {options.length === 0 ? `No ${label.toLowerCase()} available yet.` : "No matches."}
@@ -151,6 +153,7 @@ export default function MultiSelect({
                 );
               })
             )}
+            </SkeletonBoundary>
           </div>
         )}
       </div>

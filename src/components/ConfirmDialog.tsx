@@ -61,7 +61,7 @@ export function ConfirmHost() {
   return (
     // Above the drawer (z-50) so confirmations raised from inside it are visible
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-label={current.title}>
-      <div aria-hidden onMouseDown={() => close(false)} className="animate-fade-in absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+      <div aria-hidden onMouseDown={() => close(false)} className="animate-fade-in absolute inset-0 bg-[var(--modal-backdrop)] backdrop-blur-[2px]" />
       <div className="animate-fade-in relative w-full max-w-md rounded-lg border border-hairline bg-surface p-6 shadow-lg">
         <div className="flex gap-4">
           <span
@@ -91,7 +91,7 @@ export function ConfirmHost() {
             onClick={() => close(true)}
             className={clsx(
               "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium",
-              danger ? "bg-loss text-white hover:opacity-90" : "bg-accent text-on-accent hover:bg-accent-strong",
+              danger ? "btn-red" : "btn-blue-filled",
             )}
           >
             {current.confirmLabel ?? "Confirm"}

@@ -2,28 +2,16 @@
   --ob-sidebar-expanded-width: 220px;
   --ob-sidebar-collapsed-width: 76px;
   --ob-sidebar-mobile-width: 280px;
-  --ob-sidebar-bg: #ffffff;
-  --ob-page-bg: #fafafa;
-  --ob-sidebar-border: #e9e4d6;
-  --ob-sidebar-active: #eaf2ff;
-  --ob-sidebar-accent: #3b82f6;
-  --ob-sidebar-muted: #6f6b60;
-  --ob-sidebar-text: #29271f;
+  --ob-sidebar-bg: var(--sidebar);
+  --ob-page-bg: var(--sidebar-page);
+  --ob-sidebar-border: var(--sidebar-border);
+  --ob-sidebar-active: var(--sidebar-active);
+  --ob-sidebar-accent: var(--sidebar-ring);
+  --ob-sidebar-muted: var(--nav-text);
+  --ob-sidebar-text: var(--sidebar-foreground);
   --ob-sidebar-shadow: none;
   --ob-topbar-shadow: none;
   --ob-sidebar-transition: 300ms;
-}
-
-.dark {
-  --ob-sidebar-bg: var(--surface);
-  --ob-page-bg: #142235;
-  --ob-sidebar-border: var(--hairline);
-  --ob-sidebar-active: rgb(59 130 246 / 20%);
-  --ob-sidebar-accent: #60a5fa;
-  --ob-sidebar-muted: var(--text-muted);
-  --ob-sidebar-text: var(--text-heading);
-  --ob-sidebar-shadow: none;
-  --ob-topbar-shadow: none;
 }
 
 .ob-layout {
@@ -176,10 +164,10 @@ html[data-sidebar="collapsed"] .ob-layout {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border: 1px solid #c9b575;
+  border: 1px solid var(--brand-mark-border);
   border-radius: 10px;
   background: var(--ob-sidebar-active);
-  color: #64552c;
+  color: var(--brand-mark-text);
   font-size: 14px;
   font-weight: 750;
 }
@@ -297,8 +285,8 @@ html[data-sidebar="collapsed"] .ob-layout {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #eee5ca;
-  color: #65562c;
+  background: var(--brand-avatar-bg);
+  color: var(--brand-avatar-text);
   font-size: 11px;
   font-weight: 750;
 }
@@ -343,16 +331,6 @@ html[data-sidebar="collapsed"] .ob-layout {
 .ob-logout:hover {
   background: var(--surface-hover);
   color: var(--ob-sidebar-text);
-}
-
-.dark .ob-brand-mark {
-  border-color: var(--hairline-strong);
-  color: var(--accent-text);
-}
-
-.dark .ob-user-avatar {
-  background: var(--surface-hover);
-  color: var(--accent-text);
 }
 
 .ob-sidebar-backdrop {
@@ -426,9 +404,14 @@ html[data-sidebar="collapsed"] .ob-layout {
     box-shadow: var(--ob-sidebar-shadow);
   }
 
+  /* The fixed sidebar leaves its grid column empty, so keep page content in column 2. */
+  .ob-main-column {
+    grid-column: 2;
+  }
+
   html[data-sidebar-open="true"] .ob-sidebar {
     width: var(--ob-sidebar-expanded-width);
-    box-shadow: 8px 0 28px rgb(33 29 18 / 14%);
+    box-shadow: var(--sidebar-shadow);
   }
 
   html[data-sidebar-open="true"] .ob-sidebar-brand {
@@ -528,7 +511,7 @@ html[data-sidebar="collapsed"] .ob-layout {
     inset: 0;
     display: block;
     border: 0;
-    background: rgb(20 18 13 / 42%);
+    background: var(--backdrop);
     opacity: 0;
     visibility: hidden;
     transition: opacity var(--ob-sidebar-transition), visibility var(--ob-sidebar-transition);
@@ -570,7 +553,7 @@ html[data-sidebar="collapsed"] .ob-layout {
     height: 100dvh;
     transform: translateX(-100%);
     visibility: hidden;
-    box-shadow: 10px 0 30px rgb(33 29 18 / 16%);
+    box-shadow: var(--sidebar-mobile-shadow);
   }
 
   html[data-sidebar="collapsed"] .ob-sidebar {
@@ -589,7 +572,7 @@ html[data-sidebar="collapsed"] .ob-layout {
     inset: 0;
     display: block;
     border: 0;
-    background: rgb(20 18 13 / 42%);
+    background: var(--backdrop);
     opacity: 0;
     visibility: hidden;
     transition: opacity var(--ob-sidebar-transition), visibility var(--ob-sidebar-transition);

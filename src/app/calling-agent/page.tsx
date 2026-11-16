@@ -1,13 +1,17 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { Bot, PhoneCall, PhoneForwarded } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Bot, PhoneForwarded } from "lucide-react";
 
-import PageHeader from "@/components/PageHeader";
-import AgentsTab from "@/components/calling-agent/AgentsTab";
-import RepresentativesTab from "@/components/calling-agent/RepresentativesTab";
-import TestCallDrawer from "@/components/calling-agent/TestCallDrawer";
-import { Button, Tabs, useTabParam } from "@/components/ui";
+import AgentsTab from "@/features/calling-agent/components/AgentsTab";
+import RepresentativesTab from "@/features/calling-agent/components/RepresentativesTab";
+import DrawerLoadingPlaceholder from "@/features/calling-agent/components/DrawerLoadingPlaceholder";
+import { Tabs, useTabParam } from "@/components/ui";
+
+const TestCallDrawer = dynamic(() => import("@/features/calling-agent/components/TestCallDrawer"), {
+  loading: () => <DrawerLoadingPlaceholder />,
+});
 
 const TABS = [
   { id: "agents", label: "Agents", icon: Bot, component: AgentsTab },
@@ -33,15 +37,6 @@ export default function CallingAgentPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Calling Agent"
-        description="Manage the AI voice agents your campaigns use and configure call transfer settings for live calls."
-        actions={
-          <Button variant="secondary" onClick={() => setTesting(true)}>
-            <PhoneCall size={16} aria-hidden /> Test call
-          </Button>
-        }
-      />
       {testing && <TestCallDrawer onClose={() => setTesting(false)} />}
       <div>
         <Suspense>

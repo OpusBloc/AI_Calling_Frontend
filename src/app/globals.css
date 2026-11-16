@@ -8,7 +8,7 @@
 
    The admin is LIGHT-FIRST: `:root` carries the design system's
    [data-theme="light"] values (warm ivory canvas, deep antique gold).
-   `.dark` is true black (neutral greys up from #000) with the light theme's gold.
+   `.dark` uses the shared dark-blue palette defined below.
    `.dark` is toggled on <html> by Navbar.tsx.
 
    Only semantic tokens flip between themes — the brand scales below do not.
@@ -16,40 +16,54 @@
    ========================================================================== */
 
 :root {
-  /* ---- Brand gold (matte champagne, sampled from the mark) — constant ---- */
+  --stat-border: #dbe5f1;
+  --stat-transfer-green: #3b9a2a;
   --gold-50: #faf5e4;
   --gold-100: #f1e8cb;
   --gold-200: #e8dbae;
   --gold-300: #dccc95;
-  --gold-400: #d8c68d; /* primary champagne — accent in both themes */
+  --gold-400: #d8c68d;
   --gold-500: #c2ae74;
-  --gold-600: #a8915a; /* antique */
+  --gold-600: #a8915a;
   --gold-700: #8c7a4e;
   --gold-800: #6e5f3e;
-
   --gradient-gold: linear-gradient(135deg, #efe2b4 0%, #d8c68d 46%, #a8915a 100%);
-
-  /* ---- Ink / dark canvas — constant ---- */
   --ink-900: #040616;
   --ink-800: #080b1e;
   --ink-700: #0d1126;
   --ink-600: #141934;
   --ink-500: #1c2240;
   --ink-400: #272e4f;
-
-  /* ---- Cream / light canvas — constant ---- */
   --cream-50: #fbf8f0;
   --cream-100: #f6f1e4;
   --cream-200: #ece4d2;
 
-  /* ---- Semantic status (muted and premium — never neon) ----
-     These are THEME-AWARE. The design system is dark-first, so its published
-     values (gain #6FB58A, loss #D2706A, info #7FA8C9, warn #D7B25E) are light
-     tints chosen to sit on navy — as text on a light surface they fail badly
-     (warn is ~1.9:1 on white, i.e. invisible). The light theme therefore uses
-     darker siblings of the same hues, still muted, all ≥5:1 on the cream
-     canvas. The dark theme restores the design system's own values below.
-     The low-alpha *-bg tints are hue-only and work on either canvas. */
+  /* Existing light theme values are retained. */
+  --canvas: var(--cream-100);
+  --surface: #ffffff;
+  --raised: var(--cream-50);
+  --surface-hover: var(--cream-200);
+  --surface-input: var(--cream-100);
+  --surface-toggle: #e6f0fb;
+  --surface-inverse: var(--ink-900);
+  --hairline: rgba(110, 95, 62, 0.2);
+  --hairline-strong: rgba(110, 95, 62, 0.36);
+  --text-heading: #1a1c2e;
+  --text-body: #494b5c;
+  --text-muted: #7c7c6c;
+  --text-faint: #a9a795;
+  --accent: var(--gold-400);
+  --accent-strong: var(--gold-500);
+  --accent-text: #816c3c;
+  --accent-bg: rgba(216, 198, 141, 0.22);
+  --on-accent: #000000;
+  --button-secondary-bg: var(--accent);
+  --button-secondary-text: var(--on-accent);
+  --button-secondary-hover: var(--accent-strong);
+  --button-ghost-bg: var(--accent);
+  --button-ghost-text: var(--on-accent);
+  --chip-neutral-bg: rgba(22, 24, 42, 0.05);
+  --focus-ring: rgba(216, 198, 141, 0.7);
   --gain: #2b7252;
   --loss: #eb746e;
   --info: #3d6b8a;
@@ -58,46 +72,11 @@
   --loss-bg: rgba(210, 112, 106, 0.18);
   --info-bg: rgba(127, 168, 201, 0.18);
   --warn-bg: rgba(215, 178, 94, 0.22);
-
-  /* ======================= LIGHT THEME (default) ======================= */
-  --canvas: var(--cream-100);
-  --surface: #ffffff;
-  --raised: var(--cream-50);
-  --surface-hover: var(--cream-200);
-  --surface-input: var(--cream-100);
-  --surface-inverse: var(--ink-900);
-
-  --hairline: rgba(110, 95, 62, 0.2);
-  --hairline-strong: rgba(110, 95, 62, 0.36);
-
-  --text-heading: #1a1c2e;
-  --text-body: #494b5c;
-  --text-muted: #7c7c6c;
-  --text-faint: #a9a795;
-
-  /* Light champagne fills (same as the dark theme). --accent-text stays a
-     deep gold because #D8C68D as text on white is far too faint to read. */
-  --accent: var(--gold-400);
-  --accent-strong: var(--gold-500);
-  --accent-text: #816c3c;
-  --accent-bg: rgba(216, 198, 141, 0.22);
-  /* Text sitting on a gold fill is black in BOTH themes. White on the light
-     theme's --accent (#D8C68D) is only ~1.7:1; black is ~12:1, and it matches
-     the gradient controls, which are also black-on-gold. */
-  --on-accent: #000000;
-
-  --chip-neutral-bg: rgba(22, 24, 42, 0.05);
-  --focus-ring: rgba(216, 198, 141, 0.7);
-
   --shadow-sm: 0 1px 2px rgba(40, 34, 18, 0.06);
   --shadow-md: 0 10px 28px -12px rgba(40, 34, 18, 0.16);
   --shadow-lg: 0 24px 56px -20px rgba(40, 34, 18, 0.22);
-  --glow-gold:
-    0 0 0 1px rgba(168, 145, 90, 0.4), 0 12px 32px -10px rgba(168, 145, 90, 0.42);
+  --glow-gold: 0 0 0 1px rgba(168, 145, 90, 0.4), 0 12px 32px -10px rgba(168, 145, 90, 0.42);
   --inner-lit: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-
-  /* Chart series — categorical, assign in this order, never cycled.
-     Validated (CVD + normal-vision separation) on this theme's --surface. */
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -106,75 +85,549 @@
   --series-6: #008300;
   --series-other: #b5b3a8;
   --chart-grid: rgba(110, 95, 62, 0.14);
+  --btn-blue: #ffffff;
+  --btn-blue-hover: #eaf2fd;
+  --btn-blue-text: #1677e8;
+  --btn-blue-border: #1677e8;
+  --btn-red: #dc2626;
+  --btn-red-hover: #b91c1c;
+  --btn-red-border: #991b1b;
+  --input-glow: #1677e8;
+  --blue-table-header: #f3f8fe;
+  --blue-table-header-text: #3d6b8a;
+  --blue-table-hover: #eaf2fc;
+  --blue-table-marker: #378add;
+  --rt-header-bg: #f3f8fe;
+  --rt-header-text: #3d6b8a;
+  --rt-hover-bg: #eaf2fc;
+  --rt-marker: #378add;
+  --stat-accent-default: #1677e8;
+  --surface-raised-hover: #f6f1e4;
+  --fields-input: #eaf2fd;
+  --fields-input-border: rgba(22, 119, 232, 0.35);
+  --fields-ring: rgba(22, 119, 232, 0.35);
+  --fields-raised: #f3f8fe;
+  --fields-hover: #eaf2fc;
+  --scrollbar-thumb: #94a3b8;
+  --scrollbar-thumb-hover: #64748b;
+  --primary-glow: rgba(22, 119, 232, 0.35);
+  --primary-tint: rgba(22, 119, 232, 0.1);
+  --primary-marker: var(--primary);
+  --tab-border-active: var(--dark-blue);
+  --selection-bg: rgba(168, 145, 90, 0.28);
+  --button-shadow: 0 4px 12px -4px rgba(0, 13, 27, 0.35);
+  --button-shadow-hover: 0 8px 20px -6px rgba(22, 119, 232, 0.5);
+  --button-danger-shadow: 0 4px 12px -4px rgba(31, 1, 1, 0.35);
+  --button-danger-shadow-hover: 0 8px 20px -6px rgba(220, 80, 80, 0.5);
+  --button-danger-shadow-active: 0 2px 8px -4px rgba(220, 80, 80, 0.4);
+  --btn-blue-filled: #1677e8;
+  --btn-blue-filled-hover: #1268cc;
+  --btn-blue-filled-text: #ffffff;
+  --gradient-stop-1: #f7eccb;
+  --gradient-stop-2: #e6d5a4;
+  --gradient-stop-3: #d2bc86;
+
+  /* Shadcn and Tailwind semantic aliases. */
+  --background: var(--canvas);
+  --foreground: var(--text-heading);
+  --card: var(--surface);
+  --card-foreground: var(--text-heading);
+  --popover: var(--surface);
+  --popover-foreground: var(--text-heading);
+  --muted: var(--raised);
+  --muted-foreground: var(--text-muted);
+  --border: var(--hairline);
+  --input: var(--hairline-strong);
+  --primary: #1677e8;
+  --primary-foreground: #ffffff;
+  --secondary: var(--raised);
+  --secondary-foreground: var(--text-heading);
+  --accent-foreground: var(--text-heading);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --ring: var(--focus-ring);
+  --sidebar: #ffffff;
+  --sidebar-border: #e9e4d6;
+  --sidebar-text: #29271f;
+  --sidebar-active: #eaf2ff;
+  --sidebar-page: #fafafa;
+  --brand-mark-border: #c9b575;
+  --brand-mark-text: #64552c;
+  --brand-avatar-bg: #eee5ca;
+  --brand-avatar-text: #65562c;
+  --sidebar-foreground: #29271f;
+  --sidebar-primary: #1677e8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eaf2ff;
+  --sidebar-accent-foreground: #29271f;
+  --sidebar-border: #e9e4d6;
+  --sidebar-ring: #3b82f6;
+  --link-color: #1677e8;
+  --dark-blue: #0b4fa8;
+  --donut-accent: #023E8A;
+  --caller-chart-default: #BA7517;
+  --caller-chart-line: color-mix(in srgb, #BA7517 68%, #000 32%);
+  --tooltip-text: #000000;
+  --info-surface: #eff6ff;
+  --info-border: #bfdbfe;
+  --info-text: #1e40af;
+  --text-on-danger: #ffffff;
+  --selected-on-primary: #ffffff;
+  --notification-foreground: #ffffff;
+  --stat-card-border: #123c74;
+  --classification-surface: #eff6ff;
+  --classification-border: #bfdbfe;
+  --classification-divider: #dbeafe;
+  --classification-heading: #1b1b2f;
+  --classification-body: #475569;
+  --classification-muted: #64748b;
+  --classification-link: #2563eb;
+  --tabs-divider: #dedede;
+  --tabs-inactive: #777777;
+  --dashboard-toggle-border: #cfe0f5;
+  --dashboard-toggle-active-bg: var(--surface);
+  --dashboard-toggle-active-text: #123c74;
+  --dashboard-toggle-inactive-text: #3d6b8a;
+  --dashboard-blue-accent: #378ADD;
+  --dashboard-green-accent: #3B9A2A;
+  --dashboard-amber-accent: var(--caller-chart-default);
+  --campaign-stat-accent: #D85A30;
+  --classification-series-1: #279be8;
+  --classification-series-2: #a43be0;
+  --classification-series-3: #20b98b;
+  --classification-series-4: #efa512;
+  --backdrop: rgba(20, 18, 13, 0.42);
+  --modal-backdrop: rgba(0, 0, 0, 0.4);
+  --button-secondary-border: var(--hairline-strong);
+  --toast-loading-bg: #3b82f6;
+  --toast-success-bg: #22c55e;
+  --toast-error-bg: #ef4444;
+  --toast-foreground: #ffffff;
+  --sidebar-shadow: 8px 0 28px rgb(33 29 18 / 14%);
+  --sidebar-mobile-shadow: 10px 0 30px rgb(33 29 18 / 16%);
+  --auth-page-bg: #ffffff;
+  --auth-surface: #ffffff;
+  --auth-border: #e5e5e5;
+  --auth-shadow: 0 20px 60px -15px rgba(15, 23, 42, 0.25);
+  --auth-panel-edge: #c99a3d;
+  --auth-panel-bg: #1a140b;
+  --auth-panel-ring: #6b4f1f;
+  --auth-gold: #8a5a1a;
+  --auth-gold-light: #f6e7a3;
+  --auth-panel-text: #1a140b;
+  --auth-body-text: #6b5a38;
+  --auth-muted-text: #9a8a68;
+  --auth-on-art: #f6e7a3;
+  --auth-card-border: #e5e7eb;
+  --auth-link: #8a5a1a;
+  --auth-orb: #f6e7a3;
+  --auth-logo-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+  --success: var(--gain);
+  --success-soft: var(--gain-bg);
+  --warning: var(--warn);
+  --warning-soft: var(--warn-bg);
+  --danger: var(--loss);
+  --danger-soft: var(--loss-bg);
+  --icon-danger: #dc2626;
+  --icon-danger-hover: #b91c1c;
+  --icon-primary: #2563eb;
+  --icon-primary-hover: #1d4ed8;
+  --destructive-foreground: var(--text-on-danger);
+  --nav-text: #6f6b60;
+  --primary-soft: #eaf2ff;
+  --primary-soft-text: #1677e8;
+  --avatar-bg: #e6f0fb;
 }
 
-/* ========================== DARK THEME ========================== */
 .dark {
-  /* True black, not navy: neutral greys stepping up from #000 */
-  --canvas: #000000;
-  --surface: #0b0b0b;
-  --raised: #111111;
-  --surface-hover: #1a1a1a;
-  --surface-input: #0f0f0f;
-  --surface-inverse: var(--cream-50);
+  /* Dark blue depth: sidebar, page, surfaces, then hover. */
+  --background: #0E1A33;
+  --sidebar: #0A1226;
+  --sidebar-page: var(--background);
+  --brand-mark-border: var(--ring);
+  --brand-mark-text: var(--primary-soft-text);
+  --brand-avatar-bg: var(--avatar-bg);
+  --brand-avatar-text: var(--primary-soft-text);
+  --surface: #14233F;
+  --surface-hover: #1A2D4F;
+  --surface-input: #112042;
+  --surface-raised: #172A4D;
+  --surface-raised-hover: #1E3560;
+  --border: #25365A;
+  --border-strong: #34476E;
+  --border-subtle: #1F3052;
+  --foreground: #E8EEFA;
+  --muted-foreground: #9FB0CC;
+  --table-header: #8DA0C2;
+  --nav-text: #A9B8D3;
+  --primary: #2F6FEB;
+  --primary-hover: #3B7BF5;
+  --primary-soft: #1B3463;
+  --primary-soft-text: #9EC0FF;
+  --ring: #4C8DFF;
+  --success: #5AD79A;
+  --success-soft: rgba(52,199,123,.14);
+  --warning: #F5C26B;
+  --warning-soft: rgba(245,194,107,.14);
+  --danger: #F28B91;
+  --danger-soft: rgba(242,139,145,.14);
+  --link-color: var(--primary-soft-text);
+  --dark-blue: var(--primary-soft-text);
+  --donut-accent: var(--series-1);
+  --caller-chart-default: var(--series-1);
+  --caller-chart-line: var(--series-1);
+  --tooltip-text: var(--foreground);
+  --info-surface: var(--primary-soft);
+  --info-border: rgba(76, 141, 255, 0.3);
+  --info-text: var(--primary-soft-text);
+  --text-on-danger: #0E1A33;
+  --selected-on-primary: var(--foreground);
+  --notification-foreground: var(--foreground);
+  --stat-card-border: var(--border);
+  --classification-surface: var(--surface);
+  --classification-border: var(--border);
+  --classification-divider: var(--border-subtle);
+  --classification-heading: var(--foreground);
+  --classification-body: #D3DDF0;
+  --classification-muted: var(--muted-foreground);
+  --classification-link: var(--primary-soft-text);
+  --tabs-divider: var(--border-subtle);
+  --tabs-inactive: var(--muted-foreground);
+  --dashboard-toggle-border: var(--border);
+  --dashboard-toggle-active-bg: var(--series-1);
+  --dashboard-toggle-active-text: #0E1A33;
+  --dashboard-toggle-inactive-text: var(--nav-text);
+  --dashboard-blue-accent: var(--series-1);
+  --dashboard-green-accent: var(--series-3);
+  --dashboard-amber-accent: var(--series-4);
+  --campaign-stat-accent: var(--series-2);
+  --classification-series-1: var(--series-1);
+  --classification-series-2: var(--series-2);
+  --classification-series-3: var(--series-3);
+  --classification-series-4: var(--series-4);
+  --backdrop: rgba(10, 18, 38, 0.72);
+  --modal-backdrop: rgba(10, 18, 38, 0.72);
+  --button-secondary-border: var(--border-strong);
+  --toast-loading-bg: var(--primary);
+  --toast-success-bg: var(--success-soft);
+  --toast-error-bg: var(--danger-soft);
+  --toast-foreground: var(--foreground);
+  --stat-border: var(--border);
+  --sidebar-shadow: 8px 0 28px rgba(3, 9, 24, 0.3);
+  --sidebar-mobile-shadow: 10px 0 30px rgba(3, 9, 24, 0.4);
+  --auth-page-bg: var(--background);
+  --auth-surface: var(--surface);
+  --auth-border: var(--border);
+  --auth-shadow: 0 20px 60px -15px rgba(3, 9, 24, 0.4);
+  --auth-panel-edge: var(--primary);
+  --auth-panel-bg: var(--sidebar);
+  --auth-panel-ring: var(--ring);
+  --auth-gold: var(--primary);
+  --auth-gold-light: var(--primary-soft-text);
+  --auth-panel-text: var(--foreground);
+  --auth-body-text: var(--muted-foreground);
+  --auth-muted-text: var(--muted-foreground);
+  --auth-on-art: var(--primary-soft-text);
+  --auth-card-border: var(--border);
+  --auth-link: var(--primary-soft-text);
+  --auth-orb: var(--primary-soft-text);
+  --auth-logo-shadow: 0 8px 18px rgba(3, 9, 24, 0.45);
+  --btn-red: var(--danger);
+  --btn-red-hover: #F5A0A5;
+  --btn-red-border: var(--danger);
+  --avatar-bg: #264273;
+  --stat-border: var(--border);
+  --card: var(--surface);
+  --popover: var(--surface);
+  --muted: var(--surface-raised);
+  --input: var(--border-strong);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-accent: var(--primary-soft);
+  --sidebar-text: var(--foreground);
+  --sidebar-active: var(--primary-soft);
+  --sidebar-page: var(--background);
+  --brand-mark-border: var(--ring);
+  --brand-mark-text: var(--primary-soft-text);
+  --brand-avatar-bg: var(--avatar-bg);
+  --brand-avatar-text: var(--primary-soft-text);
+  --fields-input: var(--surface-input);
+  --fields-input-border: var(--border-strong);
+  --fields-ring: var(--ring);
+  --fields-raised: var(--surface-raised);
+  --fields-hover: var(--surface-hover);
+  --scrollbar-thumb: var(--border-strong);
+  --scrollbar-thumb-hover: var(--ring);
+  --primary-glow: rgba(76, 141, 255, 0.35);
+  --primary-tint: var(--primary-soft);
+  --primary-marker: var(--ring);
+  --tab-border-active: var(--primary-soft-text);
+  --selection-bg: rgba(76, 141, 255, 0.28);
+  --btn-blue-filled: var(--primary);
+  --btn-blue-filled-hover: var(--primary-hover);
+  --btn-blue-filled-text: #ffffff;
+  --button-shadow: 0 4px 12px -4px rgba(3, 9, 24, 0.18);
+  --button-shadow-hover: 0 8px 20px -6px rgba(47, 111, 235, 0.32);
+  --button-danger-shadow: 0 4px 12px -4px rgba(3, 9, 24, 0.18);
+  --button-danger-shadow-hover: 0 8px 20px -6px rgba(242, 139, 145, 0.24);
+  --button-danger-shadow-active: 0 2px 8px -4px rgba(242, 139, 145, 0.2);
+  --gradient-stop-1: #9EC0FF;
+  --gradient-stop-2: #4C8DFF;
+  --gradient-stop-3: #2F6FEB;
 
-  --hairline: rgba(255, 255, 255, 0.09);
-  --hairline-strong: rgba(255, 255, 255, 0.18);
-
-  --text-heading: #f5f5f4;
-  --text-body: #c9c9c6;
-  --text-muted: #8f8f8a;
-  --text-faint: #5c5c58;
-
-  /* Same gold as the light theme. Only --accent-text is one step lighter
-     (antique #A8915A vs #816C3C): the light theme's text gold is ~3.9:1 on
-     black, under the 4.5:1 needed for small text; this is ~6.6:1. */
-  --accent: var(--gold-400);
-  --accent-strong: var(--gold-500);
-  --accent-text: var(--gold-600);
-  --accent-bg: rgba(216, 198, 141, 0.22);
-  --on-accent: #000000;
-
-  --chip-neutral-bg: rgba(255, 255, 255, 0.07);
-  --focus-ring: rgba(216, 198, 141, 0.7);
-
-  /* Dark theme restores the design system's published semantic values — these
-     are the ones intended to sit on the navy canvas. */
-  --gain: #6fb58a;
-  --loss: #d2706a;
-  --info: #7fa8c9;
-  --warn: #d7b25e;
-  --gain-bg: rgba(111, 181, 138, 0.14);
-  --loss-bg: rgba(210, 112, 106, 0.14);
-  --info-bg: rgba(127, 168, 201, 0.14);
-  --warn-bg: rgba(215, 178, 94, 0.16);
-
-  /* On black, depth comes from a faint top highlight rather than a dark drop shadow */
-  --shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 1px 2px rgba(0, 0, 0, 0.8);
-  --shadow-md: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 12px 32px -8px rgba(0, 0, 0, 0.9);
-  --shadow-lg: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -18px rgba(0, 0, 0, 0.95);
-  --glow-gold:
-    0 0 0 1px rgba(168, 145, 90, 0.4), 0 12px 32px -10px rgba(168, 145, 90, 0.42);
-  --inner-lit: inset 0 1px 0 rgba(245, 242, 232, 0.05);
-
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-other: #5c5c58;
-  --chart-grid: rgba(255, 255, 255, 0.08);
+  /* Existing component tokens now resolve from the shared palette. */
+  --canvas: var(--background);
+  --surface-inverse: var(--sidebar);
+  --raised: var(--surface-raised);
+  --surface-toggle: var(--surface-raised);
+  --hairline: var(--border-subtle);
+  --hairline-strong: var(--border-strong);
+  --text-heading: var(--foreground);
+  --text-body: #D3DDF0;
+  --text-muted: var(--muted-foreground);
+  --text-faint: #8193B2;
+  --accent: var(--primary);
+  --accent-strong: var(--primary-hover);
+  --accent-text: var(--primary-soft-text);
+  --accent-bg: var(--primary-soft);
+  --on-accent: #ffffff;
+  --button-secondary-bg: var(--surface-raised);
+  --button-secondary-text: var(--foreground);
+  --button-secondary-hover: var(--surface-raised-hover);
+  --button-ghost-bg: transparent;
+  --button-ghost-text: var(--foreground);
+  --icon-danger: var(--danger);
+  --icon-danger-hover: #F5A0A5;
+  --icon-primary: var(--primary-soft-text);
+  --icon-primary-hover: var(--primary-hover);
+  --chip-neutral-bg: var(--surface-raised);
+  --focus-ring: var(--ring);
+  --gain: var(--success);
+  --gain-bg: var(--success-soft);
+  --loss: var(--danger);
+  --loss-bg: var(--danger-soft);
+  --info: var(--primary-soft-text);
+  --info-bg: var(--primary-soft);
+  --warn: var(--warning);
+  --warn-bg: var(--warning-soft);
+  --input-glow: var(--ring);
+  --btn-blue: var(--primary);
+  --btn-blue-hover: var(--primary-hover);
+  --btn-blue-text: #ffffff;
+  --btn-blue-border: var(--primary);
+  --btn-red: var(--danger);
+  --btn-red-hover: #F5A0A5;
+  --btn-red-border: var(--danger);
+  --blue-table-header: var(--surface-raised);
+  --blue-table-header-text: var(--table-header);
+  --blue-table-hover: var(--surface-hover);
+  --blue-table-marker: var(--ring);
+  --rt-header-bg: var(--surface-raised);
+  --rt-header-text: var(--table-header);
+  --rt-hover-bg: var(--surface-hover);
+  --rt-marker: var(--ring);
+  --stat-accent-default: var(--primary-soft-text);
+  --primary-foreground: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--btn-red);
+  --destructive-foreground: var(--text-on-danger);
+  --ring: #4C8DFF;
+  --sidebar-foreground: var(--nav-text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--primary-soft);
+  --sidebar-accent-foreground: var(--primary-soft-text);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--ring);
+  --shadow-sm: 0 1px 2px rgba(3, 9, 24, 0.18);
+  --shadow-md: 0 10px 28px -12px rgba(3, 9, 24, 0.24);
+  --shadow-lg: 0 24px 56px -20px rgba(3, 9, 24, 0.3);
+  --glow-gold: 0 0 0 1px rgba(76, 141, 255, 0.35), 0 12px 32px -10px rgba(47, 111, 235, 0.25);
+  --inner-lit: inset 0 1px 0 rgba(232, 238, 250, 0.04);
+  --series-1: #78A9FF;
+  --series-2: #FF9B73;
+  --series-3: #5AD79A;
+  --series-4: #F5C26B;
+  --series-5: #E98BB5;
+  --series-6: #A9B8D3;
+  --series-other: #9FB0CC;
+  --chart-grid: rgba(159, 176, 204, 0.18);
+  color-scheme: dark;
 }
+
+.ob-theme-toggle {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none;
+  background: transparent;
+}
+
+.ob-theme-toggle:hover {
+  background: var(--surface-hover);
+}
+/* --------------------All Buttons UI---------------------*/
+.btn-blue {
+  background: var(--btn-blue) !important;
+  background-image: none !important;
+  color: var(--btn-blue-text) !important;
+
+  box-shadow: var(--button-shadow) !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn-blue:hover {
+  background: var(--btn-blue-hover) !important;
+  border-color: var(--btn-blue-border) !important;
+  box-shadow: var(--button-shadow-hover) !important;
+  transform: translateY(-1px);
+}
+
+.btn-blue-filled {
+  background: var(--btn-blue-filled) !important;
+  background-image: none !important;
+  color: var(--btn-blue-filled-text) !important;
+  box-shadow: var(--button-shadow) !important;
+}
+
+.btn-blue-filled:hover {
+  background: var(--btn-blue-filled-hover) !important;
+  box-shadow: var(--button-shadow-hover) !important;
+}
+
+.btn-red {
+  background: var(--btn-red) !important;
+  background-image: none !important;
+  color: var(--destructive-foreground) !important;
+  box-shadow: var(--button-danger-shadow) !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.btn-red:hover {
+  background: var(--btn-red-hover) !important;
+  border-color: var(--btn-red-border) !important;
+  box-shadow: var(--button-danger-shadow-hover) !important;
+  transform: translateY(-1px);
+}
+
+.btn-red:active {
+  transform: translateY(0);
+  box-shadow: var(--button-danger-shadow-active) !important;
+}
+
+
+/* Blue form fields — scoped styling */
+.blue-fields {
+  --surface-input: var(--fields-input);
+  --input-glow: var(--fields-ring);
+  --hairline-strong: var(--fields-input-border);
+  --focus-ring: var(--fields-ring);
+  --raised: var(--fields-raised);
+  --surface-hover: var(--fields-hover);
+}
+
+.blue-table thead,
+.blue-table thead tr,
+.blue-table thead th {
+  background: var(--blue-table-header);
+  color: var(--blue-table-header-text);
+}
+
+.blue-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.blue-table tbody tr:hover {
+  background: var(--blue-table-hover);
+}
+
+.blue-table tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--blue-table-marker);
+}
+
+.blue-fields nav[aria-label="Pagination"] [aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Blue hover glow */
+.blue-fields .glow-field:hover::before {
+  opacity: 0.35;
+  animation-play-state: running;
+}
+
+/* Blue focus glow */
+.blue-fields .glow-field:focus-within::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+.blue-fields .glow-field:focus-within::after {
+  opacity: 0.35;
+  animation-play-state: running;
+}
+
+/* Prevent gold focus outline */
+.blue-fields input:focus-visible,
+.blue-fields select:focus-visible,
+.blue-fields textarea:focus-visible {
+  outline-color: var(--ring);
+}
+
 
 /* ---- Expose the semantic tokens as Tailwind utilities ----
    bg-surface, text-heading, border-hairline, text-accent, font-mono, … */
 @theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted-surface: var(--muted);
+  --color-raised-hover: var(--surface-raised-hover);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-nav-text: var(--nav-text);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-text: var(--primary-soft-text);
+  --color-avatar-bg: var(--avatar-bg);
+  --color-link: var(--link-color);
+  --color-dark-blue: var(--dark-blue);
+  --color-info-surface: var(--info-surface);
+  --color-info-border: var(--info-border);
+  --color-info-text: var(--info-text);
+  --color-text-on-danger: var(--text-on-danger);
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
   --color-surface-hover: var(--surface-hover);
   --color-surface-input: var(--surface-input);
+  --color-toggle: var(--surface-toggle);
   --color-surface-inverse: var(--surface-inverse);
 
   --color-hairline: var(--hairline);
@@ -182,7 +635,7 @@
 
   --color-heading: var(--text-heading);
   --color-body: var(--text-body);
-  --color-muted: var(--text-muted);
+  --color-muted: var(--muted-foreground);
   --color-faint: var(--text-faint);
 
   --color-accent: var(--accent);
@@ -201,9 +654,10 @@
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
 
-  --font-sans: var(--font-syne, "Segoe UI"), system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
-  --font-display: var(--font-cormorant, Georgia), serif;
+--font-sans: var(--font-jakarta, "Segoe UI"), system-ui, sans-serif;
+--font-mono: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
+--font-display: var(--font-jakarta, "Segoe UI"), system-ui, sans-serif;
+--font-numeric: var(--font-jakarta, "Segoe UI"), system-ui, sans-serif;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -230,15 +684,15 @@ body {
 body {
   background: var(--canvas);
   color: var(--text-body);
-  font-family:
-    var(--font-syne, "Segoe UI"),
-    "Noto Naskh Arabic",
-    "Noto Sans Devanagari",
-    "Noto Sans Telugu",
-    "Segoe UI",
-    Roboto,
-    Arial,
-    sans-serif;
+font-family:
+  var(--font-jakarta),
+  "Noto Naskh Arabic",
+  "Noto Sans Devanagari",
+  "Noto Sans Telugu",
+  "Segoe UI",
+  Roboto,
+  Arial,
+  sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -261,15 +715,15 @@ body {
 :root {
   --gradient-gold-ui: linear-gradient(
     135deg,
-    #f7eccb 0%,
-    #e6d5a4 50%,
-    #d2bc86 100%
+    var(--gradient-stop-1) 0%,
+    var(--gradient-stop-2) 50%,
+    var(--gradient-stop-3) 100%
   );
 }
 
 .gold-gradient,
 .gold-gradient * {
-  color: #000;
+  color: var(--on-accent);
 }
 
 .gold-gradient {
@@ -305,7 +759,7 @@ body {
 }
 
 ::selection {
-  background: rgba(168, 145, 90, 0.28);
+  background: var(--selection-bg);
 }
 
 /* Keep number fields editable by typing without showing browser stepper arrows. */
@@ -448,7 +902,7 @@ input[type="number"]::-webkit-outer-spin-button {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #94a3b8 transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .auth-panel-scroll::-webkit-scrollbar {
@@ -460,14 +914,14 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .auth-panel-scroll::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 .auth-panel-scroll::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Sidebar nav list — token-driven scrollbar, and rows that hold their height.
@@ -543,27 +997,7 @@ summary {
   cursor: pointer;
 }
 
-/* Skeleton placeholder shown while data loads — a slow sheen, not a spinner */
-.skeleton {
-  background: linear-gradient(90deg, var(--chip-neutral-bg) 0%, var(--surface-hover) 50%, var(--chip-neutral-bg) 100%);
-  background-size: 200% 100%;
-  animation: skeleton-sheen 1.4s ease-in-out infinite;
-}
-
-@keyframes skeleton-sheen {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: -100% 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
-  }
-
   *,
   *::before,
   *::after {
@@ -573,13 +1007,7 @@ summary {
 }
 
 /* ---- Input glow ------------------------------------------------------------
-   A light that travels around a field's border, with a soft halo under it.
-   Faint on hover, full on focus. Wrap the control in `.glow-field` (the
-   TextInput/Select/TextArea/PhoneInput/SearchInput components already do).
-   Change --input-glow to recolour it, e.g. #3b82f6 for blue. */
-:root {
-  --input-glow: #b8962e;
-}
+   A light travels around the field border and follows the semantic ring token. */
 
 @property --glow-angle {
   syntax: "<angle>";
@@ -685,3 +1113,74 @@ input[type="search"]::-webkit-search-decoration {
 .no-scrollbar::-webkit-scrollbar {
   display: none;              /* Chrome, Safari, new Edge, Opera */
 }
+
+.dashboard-stat-card {
+  --stat-accent: var(--stat-accent-light);
+  border: 1.5px solid var(--stat-border);
+}
+
+.dashboard-caller-chart {
+  --caller-chart-color: var(--caller-chart-color-light, var(--stat-accent));
+}
+
+.dashboard-stat-ring-progress {
+  stroke-dasharray: 0 var(--ring-circumference);
+  animation: dashboard-stat-ring-fill 750ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes dashboard-stat-ring-fill {
+  to {
+    stroke-dasharray: var(--ring-dasharray);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-stat-ring-progress {
+    animation: none;
+    stroke-dasharray: var(--ring-dasharray);
+  }
+}
+
+/* ---- Recent campaigns table: blue header + blue hover ---- */
+.recent-table {
+  --raised: var(--rt-header-bg);
+  --surface-hover: var(--rt-hover-bg);
+}
+
+/* direct rules, in case the table uses a token other than --raised */
+.recent-table thead,
+.recent-table thead tr,
+.recent-table thead th {
+  background: var(--rt-header-bg);
+  color: var(--rt-header-text);
+  font-weight: 500;
+}
+
+.recent-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.recent-table tbody tr:hover {
+  background: var(--rt-hover-bg);
+}
+
+.recent-table tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--rt-marker);
+}
+
+/*  ------------------Tabs UI design---------------------*/
+.tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--primary);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
+  box-shadow: 0 0 5px var(--primary-glow);
+  border-radius: 2px;
+}
+
+
+
