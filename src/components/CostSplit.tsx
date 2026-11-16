@@ -41,7 +41,8 @@
     const ri = R_IN + pad;
     const t0 = Math.PI - startFrac * Math.PI;
     const t1 = Math.PI - endFrac * Math.PI;
-    const large = endFrac - startFrac > 0.5 ? 1 : 0;
+    // Fractions map to a 180° semicircle, so no segment can exceed 180°.
+    const large = 0;
     const [ox0, oy0] = pt(ro, t0);
     const [ox1, oy1] = pt(ro, t1);
     const [ix1, iy1] = pt(ri, t1);
@@ -55,7 +56,8 @@
     const ri = R_IN - 5;
     const t0 = Math.PI - startFrac * Math.PI;
     const t1 = Math.PI - endFrac * Math.PI;
-    const large = endFrac - startFrac > 0.5 ? 1 : 0;
+    // Keep the hover outline on the same semicircle as its segment.
+    const large = 0;
     const [ox0, oy0] = pt(ro, t0);
     const [ox1, oy1] = pt(ro, t1);
     const [ix1, iy1] = pt(ri, t1);

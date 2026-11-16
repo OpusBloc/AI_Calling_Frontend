@@ -54,13 +54,14 @@ export const TEMPLATE_COLUMNS: TableColumnConfig[] = [
 ];
 
 export const CALL_COLUMNS: TableColumnConfig[] = [
-  { label: "Lead", width: "19%", kind: "subtitle" },
-  { label: "Phone", width: "15%", kind: "text" },
-  { label: "Status", width: "13%", kind: "status" },
-  { label: "Talk time", width: "12%", kind: "number" },
-  { label: "Plivo cost", width: "13%", kind: "number" },
-  { label: "AI cost", width: "13%", kind: "number" },
-  { label: "Total cost", width: "15%", kind: "number" },
+  { label: "Lead", width: "16%", kind: "subtitle" },
+  { label: "Phone", width: "13%", kind: "text" },
+  { label: "Status", width: "10%", kind: "status" },
+  { label: "Initiation time", width: "16%", kind: "date" },
+  { label: "Talk time", width: "10%", kind: "number" },
+  { label: "Plivo cost", width: "11%", kind: "number" },
+  { label: "AI cost", width: "11%", kind: "number" },
+  { label: "Total cost", width: "13%", kind: "number" },
 ];
 
 export const COST_CALL_COLUMNS: TableColumnConfig[] = [

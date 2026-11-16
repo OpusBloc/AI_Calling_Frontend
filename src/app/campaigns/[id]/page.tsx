@@ -100,6 +100,19 @@ const formatDateWithSeconds = (value: string | null | undefined) =>
   value
     ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
     : "—";
+const formatInitiationTime = (value: string | null | undefined) => {
+  if (!value) return "12:00:00 AM";
+  const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return "12:00:00 AM";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(date);
+};
 const getCampaignAiCost = (report: CampaignReport | undefined) =>
   (report?.calls ?? []).reduce((total, call) => total + call.sarvam_cost, 0);
 
@@ -809,11 +822,25 @@ const closeCall = () => {
     }
     return records;
   }, [callRecords]);
+  const initiationTimesByPhone = useMemo(() => {
+    const records = new Map<string, string>();
+    for (const record of callRecords ?? []) {
+      const phone = record.phone_e164?.replace(/\D/g, "");
+      const initiationTime = [...(record.attempt_history ?? [])]
+        .sort((a, b) => b.attempt_no - a.attempt_no)
+        .map((attempt) => attempt.cdr?.initiation_time)
+        .find((value): value is string => typeof value === "string" && value.length > 0);
+      if (phone && initiationTime) records.set(phone, initiationTime);
+    }
+    return records;
+  }, [callRecords]);
   const callerNumberOf = (call: CampaignCallSummary) => {
     const reportNumber = call.caller_number ??
       [...(call.attempts ?? [])].reverse().find((attempt) => attempt.caller_number)?.caller_number;
     return reportNumber ?? callRecordsByPhone.get(call.phone.replace(/\D/g, "")) ?? null;
   };
+  const initiationTimeOf = (call: CampaignCallSummary) =>
+    initiationTimesByPhone.get(call.phone.replace(/\D/g, "")) ?? null;
   const statuses = [...new Set(list.map((c) => c.status))].sort();
   const plivoNumbers = [...new Set(
     [...list.map(callerNumberOf), ...(callRecords ?? []).map((record) => record.caller_number)]
@@ -857,6 +884,7 @@ const closeCall = () => {
   };
   const head = [
     ...CALL_HEAD.slice(0, 3),
+    CALL_HEAD[3],
     ...([
       ["talk", "Talk time"],
       ["plivo", "Plivo cost"],
@@ -942,6 +970,7 @@ const closeCall = () => {
                   <CallRow
                     key={call.call_id}
                     call={call}
+                    initiationTime={initiationTimeOf(call)}
                     selected={call.call_id === selectedCallId}
                     onOpen={() => {
                       setSelectedCallId(call.call_id);
@@ -995,10 +1024,12 @@ function SortHead({
 
 function CallRow({
   call,
+  initiationTime,
   selected,
   onOpen,
 }: {
   call: CampaignCallSummary;
+  initiationTime: string | null;
   selected: boolean;
   onOpen: () => void;
 }) {
@@ -1030,6 +1061,9 @@ function CallRow({
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone}</td>
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
+      </td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">
+        {formatInitiationTime(initiationTime)}
       </td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(call.total_talk_seconds)}</td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 2)}</td>
