@@ -52,7 +52,7 @@ export default function AuthGuard({ children }: Props) {
       // Redirect authenticated users away from auth pages
       if (loggedIn && isPublic) {
         setAllowed(false);
-        router.replace("/");
+        router.replace("/dashboard");
         return;
       }
 
