@@ -6,8 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
-import type { CostTrendPoint } from "@/lib/costFormat";
-import { formatRupees } from "@/lib/costFormat";
+import type { CostTrendPoint } from "@/components/CostSplit";
 import { getCallCostSummary, getCallCosts } from "@/lib/api";
 import type { CallCostSummary } from "@/types/types";
 import CampaignsStatCard from "@/features/dashboard/components/CampaignsStatCard";
@@ -24,8 +23,9 @@ import {
   Table,
   formatDate,
   formatDuration,
+  formatMoney,
 } from "@/components/ui";
-import { ChartSkeleton, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
+import { ChartSkeleton, DashboardSkeleton, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
 import { DASHBOARD_CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
 
 
@@ -130,7 +130,7 @@ async function loadDailyCalls(): Promise<DashboardCallData> {
 
 
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const campaigns = useCampaigns();
   const agents = useAgents();
   const representatives = useRepresentatives();
@@ -298,6 +298,12 @@ export default function DashboardPage() {
   );
 }
 
+const DashboardPage = dynamic(() => Promise.resolve(DashboardPageContent), {
+  loading: () => <DashboardSkeleton />,
+});
+
+export default DashboardPage;
+
 /*------------------------------- CostStatCard UI ---------------------------------------*/
 const TONES = {
   green:  "bg-emerald-100 text-emerald-900 dark:bg-primary-soft dark:text-primary-soft-text",
@@ -392,8 +398,8 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     tone="green"
     label="Total AI cost"
     icon={<IndianRupee size={20} />}
-    value={v(formatRupees(s?.total_cost))}
-    hint={s ? `${formatRupees(s.average_per_call.total_cost, 2)} per call on average` : undefined}
+    value={v(s?.total_cost === undefined ? "—" : `₹${formatMoney(s.total_cost)}`)}
+    hint={s ? `₹${formatMoney(s.average_per_call.total_cost, 2)} per call on average` : undefined}
   />
 </div>
 <div className="min-w-0">
@@ -401,7 +407,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     tone="amber"
     label="Plivo cost"
     icon={<Phone size={20} />}
-    value={v(formatRupees(s?.plivo_cost_inr))}
+    value={v(s?.plivo_cost_inr === undefined ? "—" : `₹${formatMoney(s.plivo_cost_inr)}`)}
     hint={s?.plivo_billed_attempts !== undefined ? `${s.plivo_billed_attempts.toLocaleString()} billed attempts` : undefined}
   />
 </div>

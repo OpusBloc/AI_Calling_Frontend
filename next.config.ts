@@ -10,6 +10,16 @@ const nextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/?tab=dashboard", permanent: false },
+      { source: "/campaigns", destination: "/?tab=campaigns", permanent: false },
+      { source: "/number-pool", destination: "/?tab=number-pool", permanent: false },
+      { source: "/calling-agent", destination: "/?tab=calling-agent", permanent: false },
+      { source: "/templates", destination: "/?tab=templates", permanent: false },
+    ];
+  },
+
   async headers() {
     return [
       {

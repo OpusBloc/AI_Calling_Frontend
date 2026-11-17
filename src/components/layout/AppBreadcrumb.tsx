@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 
@@ -14,7 +14,10 @@ type Crumb = { label: string; href?: string; loading?: boolean };
 
 export default function AppBreadcrumb() {
   const pathname = usePathname();
-  const current = navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
+  const searchParams = useSearchParams();
+  const current = (pathname === "/"
+    ? navItems.find((item) => item.id === (searchParams.get("tab") ?? "dashboard"))
+    : navItems.find((item) => pathname === item.basePath || pathname.startsWith(`${item.basePath}/`))) ?? null;
   const agentId = pathname.match(/^\/calling-agent\/agents\/([^/]+)/)?.[1] ?? null;
   const representativeId = pathname.match(/^\/calling-agent\/representatives\/([^/]+)/)?.[1] ?? null;
   const campaignId = pathname.match(/^\/campaigns\/([^/]+)/)?.[1] ?? null;

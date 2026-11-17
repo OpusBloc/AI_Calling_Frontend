@@ -8,6 +8,7 @@ import AgentsTab from "@/features/calling-agent/components/AgentsTab";
 import RepresentativesTab from "@/features/calling-agent/components/RepresentativesTab";
 import DrawerLoadingPlaceholder from "@/features/calling-agent/components/DrawerLoadingPlaceholder";
 import { Tabs, useTabParam } from "@/components/ui";
+import { CallingAgentSkeleton } from "@/components/skeletons";
 
 const TestCallDrawer = dynamic(() => import("@/features/calling-agent/components/TestCallDrawer"), {
   loading: () => <DrawerLoadingPlaceholder />,
@@ -39,7 +40,7 @@ export default function CallingAgentPage() {
     <div className="space-y-6">
       {testing && <TestCallDrawer onClose={() => setTesting(false)} />}
       <div>
-        <Suspense>
+        <Suspense fallback={<CallingAgentSkeleton />}>
           <CallingAgentTabs />
         </Suspense>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 
@@ -36,9 +37,13 @@ export default function LayoutShell({
       >
         Skip to content
       </a>
-      {sidebar}
+      <Suspense fallback={<aside className="ob-sidebar" aria-hidden="true" />}>
+        {sidebar}
+      </Suspense>
       <div className="ob-main-column">
-        {topbar}
+        <Suspense fallback={<header className="h-[52px] shrink-0 border border-hairline bg-surface/80" aria-hidden="true" />}>
+          {topbar}
+        </Suspense>
         <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-hidden bg-surface shadow-sm outline-none">
           <div className="content-scroll ob-main-content no-scrollbar">
             {children}

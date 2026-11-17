@@ -27,7 +27,7 @@ export default function Sidebar() {
       >
         <div className="ob-sidebar-brand">
           <Link
-            href="/dashboard"
+            href="/?tab=dashboard"
             className="ob-brand-link"
             title="Opus Bloc Admin"
           >

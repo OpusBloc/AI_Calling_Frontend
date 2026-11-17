@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
 import { navIcons, navItems } from "@/components/layout/navItems";
 import type { NavIconName } from "@/components/layout/navItems";
@@ -16,8 +16,14 @@ export default function NavLink({
   icon: NavIconName;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { closeMobile } = useSidebar();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const section = navItems.find((item) => item.href === href);
+  const active = section
+    ? pathname === "/"
+      ? (searchParams.get("tab") ?? "dashboard") === section.id
+      : pathname === section.basePath || pathname.startsWith(`${section.basePath}/`)
+    : false;
   const Icon = navIcons[icon];
 
   return (
@@ -37,7 +43,10 @@ export default function NavLink({
 
 export function CurrentPageTitle() {
   const pathname = usePathname();
-  const current = navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const searchParams = useSearchParams();
+  const current = pathname === "/"
+    ? navItems.find((item) => item.id === (searchParams.get("tab") ?? "dashboard"))
+    : navItems.find((item) => pathname === item.basePath || pathname.startsWith(`${item.basePath}/`));
   if (!current) return null;
 
   const Icon = navIcons[current.icon];
