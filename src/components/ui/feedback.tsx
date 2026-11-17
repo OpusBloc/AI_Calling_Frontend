@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { CircleAlert, Loader2, RotateCw } from "lucide-react";
+import { CircleAlert, RotateCw } from "lucide-react";
 
 import { Button } from "./controls";
 import { humanize } from "./utils";
@@ -146,49 +146,6 @@ export function ErrorState({
   );
 }
 
-export function Loading({ label = "Loading" }: { label?: string }) {
-  return (
-    <div
-      role="status"
-      className="flex items-center justify-center gap-2 py-16 text-muted"
-    >
-      <Loader2 className="animate-spin" size={22} aria-hidden />
-      <span className="sr-only">{label}</span>
-    </div>
-  );
-}
-
-export function Skeleton({ className }: { className?: string }) {
-  return (
-    <span aria-hidden className={clsx("skeleton block rounded", className)} />
-  );
-}
-
-/**
- * Placeholder rows shown inside <Table> while data loads
- */
-export function SkeletonRows({
-  rows = 5,
-  cols,
-}: {
-  rows?: number;
-  cols: number;
-}) {
-  return (
-    <>
-      {Array.from({ length: rows }, (_, r) => (
-        <tr key={r} aria-hidden>
-          {Array.from({ length: cols }, (_, c) => (
-            <td key={c} className="px-4 py-3.5">
-              <Skeleton className={clsx("h-4", c === 0 ? "w-32" : "w-20")} />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
-
 export function EmptyState({
   title,
   text,
@@ -290,17 +247,19 @@ export function StatTile({
   hint,
   icon,
   href,
+  compact = false,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   icon?: ReactNode;
   href?: string;
+  compact?: boolean;
 }) {
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-muted">{label}</p>
+        <p className={clsx("min-w-0 font-medium text-muted", compact ? "truncate text-xs" : "text-sm")}>{label}</p>
         {icon && (
           <span
             aria-hidden
@@ -310,14 +269,14 @@ export function StatTile({
           </span>
         )}
       </div>
-      <p className="tnum mt-2 text-2xl font-semibold tracking-tight text-heading">
+      <div className={clsx("tnum mt-2 font-semibold tracking-tight text-heading", compact ? "mt-1 truncate whitespace-nowrap text-xl" : "text-2xl")}>
         {value}
-      </p>
-      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+      </div>
+      {hint && <p className={clsx("mt-1 text-xs text-muted", compact && "truncate")}>{hint}</p>}
     </>
   );
   const cls =
-    "block rounded-lg border border-hairline bg-surface p-4 shadow-sm";
+    clsx("block rounded-lg border border-hairline bg-surface p-4 shadow-sm", compact && "min-w-0 p-3");
   return href ? (
     <Link
       href={href}

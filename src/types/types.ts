@@ -113,6 +113,8 @@ export interface CampaignCallSummary {
   call_id: string;
   lead_name: string | null;
   phone: string;
+  /** Plivo number used to call this lead, when included by the report API. */
+  caller_number?: string | null;
   status: string;
   total_talk_seconds: number;
   plivo_cost: number;
@@ -121,6 +123,7 @@ export interface CampaignCallSummary {
   attempts: Array<{
     attempt_id: string;
     attempt_no: number;
+    caller_number?: string | null;
     plivo_call_uuid: string | null;
     status: string;
     duration_seconds: number;
@@ -318,6 +321,17 @@ export interface CallCostSummary {
     plivo?: { currency: string; attempts: number; total_cost_usd: number; total_cost_inr: number };
     ai_models_total?: { INR: number; USD: number };
   };
+  by_day?: Array<{
+    day: string;
+    calls: number;
+    seconds: number;
+    sarvam_cost: number;
+    claude_cost_usd: number;
+    plivo_billed_attempts: number;
+    plivo_cost_usd: number;
+    plivo_cost_inr: number;
+    grand_total: { INR: number; USD: number };
+  }>;
   average_per_call: {
     seconds: number;
     total_chars: number;

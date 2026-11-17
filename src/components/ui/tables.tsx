@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { IconButton } from "./controls";
+import type { TableColumnConfig } from "@/components/skeletons/table-columns";
+import { SkeletonBoundary } from "@/components/skeletons/skeleton";
 
 /**
  * Right-edge slide-over panel for create/edit forms
@@ -60,7 +62,7 @@ export function Drawer({
       <div
         aria-hidden
         onMouseDown={onClose}
-        className="animate-fade-in absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="animate-fade-in absolute inset-0 bg-[var(--modal-backdrop)] backdrop-blur-[2px]"
       />
       <aside
         ref={panelRef}
@@ -101,22 +103,32 @@ export function Table({
   children,
   label,
   bare,
+  className,
+  columns,
+  loading = false,
+  skeleton,
 }: {
   head: ReactNode[];
-  children: ReactNode;
+  children?: ReactNode;
   /** Accessible name for the table */
   label?: string;
   /** No outer border — for a table already inside a <Card flush> */
   bare?: boolean;
+  className?: string;
+  columns?: TableColumnConfig[];
+  loading?: boolean;
+  skeleton?: ReactNode;
 }) {
   return (
     <div
       className={clsx(
         "overflow-x-auto bg-surface",
         !bare && "rounded-lg border border-hairline shadow-sm",
+        className,
       )}
     >
       <table className="w-full text-left text-sm" aria-label={label}>
+        {columns && <colgroup>{columns.map((column, index) => <col key={column.label || `actions-${index}`} style={{ width: column.width }} />)}</colgroup>}
         <thead className="border-b border-hairline bg-raised text-[11px] uppercase tracking-[0.08em] text-muted">
           <tr>
             {head.map((h, i) => {
@@ -141,7 +153,15 @@ export function Table({
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-hairline">{children}</tbody>
+        <SkeletonBoundary
+          as="tbody"
+          className="divide-y divide-hairline"
+          loading={loading}
+          skeleton={skeleton}
+          announcement={<tr className="sr-only"><td colSpan={head.length}>Loading…</td></tr>}
+        >
+          {children}
+        </SkeletonBoundary>
       </table>
     </div>
   );

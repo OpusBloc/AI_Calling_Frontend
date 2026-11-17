@@ -1,4 +1,5 @@
 import toast from "react-hot-toast";
+import { Clock3 } from "lucide-react";
 
 type NotificationType = "loading" | "success" | "error";
 
@@ -18,32 +19,23 @@ const CustomNotification = ({
     switch (type) {
       case "loading":
         return {
-          bg: "bg-blue-500",
-          icon: (
-            <svg className="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          ),
+          bg: "bg-[var(--toast-loading-bg)]",
+          icon: <Clock3 size={20} className="text-[var(--toast-foreground)]" aria-hidden />,
         };
       case "success":
         return {
-          bg: "bg-green-500",
+          bg: "bg-[var(--toast-success-bg)]",
           icon: (
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[var(--toast-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
         };
       case "error":
         return {
-          bg: "bg-red-500",
+          bg: "bg-[var(--toast-error-bg)]",
           icon: (
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[var(--toast-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
@@ -54,18 +46,18 @@ const CustomNotification = ({
   const styles = getStyles();
 
   return (
-    <div className={`${styles.bg} rounded-lg p-4 shadow-lg min-w-[320px] max-w-sm`}>
+    <div className={`${styles.bg} text-[var(--toast-foreground)] rounded-lg p-4 shadow-lg min-w-[320px] max-w-sm`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">{styles.icon}</div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white">{title}</p>
-            <p className="text-xs text-white/90 mt-1 break-words">{description}</p>
+            <p className="text-sm font-medium">{title}</p>
+            <p className="text-xs mt-1 break-words opacity-90">{description}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-white/70">now</span>
-          <button onClick={onDismiss} aria-label="Dismiss" className="text-white/70 hover:text-white transition-colors">
+          <span className="text-xs opacity-70">now</span>
+          <button onClick={onDismiss} aria-label="Dismiss" className="opacity-70 hover:opacity-100 transition-opacity">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>

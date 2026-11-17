@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 
 import { usePlivoPool } from "@/hooks/hooks";
-import { PlivoPoolForm } from "@/components/number-pool/PoolForms";
+import { PlivoPoolForm } from "@/features/number-pool/components/PoolForms";
 import { EditLoadState } from "@/components/ui";
 
 export default function EditPlivoPoolPage() {
@@ -14,8 +14,6 @@ export default function EditPlivoPoolPage() {
       <EditLoadState
         query={pool}
         noun="pool"
-        breadcrumbs={[{ label: "Number Pool", href: "/number-pool" }, { label: "Edit" }]}
-        backHref="/number-pool"
       />
     );
   }

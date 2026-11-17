@@ -83,9 +83,13 @@ export const getUser = (): CurrentUser | null => {
  */
 export const setToken = (token: string) => {
   if (typeof window === "undefined") return;
+
   localStorage.setItem(TOKEN_KEY, token);
 
-  // 🔥 notify app
+  try {
+    sessionStorage.setItem("play_login_intro", "1");
+  } catch {}
+
   window.dispatchEvent(new Event(AUTH_EVENT));
 };
 
@@ -137,3 +141,5 @@ export const onAuthChange = (callback: () => void) => {
   window.addEventListener(AUTH_EVENT, callback);
   return () => window.removeEventListener(AUTH_EVENT, callback);
 };
+
+

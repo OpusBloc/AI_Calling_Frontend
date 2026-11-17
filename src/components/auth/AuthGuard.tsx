@@ -2,7 +2,14 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getToken, clearToken, isTokenExpired, onAuthChange } from "@/lib/auth";
+import RevealLoader from "@/components/RevealLoader";
+import { AuthGuardSkeleton, useSkeletonVisibility } from "@/components/skeletons";
+import {
+  getToken,
+  clearToken,
+  isTokenExpired,
+  onAuthChange,
+} from "@/lib/auth";
 
 interface Props {
   children: ReactNode;
@@ -19,26 +26,33 @@ export default function AuthGuard({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [allowed, setAllowed] = useState(false);
+  const showLoadingSkeleton = useSkeletonVisibility(!allowed);
 
   useEffect(() => {
     const check = () => {
       const token = getToken();
 
-      // Drop expired/undecodable tokens so they don't count as a session
-      if (token && isTokenExpired(token)) clearToken();
+      // Remove expired or invalid tokens
+      if (token && isTokenExpired(token)) {
+        clearToken();
+      }
 
       const loggedIn = !!getToken();
-      const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
+      const isPublic = PUBLIC_ROUTES.some((r) =>
+        pathname.startsWith(r)
+      );
 
-      // Keep the spinner up until the redirect lands, so the wrong page never flashes
+      // Redirect unauthenticated users
       if (!loggedIn && !isPublic) {
         setAllowed(false);
         router.replace("/auth/login");
         return;
       }
+
+      // Redirect authenticated users away from auth pages
       if (loggedIn && isPublic) {
         setAllowed(false);
-        router.replace("/");
+        router.replace("/dashboard");
         return;
       }
 
@@ -46,17 +60,20 @@ export default function AuthGuard({ children }: Props) {
     };
 
     check();
-    // Re-check on login/logout so the guard follows token changes
+
+    // Listen for login/logout changes
     return onAuthChange(check);
   }, [pathname, router]);
 
   if (!allowed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas">
-        <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-hairline border-t-accent" />
-      </div>
-    );
+    return showLoadingSkeleton ? <AuthGuardSkeleton /> : null;
   }
 
-  return <>{children}</>;
+    return (
+    <>
+      <RevealLoader />
+      {children}
+    </>
+  );
+
 }

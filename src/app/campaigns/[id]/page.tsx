@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import Link from "next/link";
 import {  useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
@@ -12,11 +13,13 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowLeft,
+  Bot,
   IndianRupee,
   LayoutDashboard,
   Pause,
   Pencil,
   PhoneCall,
+  Phone,
   PhoneForwarded,
   PhoneOff,
   Play,
@@ -29,7 +32,7 @@ import {
 } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
-import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
+import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsResponse, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
 import {
   useAgents,
   useCampaign,
@@ -49,9 +52,10 @@ import {
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import PageHeader from "@/components/PageHeader";
-import { formatDays, formatWindow } from "@/components/campaigns/CampaignsTab";
-import DispatchPanel, { useToggleDispatch } from "@/components/campaigns/DispatchPanel";
-import CampaignCosts from "@/components/campaigns/CampaignCosts";
+import { formatDays, formatWindow } from "@/features/campaigns/components/CampaignsTab";
+import DispatchPanel, { useToggleDispatch } from "@/features/campaigns/components/DispatchPanel";
+import CampaignCosts from "@/features/campaigns/components/CampaignCosts";
+import StatCard from "@/features/dashboard/components/StatCard";
 import type { ClassificationCall, ClassificationCallsResponse } from "@/lib/callingAgentApi";
 
 
@@ -64,13 +68,9 @@ import {
   Drawer,
   EmptyState,
   ErrorState,
-  Loading,
   Pagination,
   SearchInput,
   Select,
-  Skeleton,
-  SkeletonRows,
-  StatTile,
   StatusBadge,
   Table,
   TableMessage,
@@ -82,15 +82,17 @@ import {
   usePagination,
   useTabParam,
 } from "@/components/ui";
+import { CallDetailsSkeleton, CampaignClassificationSkeleton, CampaignDetailSkeleton, ChartSkeleton, SkeletonBoundary, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
+import { CALL_COLUMNS } from "@/components/skeletons/table-columns";
 
 const OUTCOMES: CallOutcome[] = ["completed", "no_answer", "not_connected", "busy", "failed", "hung_up", "cancelled"];
-const CALL_HEAD = ["Lead", "Phone", "Status", "Talk time", "Plivo cost", "AI cost", "Total cost"];
+const CALL_HEAD = CALL_COLUMNS.map((column) => column.label);
 type SortKey = "talk" | "plivo" | "ai" | "total";
 const CLASSIFICATION_BAR_COLORS = [
-  "#279be8",
-  "#a43be0",
-  "#20b98b",
-  "#efa512",
+  "var(--classification-series-1)",
+  "var(--classification-series-2)",
+  "var(--classification-series-3)",
+  "var(--classification-series-4)",
 ] as const;
 // Must match the backend: an outcome can only be recorded while a call is live
 const ACTIVE = new Set(["dialing", "ringing", "in_progress"]);
@@ -98,6 +100,19 @@ const formatDateWithSeconds = (value: string | null | undefined) =>
   value
     ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
     : "—";
+const formatInitiationTime = (value: string | null | undefined) => {
+  if (!value) return "12:00:00 AM";
+  const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return "12:00:00 AM";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(date);
+};
 const getCampaignAiCost = (report: CampaignReport | undefined) =>
   (report?.calls ?? []).reduce((total, call) => total + call.sarvam_cost, 0);
 
@@ -112,7 +127,7 @@ const TABS = [
 export default function CampaignDetailsPage() {
   // useTabParam reads the URL, which needs a Suspense boundary in the app router
   return (
-    <Suspense fallback={<Loading label="Loading campaign" />}>
+    <Suspense fallback={<CampaignDetailSkeleton />}>
       <CampaignDetails />
     </Suspense>
   );
@@ -129,10 +144,12 @@ function CampaignDetails() {
   const exists = ids.data?.includes(id) ?? false;
   const campaignQuery = useCampaign(id, ids.isSuccess && exists);
   const report = useCampaignReport(id, campaignQuery.isSuccess);
- const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && (tab === "costs" || tab === "overview"));
+ const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && (tab === "costs" || tab === "overview" || tab === "calls"));
   const schedule = useScheduleCampaign();
   const campaign = campaignQuery.data;
   const dispatch = useToggleDispatch(id, campaign?.name ?? "Campaign");
+  const pageLoading = ids.isLoading || (exists && campaignQuery.isLoading);
+  const showPageSkeleton = useSkeletonVisibility(pageLoading);
 
   const remove = useMutation({
     mutationFn: () => deleteCampaign(id),
@@ -144,22 +161,13 @@ function CampaignDetails() {
     },
   });
 
-  const crumbs = [{ label: "Campaigns", href: "/campaigns" }, { label: campaign?.name ?? "Campaign" }];
-
-  if (ids.isLoading || (exists && campaignQuery.isLoading)) {
-    return (
-      <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title={<Skeleton className="h-8 w-64" />} />
-        <Loading label="Loading campaign" />
-      </div>
-    );
-  }
+  if (pageLoading || showPageSkeleton) return showPageSkeleton ? <CampaignDetailSkeleton /> : null;
 
   if (ids.isError || campaignQuery.isError) {
     const err = (ids.error ?? campaignQuery.error) as Error;
     return (
       <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title="Campaign" />
+        <PageHeader title="Campaign" />
         <ErrorState message={err.message} onRetry={() => (ids.isError ? ids.refetch() : campaignQuery.refetch())} />
       </div>
     );
@@ -168,11 +176,10 @@ function CampaignDetails() {
   if (!campaign) {
     return (
       <div className="space-y-6">
-        <PageHeader breadcrumbs={crumbs} title="Campaign not found" />
+        <PageHeader title="Campaign not found" />
         <EmptyState
           title="This campaign doesn't exist"
           text="It may have been deleted, or the link is wrong."
-          action={<Button onClick={() => router.push("/campaigns")}>Back to campaigns</Button>}
         />
       </div>
     );
@@ -198,15 +205,15 @@ function CampaignDetails() {
   // One main action, depending on where the campaign is in its life
   const primary =
     campaign.status === "draft" ? (
-      <Button onClick={handleSchedule} loading={schedule.isPending}>
+      <Button className="btn-blue-filled" onClick={handleSchedule} loading={schedule.isPending}>
         {!schedule.isPending && <CalendarClock size={16} aria-hidden />} Schedule calls
       </Button>
     ) : campaign.status === "scheduled" || campaign.status === "running" ? (
-      <Button variant="secondary" onClick={() => dispatch.toggle(false)} loading={dispatch.pending}>
+      <Button variant="secondary" className="btn-blue" onClick={() => dispatch.toggle(false)} loading={dispatch.pending}>
         {!dispatch.pending && <Pause size={16} aria-hidden />} Pause calls
       </Button>
     ) : campaign.status === "paused" ? (
-      <Button onClick={() => dispatch.toggle(true)} loading={dispatch.pending}>
+      <Button className="btn-blue-filled" onClick={() => dispatch.toggle(true)} loading={dispatch.pending}>
         {!dispatch.pending && <Play size={16} aria-hidden />} Resume calls
       </Button>
     ) : null;
@@ -216,7 +223,6 @@ function CampaignDetails() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumbs={crumbs}
         title={campaign.name}
         meta={<StatusBadge status={campaign.status} />}
         description={
@@ -233,10 +239,10 @@ function CampaignDetails() {
         }
         actions={
           <>
-            <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="text-loss">
+            <Button variant="secondary" onClick={handleDelete} loading={remove.isPending} className="btn-red">
               <Trash2 size={16} aria-hidden /> Delete
             </Button>
-            <Button variant="secondary" onClick={() => router.push(`/campaigns/${id}/edit`)}>
+            <Button variant="secondary" onClick={() => router.push(`/campaigns/${id}/edit`)} className="btn-blue">
               <Pencil size={16} aria-hidden /> Edit
             </Button>
             {primary}
@@ -257,6 +263,7 @@ function CampaignDetails() {
             <CallsCard
               campaignId={id}
               calls={report.data?.calls}
+              callRecords={costCalls.data?.calls}
               loading={report.isLoading}
               error={report.isError ? (report.error as Error).message : null}
               onRetry={() => report.refetch()}
@@ -287,6 +294,10 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
   const configured = useClassifications(agentId, campaignId);
   const agents = useAgents();
   const [selected, setSelected] = useState<{ id: string | null; name: string } | null>(null);
+  const loading = summary.status === "pending" || configured.isLoading || agents.isLoading;
+  const showLoading = useSkeletonVisibility(loading);
+
+  if (loading || showLoading) return showLoading ? <ChartSkeleton height="h-72" /> : null;
 
   if (selected) {
     return selected.id ? (
@@ -301,9 +312,6 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
     );
   }
 
-  if (summary.status === "pending" || configured.isLoading || agents.isLoading) {
-    return <Loading label="Loading classifications" />;
-  }
   if (summary.status === "error") return <ErrorState message={summary.error.message} onRetry={() => summary.refetch()} />;
 
   const classifications = summary.data.classifications ?? [];
@@ -490,6 +498,7 @@ function ClassificationCallsPanel({
   const [search, setSearch] = useState("");
   const [durationOrder, setDurationOrder] = useState<"normal" | "desc" | "asc">("normal");
   const [selectedCall, setSelectedCall] = useState<ClassificationCall | null>(null);
+  const showCallsSkeleton = useSkeletonVisibility(loading);
   const [lastOpenedCallId, setLastOpenedCallId] = useState<string | null>(null);
   const visibleCalls = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -508,27 +517,23 @@ function ClassificationCallsPanel({
 
   return (
     <div className="space-y-4">
-      <Button variant="secondary" onClick={onBack}>
+      <Button variant="secondary" className="btn-blue" onClick={onBack}>
         <ArrowLeft size={16} aria-hidden /> All classifications
       </Button>
 
       <Card title={title} description={`${total} call${total === 1 ? "" : "s"} in this classification.`}>
         {error ? (
           <ErrorState message={error} onRetry={onRetry} />
-        ) : loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-28 rounded-lg" />
-            ))}
-          </div>
+        ) : loading || showCallsSkeleton ? (
+          showCallsSkeleton ? <CampaignClassificationSkeleton /> : null
         ) : calls.length === 0 ? (
           <EmptyState title="No calls in this classification" text="No call records are available yet." />
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="blue-fields space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
               <SearchInput value={search} onChange={(value) => { setSearch(value); onPageChange(1); }} placeholder="Search name, number or status" className="w-full sm:w-72" />
             </div>
-            <Table head={[
+            <Table className="blue-table" head={[
               "Name",
               "Mobile number",
               "Status",
@@ -560,14 +565,14 @@ function ClassificationCallsPanel({
                   }}
                   className={`cursor-pointer align-middle outline-none transition-colors ${
                     lastOpenedCallId === (call.call_uuid ?? call.attempt_id ?? `${page}-${index}`)
-                      ? "bg-accent/10 shadow-[inset_3px_0_0_var(--accent)]"
-                      : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]"
+                      ? "bg-[var(--primary-tint)] shadow-[inset_3px_0_0_var(--primary-marker)] "
+                      : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--primary)] "
                   }`}
                 >
                   <td className="px-4 py-3 font-medium text-heading">
                     {call.name || "Unnamed caller"}
                     {lastOpenedCallId === (call.call_uuid ?? call.attempt_id ?? `${page}-${index}`) && (
-                      <span className="ml-2 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent-text">
+                      <span className="ml-2 inline-flex rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10px] font-medium text-link">
                         Last opened
                       </span>
                     )}
@@ -588,10 +593,10 @@ function ClassificationCallsPanel({
               <div className="flex items-center justify-between gap-3 border-t border-hairline pt-4 text-sm text-muted">
                 <span>Page {page} of {pageCount} · {total} calls</span>
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+                  <Button variant="secondary" size="sm" className="btn-blue" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
                     Previous
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
+                  <Button variant="secondary" size="sm" className="btn-blue" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
                     Next
                   </Button>
                 </div>
@@ -652,9 +657,8 @@ function ClassificationCallDrawer({
       />
 
       <section className="space-y-3">
-        {report.isLoading || details.isLoading ? (
-          <Loading label="Loading call details" />
-        ) : report.isError ? (
+        <SkeletonBoundary loading={report.isLoading || details.isLoading} skeleton={<CallDetailsSkeleton />}>
+        {report.isError ? (
           <ErrorState message={report.error.message} onRetry={() => report.refetch()} />
         ) : details.isError ? (
           <ErrorState message={details.error.message} onRetry={() => details.refetch()} />
@@ -693,6 +697,7 @@ function ClassificationCallDrawer({
             )}
           </>
         ) : null}
+        </SkeletonBoundary>
       </section>
 
     </Drawer>
@@ -731,18 +736,18 @@ function Overview({
   const c = (n: React.ReactNode) => (callsLoading || callsSummary === undefined ? "—" : n);
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Leads to call" value={v(s?.total_calls)} icon={<PhoneCall size={16} />} hint={s ? `${s.queued_calls} still queued` : undefined} />
-        <StatTile label="Calls made" value={c(callsSummary?.total_calls_made)} icon={<PhoneCall size={16} />} hint="Across all attempts" />
-        <StatTile label="Answered" value={v(s?.answered_calls)} icon={<CheckCircle2 size={16} />} hint={s ? `Completed or hung up${pct(s.answered_calls)}` : undefined} />
-        <StatTile label="Transferred" value={v(s?.transferred_calls)} icon={<PhoneForwarded size={16} />} hint={s ? `Handed to a transfer agent${pct(s.transferred_calls)}` : undefined} />
-        <StatTile label="Not reached" value={v(s?.failed_calls)} icon={<PhoneOff size={16} />} hint={s ? `Failed, busy or no answer${pct(s.failed_calls)}` : undefined} />
-        <StatTile label="Live right now" value={v(s?.live_calls)} icon={<Radio size={16} />} hint="Dialing, ringing or talking" />
-        <StatTile label="Talk time" value={v(formatDuration(s?.total_call_seconds))} icon={<Clock size={16} />} hint={s ? `${s.total_call_minutes} min across all attempts` : undefined} />
-        <StatTile label="Plivo billing" value={c(formatMoney(plivoBilling, 2))} icon={<Receipt size={16} />} hint="Telephony charges, as billed by Plivo" />
-<StatTile label="AI cost" value={c(formatMoney(aiCost, 2))} icon={<IndianRupee size={16} />} hint="STT, LLM, TTS and tax" />
-<StatTile label="Total campaign cost" value={c(totalCampaignCost === undefined ? "—" : formatMoney(totalCampaignCost, 2))} icon={<IndianRupee size={16} />} hint="AI cost + Plivo billing" />
-        <StatTile label="Running for" value={v(formatDuration(s?.total_run_seconds))} icon={<Timer size={16} />} hint="Since the campaign started" />
+      <div className="grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <StatCard title="Leads to call" value={v(s?.total_calls)} icon={<PhoneCall />} color="blue" loading={loading} subtext={s ? `${s.queued_calls} still queued` : undefined} />
+        <StatCard title="Calls made" value={c(callsSummary?.total_calls_made)} icon={<PhoneCall />} color="pink" loading={callsLoading || callsSummary === undefined} subtext="Across all attempts" />
+        <StatCard title="Answered" value={v(s?.answered_calls)} icon={<CheckCircle2 />} color="emerald" loading={loading} subtext={s ? `Completed or hung up${pct(s.answered_calls)}` : undefined} />
+        <StatCard title="Transferred" value={v(s?.transferred_calls)} icon={<PhoneForwarded />} color="purple" loading={loading} subtext={s ? `To transfer agent${pct(s.transferred_calls)}` : undefined} />
+        <StatCard title="Not reached" value={v(s?.failed_calls)} icon={<PhoneOff />} color="red" loading={loading} subtext={s ? `Failed or no answer${pct(s.failed_calls)}` : undefined} />
+        <StatCard title="Live right now" value={v(s?.live_calls)} icon={<Radio />} color="orange" loading={loading} subtext="Dialing or talking" />
+        <StatCard title="Talk time" value={v(formatDuration(s?.total_call_seconds))} icon={<Clock />} color="violet" loading={loading} subtext={s ? `${s.total_call_minutes} min total` : undefined} />
+        <StatCard title="Plivo billing" value={c(formatMoney(plivoBilling, 2))} icon={<Receipt />} color="amber" loading={loading || callsLoading} subtext="Billed by Plivo" />
+        <StatCard title="AI cost" value={c(formatMoney(aiCost, 2))} icon={<IndianRupee />} color="teal" loading={loading || callsLoading} subtext="STT, LLM, TTS and tax" />
+        <StatCard title="Total campaign cost" value={c(totalCampaignCost === undefined ? "—" : formatMoney(totalCampaignCost, 2))} icon={<IndianRupee />} color="sky" loading={loading || callsLoading} subtext="AI cost + Plivo billing" />
+        <StatCard title="Running for" value={v(formatDuration(s?.total_run_seconds))} icon={<Timer />} color="indigo" loading={loading} subtext="Since the campaign started" />
       </div>
 
       <DispatchPanel campaignId={campaignId} />
@@ -769,18 +774,21 @@ function Overview({
 function CallsCard({
   campaignId,
   calls,
+  callRecords,
   loading,
   error,
   onRetry,
 }: {
   campaignId: string;
   calls: CampaignCallSummary[] | undefined;
+  callRecords: CampaignCallsResponse["calls"] | undefined;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [callerNumberFilter, setCallerNumberFilter] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const router = useRouter();
 const pathname = usePathname();
@@ -805,13 +813,47 @@ const closeCall = () => {
 };
 
   const list = useMemo(() => calls ?? [], [calls]);
+  const callRecordsByPhone = useMemo(() => {
+    const records = new Map<string, string>();
+    for (const record of callRecords ?? []) {
+      const number = record.caller_number?.trim();
+      const phone = record.phone_e164?.replace(/\D/g, "");
+      if (number && phone) records.set(phone, number);
+    }
+    return records;
+  }, [callRecords]);
+  const initiationTimesByPhone = useMemo(() => {
+    const records = new Map<string, string>();
+    for (const record of callRecords ?? []) {
+      const phone = record.phone_e164?.replace(/\D/g, "");
+      const initiationTime = [...(record.attempt_history ?? [])]
+        .sort((a, b) => b.attempt_no - a.attempt_no)
+        .map((attempt) => attempt.cdr?.initiation_time)
+        .find((value): value is string => typeof value === "string" && value.length > 0);
+      if (phone && initiationTime) records.set(phone, initiationTime);
+    }
+    return records;
+  }, [callRecords]);
+  const callerNumberOf = (call: CampaignCallSummary) => {
+    const reportNumber = call.caller_number ??
+      [...(call.attempts ?? [])].reverse().find((attempt) => attempt.caller_number)?.caller_number;
+    return reportNumber ?? callRecordsByPhone.get(call.phone.replace(/\D/g, "")) ?? null;
+  };
+  const initiationTimeOf = (call: CampaignCallSummary) =>
+    initiationTimesByPhone.get(call.phone.replace(/\D/g, "")) ?? null;
   const statuses = [...new Set(list.map((c) => c.status))].sort();
+  const plivoNumbers = [...new Set(
+    [...list.map(callerNumberOf), ...(callRecords ?? []).map((record) => record.caller_number)]
+      .filter((number): number is string => Boolean(number?.trim()))
+      .map((number) => number.trim()),
+  )].sort();
   const statusFilter = filter.startsWith("status:") ? filter.slice("status:".length) : null;
   const term = search.trim().toLowerCase();
   const filtered = list.filter(
     (c) =>
       (!statusFilter || c.status === statusFilter) &&
       (filter !== "messages:sent" || c.has_whatsapp_messages) &&
+      (callerNumberFilter === "all" || callerNumberOf(c) === callerNumberFilter) &&
       (!term || `${c.lead_name ?? ""} ${c.phone}`.toLowerCase().includes(term)),
   );
   const activeSort = sort;
@@ -842,6 +884,7 @@ const closeCall = () => {
   };
   const head = [
     ...CALL_HEAD.slice(0, 3),
+    CALL_HEAD[3],
     ...([
       ["talk", "Talk time"],
       ["plivo", "Plivo cost"],
@@ -864,6 +907,7 @@ const closeCall = () => {
     <>
       <Card
         flush
+        className="blue-fields"
         title="Calls"
         description="One row per lead. Open a call to see every attempt, its recording and the transcript. The last opened call stays highlighted after you close it."
         actions={
@@ -884,6 +928,22 @@ const closeCall = () => {
                 ))}
                 <option value="messages:sent">Messages sent</option>
               </Select>
+              {plivoNumbers.length > 0 && (
+                <Select
+                  aria-label="Filter calls by Plivo number"
+                  value={callerNumberFilter}
+                  onChange={(e) => {
+                    setCallerNumberFilter(e.target.value);
+                    pagination.setPage(1);
+                  }}
+                  className="w-full sm:w-52"
+                >
+                  <option value="all">All Plivo numbers</option>
+                  {plivoNumbers.map((number) => (
+                    <option key={number} value={number}>{number}</option>
+                  ))}
+                </Select>
+              )}
             </>
           )
         }
@@ -902,16 +962,15 @@ const closeCall = () => {
           </div>
         ) : (
           <div className="space-y-3 pb-3">
-            <Table bare head={head} label="Campaign calls">
-              {loading ? (
-                <SkeletonRows cols={CALL_HEAD.length} />
-              ) : filtered.length === 0 ? (
+            <Table bare className="blue-table" head={head} columns={CALL_COLUMNS} label="Campaign calls" loading={loading} skeleton={<TableSkeleton columns={CALL_COLUMNS} rows={6} />}>
+              {filtered.length === 0 ? (
                 <TableMessage cols={CALL_HEAD.length}>No calls match your filters.</TableMessage>
               ) : (
                 pagination.pageItems.map((call) => (
                   <CallRow
                     key={call.call_id}
                     call={call}
+                    initiationTime={initiationTimeOf(call)}
                     selected={call.call_id === selectedCallId}
                     onOpen={() => {
                       setSelectedCallId(call.call_id);
@@ -965,10 +1024,12 @@ function SortHead({
 
 function CallRow({
   call,
+  initiationTime,
   selected,
   onOpen,
 }: {
   call: CampaignCallSummary;
+  initiationTime: string | null;
   selected: boolean;
   onOpen: () => void;
 }) {
@@ -980,14 +1041,14 @@ function CallRow({
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
       className={`cursor-pointer align-middle outline-none transition-colors ${
         selected
-          ? "bg-accent/10 shadow-[inset_3px_0_0_var(--accent)]"
-          : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--accent)]"
+          ? "bg-[var(--primary-tint)] shadow-[inset_3px_0_0_var(--primary-marker)] "
+          : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--primary)] "
       }`}
     >
       <td className="px-4 py-3 font-medium text-heading">
         {call.lead_name || <span className="text-faint">Unnamed</span>}
         {selected && (
-          <span className="ml-2 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent-text">
+          <span className="ml-2 inline-flex rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10px] font-medium text-link">
             Last opened
           </span>
         )}
@@ -1000,6 +1061,9 @@ function CallRow({
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone}</td>
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
+      </td>
+      <td className="tnum whitespace-nowrap px-4 py-3 text-body">
+        {formatInitiationTime(initiationTime)}
       </td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(call.total_talk_seconds)}</td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 2)}</td>
@@ -1043,9 +1107,8 @@ function CallDrawer({
 
   return (
     <Drawer wide title="Call details" onClose={onClose}>
-      {details.isLoading ? (
-        <Loading label="Loading call details" />
-      ) : details.isError ? (
+      <SkeletonBoundary loading={details.isLoading} skeleton={<CallDetailsSkeleton />}>
+      {details.isError ? (
         <ErrorState message={details.error.message} onRetry={() => details.refetch()} />
       ) : callDetail ? (
         <>
@@ -1073,7 +1136,7 @@ function CallDrawer({
                     </option>
                   ))}
                 </Select>
-                <Button onClick={save} disabled={!outcome} loading={postOutcome.isPending}>
+                <Button className="btn-blue-filled" onClick={save} disabled={!outcome} loading={postOutcome.isPending}>
                   Save outcome
                 </Button>
               </div>
@@ -1091,6 +1154,7 @@ function CallDrawer({
 
         </>
       ) : null}
+      </SkeletonBoundary>
     </Drawer>
   );
 }
@@ -1209,7 +1273,7 @@ function AttemptCard({
                 type="button"
                 aria-expanded={showTranscript}
                 onClick={() => setShowTranscript((v) => !v)}
-                className="text-sm font-medium text-accent-text underline-offset-2 hover:underline"
+                className="text-sm font-medium text-link underline-offset-2 hover:underline"
               >
                 {showTranscript ? "Hide" : "Show"} transcript ({transcript.length} lines)
               </button>
@@ -1222,7 +1286,7 @@ function AttemptCard({
                         <div
                           className={clsx(
                             "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                            agent ? "bg-surface text-body" : "bg-accent-bg text-heading",
+                            agent ? "bg-surface text-body" : "bg-[var(--primary-tint)] text-link",
                           )}
                         >
                           <span className="mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-muted">
@@ -1258,32 +1322,39 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <Card title="Who and from where" className="lg:col-span-2">
-        <DetailList
-          items={[
-            {
-              label: "Calling agent",
-              value: <ChipList items={[{ key: campaign.agent_id, label: agentName ?? "Unknown agent", href: `/calling-agent/agents/${campaign.agent_id}` }]} />,
-            },
-            {
-              label: "Call transfer agents",
-              value: (
-                <ChipList
-                  empty="Every active transfer agent"
-                  items={campaign.representative_ids.map((r) => ({ key: r, label: nameOf(representatives.data, r), href: "/calling-agent?tab=representatives" }))}
-                />
-              ),
-            },
-            {
-              label: "Plivo pools",
-              wide: true,
-              value: <ChipList items={campaign.plivo_pool_ids.map((p) => ({ key: p, label: nameOf(plivoPools.data, p), href: `/number-pool/pools/${p}` }))} />,
-            },
-            ...(campaign.plivo_numbers.length
-              ? [{ label: "Caller numbers", wide: true, value: <ChipList items={campaign.plivo_numbers.map((n) => ({ key: n, label: <span className="tnum">{n}</span> }))} /> }]
-              : []),
-          ]}
-        />
+      <Card flush title="Who and from where" className="h-full lg:col-span-2">
+        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+          <InfoTile
+            title="Calling agent"
+            icon={<Bot />}
+            color="blue"
+            items={[{ key: campaign.agent_id, name: agentName ?? "Unknown agent", href: `/calling-agent/agents/${campaign.agent_id}` }]}
+          />
+          <InfoTile
+            title="Call transfer agents"
+            icon={<PhoneForwarded />}
+            color="purple"
+            items={campaign.representative_ids.map((id) => ({
+              key: id,
+              name: nameOf(representatives.data, id),
+              href: "/calling-agent?tab=representatives",
+            }))}
+          />
+          <div className="md:col-span-2">
+            <InfoTile
+              title="Plivo pools"
+              icon={<Phone />}
+              color="amber"
+              items={campaign.plivo_pool_ids.map((id) => ({
+                key: id,
+                name: nameOf(plivoPools.data, id),
+                href: `/number-pool/pools/${id}`,
+              }))}
+              extraItems={campaign.plivo_numbers.map((number) => ({ key: number, name: number }))}
+              extraLabel="Caller numbers"
+            />
+          </div>
+        </div>
       </Card>
 
       <Card title="Timing & limits">
@@ -1309,5 +1380,81 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
         />
       </Card>
     </div>
+  );
+}
+
+const INFO_TILE_COLORS = {
+  blue: {
+    iconBox: "bg-blue-100 text-blue-700 dark:bg-primary-soft dark:text-primary-soft-text",
+    avatar: "bg-blue-100 text-blue-700 dark:bg-primary-soft dark:text-primary-soft-text",
+  },
+  purple: {
+    iconBox: "bg-purple-100 text-purple-700 dark:bg-primary-soft dark:text-primary-soft-text",
+    avatar: "bg-purple-100 text-purple-700 dark:bg-primary-soft dark:text-primary-soft-text",
+  },
+  amber: {
+    iconBox: "bg-amber-100 text-amber-700 dark:bg-primary-soft dark:text-primary-soft-text",
+    avatar: "bg-amber-100 text-amber-700 dark:bg-primary-soft dark:text-primary-soft-text",
+  },
+} as const;
+
+type InfoTileColor = keyof typeof INFO_TILE_COLORS;
+type InfoTileItem = { key: string; name: string; href?: string };
+
+function InfoTile({
+  title,
+  icon,
+  color,
+  items,
+  extraItems = [],
+  extraLabel,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  color: InfoTileColor;
+  items: InfoTileItem[];
+  extraItems?: InfoTileItem[];
+  extraLabel?: string;
+}) {
+  const colors = INFO_TILE_COLORS[color];
+  const renderItems = (values: InfoTileItem[]) => values.map((item) => {
+    const content = (
+      <>
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold uppercase ${colors.avatar}`} aria-hidden="true">
+          {item.name.charAt(0) || "?"}
+        </span>
+        <span className="min-w-0 truncate">{item.name}</span>
+      </>
+    );
+    const className = "inline-flex max-w-full items-center gap-2 rounded-lg border border-hairline bg-surface px-3 py-2 text-sm font-medium text-heading";
+    return item.href ? (
+      <Link key={item.key} href={item.href} className={`${className} hover:border-[var(--link-color)] hover:text-link`}>
+        {content}
+      </Link>
+    ) : (
+      <span key={item.key} className={className}>{content}</span>
+    );
+  });
+
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-hairline bg-raised/30 p-4">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${colors.iconBox}`} aria-hidden="true">
+          {icon}
+        </span>
+        <h3 className="text-xs font-medium uppercase tracking-wide text-muted">{title}</h3>
+      </div>
+      {items.length ? (
+        <div className="flex flex-wrap gap-2">{renderItems(items)}</div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-hairline-strong px-3 py-2 text-sm text-muted">None assigned</div>
+      )}
+      {extraItems.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium uppercase tracking-wide text-muted">{extraLabel}</h4>
+          <div className="flex flex-wrap gap-2">{renderItems(extraItems)}</div>
+        </div>
+      )}
+    </section>
   );
 }

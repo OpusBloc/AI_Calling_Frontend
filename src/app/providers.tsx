@@ -15,6 +15,8 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             retry: false,
+            staleTime: 30_000,
+            gcTime: 5 * 60_000,
             refetchOnWindowFocus: false,
           },
         },

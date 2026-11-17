@@ -1,4 +1,5 @@
 import { AuthCard } from "@/components/auth/AuthCard";
+import EmailAuthForm from "@/components/auth/EmailAuthForm";
 import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 
 export default function SignupPage() {
@@ -8,6 +9,7 @@ export default function SignupPage() {
       subtitle="Sign up with your Google account to access the admin dashboard."
       footer={{ text: "Already have an account?", linkLabel: "Log in", href: "/auth/login" }}
     >
+      <EmailAuthForm mode="signup" />
       <GoogleAuthButton mode="signup" />
     </AuthCard>
   );

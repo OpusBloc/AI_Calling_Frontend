@@ -1,6 +1,6 @@
 "use client";
 
-import CampaignForm from "@/components/campaigns/CampaignForm";
+import CampaignForm from "@/features/campaigns/components/CampaignForm";
 
 export default function NewCampaignPage() {
   return <CampaignForm campaign={null} />;

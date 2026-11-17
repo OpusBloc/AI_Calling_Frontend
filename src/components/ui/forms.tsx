@@ -2,14 +2,13 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { CircleAlert, FileSpreadsheet, UploadCloud, X } from "lucide-react";
 
 import { Button, IconButton } from "./controls";
-import { EmptyState, ErrorBanner, ErrorState, Loading, Skeleton } from "./feedback";
-import { PageTopBar } from "./navigation";
+import { EmptyState, ErrorBanner, ErrorState } from "./feedback";
 import { errorMessage, humanize } from "./utils";
+import { FormSkeleton, SkeletonBoundary } from "@/components/skeletons";
 
 /**
  * What an edit page shows while its record loads, fails, or turns out not to exist
@@ -17,8 +16,6 @@ import { errorMessage, humanize } from "./utils";
 export function EditLoadState({
   query,
   noun,
-  breadcrumbs,
-  backHref,
 }: {
   query: {
     isLoading: boolean;
@@ -27,33 +24,25 @@ export function EditLoadState({
     refetch: () => unknown;
   };
   noun: string;
-  breadcrumbs: Array<{ label: string; href?: string }>;
-  backHref: string;
 }) {
-  const router = useRouter();
   const notFound =
     query.isError && /not found/i.test(errorMessage(query.error));
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <PageTopBar breadcrumbs={breadcrumbs} />
         {query.isLoading ? (
-          <Skeleton className="h-8 w-64" />
+          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">Edit {noun}</h1>
         ) : (
           <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
             {notFound ? `${humanize(noun)} not found` : `Edit ${noun}`}
           </h1>
         )}
       </div>
-      {query.isLoading ? (
-        <Loading label={`Loading ${noun}`} />
-      ) : notFound || !query.isError ? (
+      <SkeletonBoundary loading={query.isLoading} skeleton={<FormSkeleton sections={2} />}>
+      {notFound || !query.isError ? (
         <EmptyState
           title={`This ${noun} doesn't exist`}
           text="It may have been deleted, or the link is wrong."
-          action={
-            <Button onClick={() => router.push(backHref)}>Go back</Button>
-          }
         />
       ) : (
         <ErrorState
@@ -61,6 +50,7 @@ export function EditLoadState({
           onRetry={() => query.refetch()}
         />
       )}
+      </SkeletonBoundary>
     </div>
   );
 }
@@ -70,7 +60,6 @@ export function EditLoadState({
  * bar so Save is always in reach on long forms.
  */
 export function FormPage({
-  breadcrumbs,
   title,
   description,
   children,
@@ -79,7 +68,6 @@ export function FormPage({
   flushFooterToBottom = false,
   error,
 }: {
-  breadcrumbs: Array<{ label: string; href?: string }>;
   title: string;
   description?: string;
   children: ReactNode;
@@ -91,10 +79,9 @@ export function FormPage({
 }) {
   return (
     <div className={clsx("mx-auto max-w-5xl", flushFooterToBottom && "-mb-10")}>
-      <PageTopBar breadcrumbs={breadcrumbs} />
       <div
         className={clsx(
-          "flex flex-wrap items-end gap-4 border-b border-hairline pb-6",
+          "flex flex-wrap items-end gap-4  pb-6",
           showHeaderActions && "justify-between",
         )}
       >

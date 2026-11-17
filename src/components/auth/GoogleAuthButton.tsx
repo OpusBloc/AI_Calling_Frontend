@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
-import { API_BASE } from "@/lib/api";
 import { setToken, setUser } from "@/lib/auth";
+import { loginWithGoogle, signupWithGoogle } from "@/lib/authApi";
 
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
@@ -49,7 +49,7 @@ function loadGsiScript(): Promise<void> {
 
 /**
  * Renders Google's sign-in button and exchanges the Google ID token for the
- * backend's JWT via POST /api/auth/google/{signin|signup}.
+ * backend's JWT via POST /api/auth/users/google/{login|signup}.
  */
 export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }) {
   const router = useRouter();
@@ -68,15 +68,14 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
       setError(null);
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/auth/google/${mode}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_token: credential }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-          throw new Error(data?.detail ?? `Request failed (${res.status})`);
-        }
+        const data = mode === "signup"
+          ? await signupWithGoogle(credential)
+          : await loginWithGoogle(credential);
+
+      try {
+      sessionStorage.setItem("play_login_intro", "1");
+    } catch {}
+
         setUser(data.user);
         setToken(data.access_token);
         showSuccessNotification(`Signed in as ${data.user?.email ?? "your Google account"}.`, {
@@ -101,7 +100,7 @@ export default function GoogleAuthButton({ mode }: { mode: "signin" | "signup" }
           size: "large",
           shape: "rectangular",
           text: mode === "signup" ? "signup_with" : "signin_with",
-          width: 320,
+          width: 280,
         });
       })
       .catch((err: Error) => setError(err.message));

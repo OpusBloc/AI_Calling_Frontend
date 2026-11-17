@@ -1,11 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { ArrowLeft, ChevronRight } from "lucide-react";
 
 /** Small rounded label for IDs, numbers and names inside detail lists */
 export function Chip({
@@ -51,94 +50,6 @@ export function ChipList({
   );
 }
 
-/* Counts route changes inside the app, so Back knows whether history has a page of ours */
-let inAppNavigations = 0;
-export const markInAppNavigation = () => {
-  inAppNavigations += 1;
-};
-
-/**
- * Goes to the previous page; on a page opened directly, goes to `fallback` instead
- */
-export function BackButton({ fallback }: { fallback?: string | null }) {
-  const router = useRouter();
-  const [canGoBack, setCanGoBack] = useState(false);
-  useEffect(() => setCanGoBack(inAppNavigations > 0), []);
-
-  if (!canGoBack && !fallback) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => (canGoBack ? router.back() : router.push(fallback!))}
-      className="-ml-2 inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted transition-colors hover:bg-surface-hover hover:text-heading"
-    >
-      <ArrowLeft size={16} aria-hidden /> Back
-    </button>
-  );
-}
-
-/**
- * Back button plus breadcrumbs — the line above every page title.
- * Back falls back to the closest linked breadcrumb, else to `backHref`.
- */
-export function PageTopBar({
-  breadcrumbs,
-  backHref,
-}: {
-  breadcrumbs?: Array<{ label: string; href?: string }>;
-  backHref?: string | null;
-}) {
-  const parent = breadcrumbs?.filter((b) => b.href).at(-1)?.href;
-  const fallback =
-    backHref === null ? null : (backHref ?? parent ?? "/dashboard");
-  return (
-    <div className="mb-3 flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">
-      <BackButton fallback={fallback} />
-      {breadcrumbs && (
-        <>
-          <span aria-hidden className="h-4 w-px bg-hairline-strong" />
-          <Breadcrumbs items={breadcrumbs} />
-        </>
-      )}
-    </div>
-  );
-}
-
-export function Breadcrumbs({
-  items,
-}: {
-  items: Array<{ label: string; href?: string }>;
-}) {
-  return (
-    <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-1 text-sm text-muted">
-        {items.map((item, i) => (
-          <li key={`${item.label}-${i}`} className="flex items-center gap-1">
-            {i > 0 && (
-              <ChevronRight size={14} aria-hidden className="text-faint" />
-            )}
-            {item.href ? (
-              <Link
-                href={item.href}
-                className="rounded px-0.5 hover:text-heading hover:underline underline-offset-2"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span
-                aria-current="page"
-                className="max-w-[16rem] truncate font-medium text-heading"
-              >
-                {item.label}
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
-}
-
 /**
  * Active tab kept in `?tab=` so it survives reloads and can be linked to
  */
@@ -160,6 +71,8 @@ export function useTabParam<T extends string>(
   return [active, setActive] as const;
 }
 
+/* Tabs */
+
 export function Tabs<T extends string>({
   tabs,
   active,
@@ -178,10 +91,13 @@ export function Tabs<T extends string>({
 }) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  // Arrow keys move between tabs, as the ARIA tabs pattern expects
   const onKeyDown = (e: React.KeyboardEvent, index: number) => {
-    const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const delta =
+      e.key === "ArrowRight" ? 1 :
+      e.key === "ArrowLeft" ? -1 : 0;
+
     if (!delta) return;
+
     e.preventDefault();
     const next = tabs[(index + delta + tabs.length) % tabs.length];
     onChange(next.id);
@@ -192,10 +108,11 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline"
+      className="no-scrollbar flex gap-2 overflow-x-auto border-b border-[var(--tabs-divider)]"
     >
       {tabs.map(({ id, label: text, icon: Icon, count }, i) => {
         const selected = id === active;
+
         return (
           <button
             key={id}
@@ -209,14 +126,15 @@ export function Tabs<T extends string>({
             onClick={() => onChange(id)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={clsx(
-              "-mb-px flex h-11 items-center gap-2 whitespace-nowrap border-b-2 px-4 text-sm font-medium transition-colors",
+              "relative -mb-px flex h-10 items-center gap-2 whitespace-nowrap px-4 text-sm font-medium transition-colors  ",
               selected
-                ? "border-accent text-accent-text"
-                : "border-transparent text-muted hover:text-heading",
+                ? "tab-active text-link shadow-[inset_0_-2px_0_0] shadow-[var(--link-color)]"
+                : "border-b-2 border-transparent text-[var(--tabs-inactive)]  hover:text-heading"
             )}
           >
             {Icon && <Icon size={16} />}
             {text}
+
             {count !== undefined && (
               <span className="tnum rounded-full bg-chip px-1.5 text-[11px] text-muted">
                 {count}

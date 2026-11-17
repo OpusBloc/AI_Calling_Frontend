@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 
 import { useCampaign } from "@/hooks/hooks";
-import CampaignForm from "@/components/campaigns/CampaignForm";
+import CampaignForm from "@/features/campaigns/components/CampaignForm";
 import { EditLoadState } from "@/components/ui";
 
 export default function EditCampaignPage() {
@@ -14,8 +14,6 @@ export default function EditCampaignPage() {
       <EditLoadState
         query={campaign}
         noun="campaign"
-        breadcrumbs={[{ label: "Campaigns", href: "/campaigns" }, { label: "Edit" }]}
-        backHref="/campaigns"
       />
     );
   }

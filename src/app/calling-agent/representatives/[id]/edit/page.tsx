@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { getRepresentative } from "@/lib/callingAgentApi";
-import RepresentativeForm from "@/components/calling-agent/RepresentativeForm";
+import RepresentativeForm from "@/features/calling-agent/components/RepresentativeForm";
 import { EditLoadState } from "@/components/ui";
 
 export default function EditRepresentativePage() {
@@ -15,12 +15,6 @@ export default function EditRepresentativePage() {
       <EditLoadState
         query={rep}
         noun="transfer agent"
-        breadcrumbs={[
-          { label: "Calling Agent", href: "/calling-agent" },
-          { label: "Call Transfer", href: "/calling-agent?tab=representatives" },
-          { label: "Edit" },
-        ]}
-        backHref="/calling-agent?tab=representatives"
       />
     );
   }
