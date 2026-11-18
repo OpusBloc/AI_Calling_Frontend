@@ -57,6 +57,15 @@ const detailMessage = (detail: unknown, status: number): string => {
 // Requests go straight to the backend (it must allow this origin via CORS)
 export const API_BASE = `${(process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/+$/, "")}/api`;
 
+export type UserFeatureAccess = {
+  user_id?: string;
+  role?: string;
+  features?: Record<string, Record<string, unknown> | undefined>;
+};
+
+export const getMyFeatureAccess = () =>
+  api<UserFeatureAccess>("/auth/me/features");
+
 /**
  * Call the backend with the saved JWT
  */
@@ -66,10 +75,12 @@ export async function api<T>(
     method = "GET",
     body,
     responseType = "json",
+    notifyError = true,
   }: {
     method?: string;
     body?: unknown;
     responseType?: "json" | "blob" | "response";
+    notifyError?: boolean;
   } = {},
 ): Promise<T> {
   const token = getToken();
@@ -107,7 +118,7 @@ export async function api<T>(
     const data = await res.json().catch(() => null);
     // Every failed endpoint call surfaces as a notification; callers still get the error
     const error = new ApiError(detailMessage(data?.detail, res.status), res.status, data?.detail);
-    showErrorNotification(error.message, { title: "Request failed" });
+    if (notifyError) showErrorNotification(error.message, { title: "Request failed" });
     throw error;
   }
   if (responseType === "response") return res as T;

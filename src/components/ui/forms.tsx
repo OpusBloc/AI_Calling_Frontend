@@ -66,6 +66,7 @@ export function FormPage({
   footer,
   showHeaderActions = true,
   flushFooterToBottom = false,
+  fullWidth = false,
   error,
 }: {
   title: string;
@@ -74,11 +75,12 @@ export function FormPage({
   footer: ReactNode;
   showHeaderActions?: boolean;
   flushFooterToBottom?: boolean;
+  fullWidth?: boolean;
   /** Form-level message shown above the sections, e.g. "fix the highlighted fields" */
   error?: string | null;
 }) {
   return (
-    <div className={clsx("mx-auto max-w-5xl", flushFooterToBottom && "-mb-10")}>
+    <div className={clsx("mx-auto", fullWidth ? "w-full" : "max-w-5xl", flushFooterToBottom && "-mb-10")}>
       <div
         className={clsx(
           "flex flex-wrap items-end gap-4  pb-6",

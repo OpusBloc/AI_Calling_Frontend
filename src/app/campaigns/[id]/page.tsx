@@ -1337,7 +1337,7 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
             items={campaign.representative_ids.map((id) => ({
               key: id,
               name: nameOf(representatives.data, id),
-              href: "/calling-agent?tab=representatives",
+              href: "/?tab=calling-agent&callingTab=representatives",
             }))}
           />
           <div className="md:col-span-2">

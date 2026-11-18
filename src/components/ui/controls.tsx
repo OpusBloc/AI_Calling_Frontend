@@ -272,11 +272,13 @@ export function Toggle({
   onChange,
   label,
   disabled,
+  className,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
   label: string;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <button
@@ -289,6 +291,7 @@ export function Toggle({
       className={clsx(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-accent" : "bg-hairline-strong",
+        className,
       )}
     >
       <span

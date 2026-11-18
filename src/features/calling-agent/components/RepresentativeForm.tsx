@@ -9,7 +9,6 @@ import {
   Button,
   Field,
   FormPage,
-  FormSection,
   PhoneInput,
   TextInput,
   Toggle,
@@ -26,7 +25,7 @@ const EMPTY: RepresentativeInput = { name: "", phone_e164: "", active: true };
  */
 export default function RepresentativeForm({ rep }: { rep: Representative | null }) {
   const router = useRouter();
-  const backHref = "/calling-agent?tab=representatives";
+  const backHref = "/?tab=calling-agent&callingTab=representatives";
   const [form, setForm] = useState<RepresentativeInput>(rep ?? EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,17 +58,20 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
       description="When a lead is interested, the call rings active transfer agents in turn."
       footer={
         <>
-          <Button variant="secondary" onClick={() => router.replace(backHref)}>
+          <Button variant="secondary" className="btn-blue" onClick={() => router.replace(backHref)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!complete} loading={saving}>
+          <Button className="btn-blue-filled" onClick={handleSave} disabled={!complete} loading={saving}>
             {rep ? "Save changes" : "Add transfer agent"}
           </Button>
         </>
       }
       error={error}
     >
-      <FormSection title="Contact" description="Who takes the call, and the number their phone rings on.">
+      <section className="space-y-3 py-6">
+        <h2 className="text-base font-semibold text-heading">Contact</h2>
+        <div className="space-y-5 rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name" required>
           <TextInput
             value={form.name}
@@ -86,16 +88,21 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
         >
           <PhoneInput value={local} onChange={setLocal} aria-invalid={!!local && !phoneValid} />
         </Field>
-      </FormSection>
-      <FormSection title="Availability" description="Turn this off while someone is away; they keep their details.">
+        </div>
+        </div>
+      </section>
+      <section className="space-y-3 py-6">
+        <h2 className="text-base font-semibold text-heading">Availability</h2>
+        <div className="space-y-5 rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-heading">Active</p>
             <p className="text-xs text-muted">Only active transfer agents receive transferred calls.</p>
           </div>
-          <Toggle label="Active" checked={form.active} onChange={(active) => setForm((f) => ({ ...f, active }))} />
+          <Toggle className="[&[aria-checked=true]]:!bg-info" label="Active" checked={form.active} onChange={(active) => setForm((f) => ({ ...f, active }))} />
         </div>
-      </FormSection>
+        </div>
+      </section>
     </FormPage>
   );
 }

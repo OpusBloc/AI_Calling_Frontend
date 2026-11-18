@@ -8,6 +8,8 @@ import AgentsTab from "@/features/calling-agent/components/AgentsTab";
 import RepresentativesTab from "@/features/calling-agent/components/RepresentativesTab";
 import DrawerLoadingPlaceholder from "@/features/calling-agent/components/DrawerLoadingPlaceholder";
 import { Tabs, useTabParam } from "@/components/ui";
+import { CallingAgentSkeleton } from "@/components/skeletons";
+import FeatureAccessGate from "@/components/auth/FeatureAccessGate";
 
 const TestCallDrawer = dynamic(() => import("@/features/calling-agent/components/TestCallDrawer"), {
   loading: () => <DrawerLoadingPlaceholder />,
@@ -20,13 +22,19 @@ const TABS = [
 
 
 function CallingAgentTabs() {
-  const [active, setActive] = useTabParam(TABS.map((t) => t.id));
+  const [active, setActive] = useTabParam(TABS.map((t) => t.id), "agents", "callingTab");
   const ActiveTab = TABS.find((t) => t.id === active)!.component;
   return (
     <>
       <Tabs label="Calling agent sections" tabs={TABS} active={active} onChange={setActive} />
       <div role="tabpanel" className="pt-6">
-        <ActiveTab />
+        {active === "representatives" ? (
+          <FeatureAccessGate feature="call_transfer">
+            <ActiveTab />
+          </FeatureAccessGate>
+        ) : (
+          <ActiveTab />
+        )}
       </div>
     </>
   );
@@ -39,7 +47,7 @@ export default function CallingAgentPage() {
     <div className="space-y-6">
       {testing && <TestCallDrawer onClose={() => setTesting(false)} />}
       <div>
-        <Suspense>
+        <Suspense fallback={<CallingAgentSkeleton />}>
           <CallingAgentTabs />
         </Suspense>
       </div>

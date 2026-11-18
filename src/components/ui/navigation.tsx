@@ -56,17 +56,22 @@ export function ChipList({
 export function useTabParam<T extends string>(
   ids: readonly T[],
   fallback: T = ids[0],
+  paramName = "tab",
 ) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const raw = searchParams.get("tab");
+  const raw = searchParams.get(paramName);
   const active = (ids as readonly string[]).includes(raw ?? "")
     ? (raw as T)
     : fallback;
   const setActive = useCallback(
-    (id: T) => router.replace(`${pathname}?tab=${id}`, { scroll: false }),
-    [router, pathname],
+    (id: T) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set(paramName, id);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams, paramName],
   );
   return [active, setActive] as const;
 }

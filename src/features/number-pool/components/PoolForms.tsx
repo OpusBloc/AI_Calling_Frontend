@@ -63,6 +63,8 @@ export function PlivoPoolForm({ pool }: { pool: PlivoPool | null }) {
     <FormPage
       title={pool ? `Edit ${pool.name}` : "New Plivo pool"}
       description="A set of Plivo numbers campaigns can place calls from."
+      showHeaderActions={!pool}
+      fullWidth={!!pool}
       footer={
         <>
           <Button variant="secondary" className="btn-blue" onClick={() => router.replace(backHref)}>
@@ -74,29 +76,56 @@ export function PlivoPoolForm({ pool }: { pool: PlivoPool | null }) {
         </>
       }
     >
-      <div className="blue-fields space-y-6">
-      <FormSection title="Details" description="Campaigns pick pools by name, so make it easy to recognise.">
-        <Field label="Pool name" required error={nameError}>
-          <TextInput value={name} maxLength={255} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mumbai numbers" aria-invalid={!!nameError} />
-        </Field>
-        <StatusSelect value={status} onChange={setStatus} />
-      </FormSection>
-      <FormSection
-        title="Numbers"
-        description="Calls from campaigns using this pool show one of these numbers as caller ID. A number can only be in one pool."
-      >
-        <MultiSelect
-          label="Phone numbers"
-          required
-          loading={numbers.isLoading}
-          options={choices.map((n) => ({ id: n.phone_e164, label: n.phone_e164, detail: n.alias ?? n.region ?? undefined }))}
-          selected={selected}
-          onChange={setSelected}
-          error={numbersError}
-          hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed — use “Sync numbers” if one is missing.`}
-        />
-      </FormSection>
-      </div>
+      {pool ? (
+        <div className="blue-fields grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
+          <section className="h-full rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">
+            <h2 className="mb-5 text-base font-semibold text-heading">Details</h2>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Pool name" required error={nameError}>
+                <TextInput value={name} maxLength={255} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mumbai numbers" aria-invalid={!!nameError} />
+              </Field>
+              <StatusSelect value={status} onChange={setStatus} />
+            </div>
+          </section>
+          <section className="h-full rounded-lg border border-hairline bg-surface p-5 shadow-sm sm:p-6">
+            <h2 className="mb-5 text-base font-semibold text-heading">Numbers</h2>
+            <MultiSelect
+              label="Phone numbers"
+              required
+              loading={numbers.isLoading}
+              options={choices.map((n) => ({ id: n.phone_e164, label: n.phone_e164, detail: n.alias ?? n.region ?? undefined }))}
+              selected={selected}
+              onChange={setSelected}
+              error={numbersError}
+              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed — use “Sync numbers” if one is missing.`}
+            />
+          </section>
+        </div>
+      ) : (
+        <div className="blue-fields space-y-6">
+          <FormSection title="Details" description="Campaigns pick pools by name, so make it easy to recognise.">
+            <Field label="Pool name" required error={nameError}>
+              <TextInput value={name} maxLength={255} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mumbai numbers" aria-invalid={!!nameError} />
+            </Field>
+            <StatusSelect value={status} onChange={setStatus} />
+          </FormSection>
+          <FormSection
+            title="Numbers"
+            description="Calls from campaigns using this pool show one of these numbers as caller ID. A number can only be in one pool."
+          >
+            <MultiSelect
+              label="Phone numbers"
+              required
+              loading={numbers.isLoading}
+              options={choices.map((n) => ({ id: n.phone_e164, label: n.phone_e164, detail: n.alias ?? n.region ?? undefined }))}
+              selected={selected}
+              onChange={setSelected}
+              error={numbersError}
+              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed — use “Sync numbers” if one is missing.`}
+            />
+          </FormSection>
+        </div>
+      )}
     </FormPage>
   );
 }

@@ -6,8 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
-import type { CostTrendPoint } from "@/lib/costFormat";
-import { formatRupees } from "@/lib/costFormat";
+import type { CostTrendPoint } from "@/components/CostSplit";
 import { getCallCostSummary, getCallCosts } from "@/lib/api";
 import type { CallCostSummary } from "@/types/types";
 import CampaignsStatCard from "@/features/dashboard/components/CampaignsStatCard";
@@ -24,8 +23,9 @@ import {
   Table,
   formatDate,
   formatDuration,
+  formatMoney,
 } from "@/components/ui";
-import { ChartSkeleton, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
+import { ChartSkeleton, DashboardSkeleton, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
 import { DASHBOARD_CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
 
 
@@ -130,7 +130,7 @@ async function loadDailyCalls(): Promise<DashboardCallData> {
 
 
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const campaigns = useCampaigns();
   const agents = useAgents();
   const representatives = useRepresentatives();
@@ -168,7 +168,7 @@ export default function DashboardPage() {
   const steps = [
     { done: !!agents.data?.length, label: "Create a calling agent", href: "/calling-agent/agents/new" },
     { done: !!plivoPools.data?.length, label: "Group Plivo numbers into a Plivo pool", href: "/number-pool" },
-    { done: activeReps > 0, label: "Add a transfer agent to take interested leads", href: "/calling-agent?tab=representatives" },
+    { done: activeReps > 0, label: "Add a transfer agent to take interested leads", href: "/?tab=calling-agent&callingTab=representatives" },
     { done: !!campaigns.data?.length, label: "Create a campaign and upload its leads sheet", href: "/campaigns/new" },
   ];
   const loaded = [agents, plivoPools, representatives, campaigns].every((q) => q.isSuccess);
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             value={count(agents)}
             label="agents"
             loading={agents.isLoading || callerDailyCalls.isLoading}
-            href="/calling-agent?tab=agents"
+            href="/?tab=calling-agent&callingTab=agents"
           >
             <MiniBars
               data={recentAgentStats.map((agent) => agent.usage?.calls ?? 0)}
@@ -206,7 +206,7 @@ export default function DashboardPage() {
             value={count(representatives)}
             label={`${activeReps} active`}
             loading={representatives.isLoading}
-            href="/calling-agent?tab=representatives"
+            href="/?tab=calling-agent&callingTab=representatives"
           >
             <DonutRing
               value={activeReps}
@@ -297,6 +297,12 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+const DashboardPage = dynamic(() => Promise.resolve(DashboardPageContent), {
+  loading: () => <DashboardSkeleton />,
+});
+
+export default DashboardPage;
 
 /*------------------------------- CostStatCard UI ---------------------------------------*/
 const TONES = {
@@ -392,8 +398,8 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     tone="green"
     label="Total AI cost"
     icon={<IndianRupee size={20} />}
-    value={v(formatRupees(s?.total_cost))}
-    hint={s ? `${formatRupees(s.average_per_call.total_cost, 2)} per call on average` : undefined}
+    value={v(s?.total_cost === undefined ? "—" : `₹${formatMoney(s.total_cost)}`)}
+    hint={s ? `₹${formatMoney(s.average_per_call.total_cost, 2)} per call on average` : undefined}
   />
 </div>
 <div className="min-w-0">
@@ -401,7 +407,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     tone="amber"
     label="Plivo cost"
     icon={<Phone size={20} />}
-    value={v(formatRupees(s?.plivo_cost_inr))}
+    value={v(s?.plivo_cost_inr === undefined ? "—" : `₹${formatMoney(s.plivo_cost_inr)}`)}
     hint={s?.plivo_billed_attempts !== undefined ? `${s.plivo_billed_attempts.toLocaleString()} billed attempts` : undefined}
   />
 </div>

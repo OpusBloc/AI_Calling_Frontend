@@ -25,6 +25,7 @@ import { DeleteIconButton } from "@/components/ui/ActionIconButtons";
 import { SkeletonBoundary, StockVoicesSkeleton, VoiceCardsSkeleton } from "@/components/skeletons";
 import { customVoicePreviewUrl } from "./VoiceDetailsDrawer";
 import DrawerLoadingPlaceholder from "./DrawerLoadingPlaceholder";
+import BackgroundAudioPreview from "./BackgroundAudioPreview";
 import {
   FALLBACK_TEXT,
   NAME_PLACEHOLDER,
@@ -52,19 +53,21 @@ const SAMPLE_PAGE_SIZE = 20;
 export default function VoicePicker({
   value,
   onChange,
+  agentId,
   greeting,
   language: agentLanguage,
   onEditGreeting,
 }: {
   value: string;
   onChange: (voiceId: string) => void;
+  agentId?: string;
   greeting: string;
   /** The agent's main language; used when a voice has no language of its own */
   language: string;
   onEditGreeting: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [voiceSection, setVoiceSection] = useState<"imported" | "custom" | "samples">("imported");
+  const [voiceSection, setVoiceSection] = useState<"imported" | "custom" | "samples" | "background">("imported");
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("");
   const [style, setStyle] = useState("");
@@ -347,9 +350,14 @@ export default function VoicePicker({
               className={clsx("-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "samples" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
               Saved samples ({samples.data?.pages[0]?.total ?? 0})
             </button>
+            <button type="button" role="tab" id="voice-tab-background" aria-controls="voice-panel-background" aria-selected={voiceSection === "background"} onClick={() => switchVoiceSection("background")}
+              className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "background" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
+              Background audio
+            </button>
           </div>
 
          <div className="space-y-3 rounded-lg bg-surface p-3">
+            {voiceSection !== "background" && (
             <div className="grid min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_5rem_10rem]">
               <div className="min-w-0 sm:col-span-2 lg:col-span-1">
                 <VoiceCard
@@ -401,6 +409,12 @@ export default function VoicePicker({
                 </Select>
               </Field>
             </div>
+            )}
+            {voiceSection === "background" && (
+              <section id="voice-panel-background" role="tabpanel" aria-labelledby="voice-tab-background">
+                <BackgroundAudioPreview agentId={agentId} />
+              </section>
+            )}
             {voiceSection === "samples" && (
               <section id="voice-panel-samples" role="tabpanel" aria-labelledby="voice-tab-samples" aria-label="Saved samples" className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">Saved samples</p>

@@ -27,7 +27,7 @@ export default function Sidebar() {
       >
         <div className="ob-sidebar-brand">
           <Link
-            href="/dashboard"
+            href="/?tab=dashboard"
             className="ob-brand-link"
             title="Opus Bloc Admin"
           >
@@ -41,7 +41,7 @@ export default function Sidebar() {
             />
             <span className="ob-brand-copy ob-sidebar-label">
               <span className="ob-brand-name">Opus Bloc</span>
-              <span className="ob-brand-admin">Admin</span>
+              <span className="ob-brand-admin">User</span>
             </span>
           </Link>
           <SidebarToggle />

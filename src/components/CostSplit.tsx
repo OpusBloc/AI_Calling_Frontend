@@ -4,10 +4,10 @@
 
   import { useEffect, useId, useRef, useState } from "react";
   import { formatMoney } from "@/components/ui";
-  import type { CostTrendPoint } from "@/lib/costFormat";
-  export type { CostTrendPoint } from "@/lib/costFormat";
   import { ChartSkeleton, SkeletonBoundary, SummaryCardSkeleton } from "@/components/skeletons";
   import type { CallCostSummary } from "@/types/types";
+
+  export type CostTrendPoint = { date: string; cost: number };
 
   export const rupees = (n: number | undefined, digits = 2) =>
     n === undefined ? "—" : `₹${formatMoney(n, digits)}`;

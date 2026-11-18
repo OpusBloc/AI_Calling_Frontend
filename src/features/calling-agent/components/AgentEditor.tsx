@@ -12,6 +12,8 @@ import {
   Check,
   CircleAlert,
   PhoneCall,
+  Save,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -41,7 +43,7 @@ import {
   showSuccessNotification,
 } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { DeleteIconButton } from "@/components/ui/ActionIconButtons";
+import FeatureAccessGate from "@/components/auth/FeatureAccessGate";
 import { FormSkeleton } from "@/components/skeletons";
 import {
   Button,
@@ -301,7 +303,7 @@ export default function AgentEditor({
       showSuccessNotification(`"${agent.name}" was deleted.`, {
         title: "Agent deleted",
       });
-      router.replace("/calling-agent?tab=agents");
+      router.replace("/?tab=calling-agent&callingTab=agents");
     } catch (err) {
       setError(errorMessage(err));
       setSaving(false);
@@ -342,7 +344,11 @@ export default function AgentEditor({
               <PhoneCall size={16} /> Test call
             </Button>
           )}
-          {!isNew && <DeleteIconButton onClick={handleDelete} disabled={saving} />}
+          {!isNew && (
+            <Button className="btn-red" onClick={handleDelete} disabled={saving}>
+              <Trash2 size={16} aria-hidden /> Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -371,9 +377,11 @@ export default function AgentEditor({
       )}
 
       {/* Tabs */}
+      <div className="mt-6">
       <div
         role="tablist"
-        className="mt-6 flex gap-1 overflow-x-auto border-b border-hairline"
+        aria-label="Agent setup steps"
+        className="flex w-full gap-1 overflow-x-auto border-b border-hairline"
       >
         {TABS.map((tab, i) => {
           const done = tabDone(tab.id);
@@ -410,6 +418,7 @@ export default function AgentEditor({
           );
         })}
       </div>
+      </div>
 
       {/* Panel */}
       <div className="blue-fields mt-6 rounded-lg border border-hairline bg-surface p-5 sm:p-6">
@@ -429,6 +438,7 @@ export default function AgentEditor({
           <VoicePicker
             value={draft.voice}
             onChange={(voice) => setDraft((d) => ({ ...d, voice }))}
+            agentId={initialAgent?.id}
             greeting={draft.greeting}
             language={draft.primaryLanguage}
             onEditGreeting={() => goTo("details")}
@@ -446,24 +456,26 @@ export default function AgentEditor({
           />
         )}
         {activeTab.id === "whatsapp" && (
-          <div className="max-w-xl space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-heading">
-                WhatsApp messages{" "}
-                <span className="text-sm font-normal text-faint">optional</span>
-              </h2>
-              <p className="mt-0.5 text-sm text-muted">
-                The agent can send these template messages to the lead on
-                WhatsApp during or after the call.
-              </p>
+          <FeatureAccessGate feature="whatsapp">
+            <div className="max-w-xl space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-heading">
+                  WhatsApp messages{" "}
+                  <span className="text-sm font-normal text-faint">optional</span>
+                </h2>
+                <p className="mt-0.5 text-sm text-muted">
+                  The agent can send these template messages to the lead on
+                  WhatsApp during or after the call.
+                </p>
+              </div>
+              <WhatsAppMessagesField
+                value={draft.whatsappMessageIds}
+                onChange={(ids) =>
+                  setDraft((d) => ({ ...d, whatsappMessageIds: ids }))
+                }
+              />
             </div>
-            <WhatsAppMessagesField
-              value={draft.whatsappMessageIds}
-              onChange={(ids) =>
-                setDraft((d) => ({ ...d, whatsappMessageIds: ids }))
-              }
-            />
-          </div>
+          </FeatureAccessGate>
         )}
 
         {activeTab.id === "classifications" && (
@@ -480,42 +492,46 @@ export default function AgentEditor({
           <AgentReview draft={draft} missing={missing} onEdit={goTo} />
         )}
 
-        {/* Footer navigation */}
-        <div className="mt-6 flex items-center justify-between border-t border-hairline pt-4">
-          <Button
-            variant="secondary"
-             className="btn-blue"
-            onClick={() => goTo(TABS[tabIndex - 1].id)}
+        <div className="-mx-5 -mb-5 mt-6 flex flex-col gap-3 rounded-b-lg border-t border-[#dfe4ef] bg-white px-5 py-4 sm:-mx-6 sm:-mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <button
+            type="button"
+            onClick={() => goTo(TABS[Math.max(0, tabIndex - 1)].id)}
             disabled={tabIndex === 0}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#cfd6e6] bg-white px-4 text-sm font-semibold text-[#141b2d] transition-colors hover:bg-[#f8f9fc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
-            <ArrowLeft size={16} /> Back
-          </Button>
-          <div className="flex gap-2">
+            <ArrowLeft size={16} strokeWidth={2.2} /> Back
+          </button>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
             {!isNew && activeTab.id !== "review" && (
-              <Button
-                variant="secondary"
-                 className="btn-blue"
+              <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={!dirty || saving}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#cfd6e6] bg-white px-4 text-sm font-semibold text-[#141b2d] transition-colors hover:bg-[#f8f9fc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-[#dfe4ef] disabled:bg-[#f1f3f8] disabled:text-[#7d879c] disabled:hover:bg-[#f1f3f8] sm:w-auto"
               >
+                <Save size={16} strokeWidth={2.2} />
                 {saving ? "Saving…" : "Save changes"}
-              </Button>
+              </button>
             )}
-            {activeTab.id === "review" ? (
-              <Button
+            {activeTab.id === "review" && (
+              <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={saving || missing.length > 0 || (!isNew && !dirty)}
-                className="btn-blue-filled"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#cfd6e6] bg-white px-4 text-sm font-semibold text-[#141b2d] transition-colors hover:bg-[#f8f9fc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
+                <Save size={16} strokeWidth={2.2} />
                 {saving ? "Saving…" : isNew ? "Create agent" : "Save changes"}
-              </Button>
-            ) : (
-              <Button
-               className="btn-blue"
-                onClick={() => goTo(TABS[tabIndex + 1].id)}>
-                Next <ArrowRight size={16} />
-              </Button>
+              </button>
             )}
+            <button
+              type="button"
+              onClick={() => goTo(TABS[Math.min(TABS.length - 1, tabIndex + 1)].id)}
+              disabled={tabIndex === TABS.length - 1}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-[#2f5bea] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2449c8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              Next <ArrowRight size={16} strokeWidth={2.2} />
+            </button>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 
@@ -14,7 +14,10 @@ type Crumb = { label: string; href?: string; loading?: boolean };
 
 export default function AppBreadcrumb() {
   const pathname = usePathname();
-  const current = navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
+  const searchParams = useSearchParams();
+  const current = (pathname === "/"
+    ? navItems.find((item) => item.id === (searchParams.get("tab") ?? "dashboard"))
+    : navItems.find((item) => pathname === item.basePath || pathname.startsWith(`${item.basePath}/`))) ?? null;
   const agentId = pathname.match(/^\/calling-agent\/agents\/([^/]+)/)?.[1] ?? null;
   const representativeId = pathname.match(/^\/calling-agent\/representatives\/([^/]+)/)?.[1] ?? null;
   const campaignId = pathname.match(/^\/campaigns\/([^/]+)/)?.[1] ?? null;
@@ -39,15 +42,17 @@ export default function AppBreadcrumb() {
     crumbs.push({ label: title ?? "Pool", href: editing ? `/number-pool/pools/${poolId}` : undefined, loading: poolId !== "new" && pool.isLoading });
     if (editing) crumbs.push({ label: "Edit" });
   } else if (agentId) {
-    if (agentId !== "new") crumbs.push({ label: "Agents", href: "/calling-agent?tab=agents" });
+    if (agentId !== "new") crumbs.push({ label: "Agents", href: "/?tab=calling-agent&callingTab=agents" });
     const title = agentId === "new" ? "New agent" : agent.data?.name;
     crumbs.push({ label: title ?? "Agent", href: editing ? `/calling-agent/agents/${agentId}` : undefined, loading: agentId !== "new" && agent.isLoading });
     if (editing) crumbs.push({ label: "Edit" });
   } else if (representativeId) {
-    crumbs.push({ label: "Call Transfer", href: "/calling-agent?tab=representatives" });
+    crumbs.push({ label: "Call Transfer", href: "/?tab=calling-agent&callingTab=representatives" });
     const title = representativeId === "new" ? "New transfer agent" : representative.data?.name;
-    crumbs.push({ label: title ?? "Transfer agent", href: editing ? `/calling-agent/representatives/${representativeId}` : undefined, loading: representativeId !== "new" && representative.isLoading });
-    if (editing) crumbs.push({ label: "Edit" });
+    crumbs.push({
+      label: editing ? `Edit (${title ?? "Transfer agent"})` : (title ?? "Transfer agent"),
+      loading: representativeId !== "new" && representative.isLoading,
+    });
   }
 
   if (crumbs.length === 1) crumbs[0].href = undefined;
