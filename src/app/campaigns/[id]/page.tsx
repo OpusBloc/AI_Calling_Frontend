@@ -1347,11 +1347,23 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
               color="amber"
               items={campaign.plivo_pool_ids.map((id) => ({
                 key: id,
-                name: nameOf(plivoPools.data, id),
+                name: campaign.pools?.find((pool) => pool.pool_id === id)?.pool_name ?? nameOf(plivoPools.data, id),
                 href: `/number-pool/pools/${id}`,
               }))}
-              extraItems={campaign.plivo_numbers.map((number) => ({ key: number, name: number }))}
-              extraLabel="Caller numbers"
+              extraItems={[
+                ...(campaign.pools ?? []).flatMap((pool) => pool.numbers.map((number) => ({
+                  key: `${pool.pool_id}:${number.phone_e164}`,
+                  name: `${pool.pool_name}: ${number.phone_e164} · ${number.calls} calls`,
+                }))),
+                ...(campaign.direct_numbers ?? []).map((number) => ({
+                  key: `direct:${number.phone_e164}`,
+                  name: `${number.phone_e164} · ${number.calls} calls`,
+                })),
+                ...campaign.plivo_numbers
+                  .filter((number) => !(campaign.direct_numbers ?? []).some((direct) => direct.phone_e164 === number))
+                  .map((number) => ({ key: `configured:${number}`, name: number })),
+              ]}
+              extraLabel="Numbers used and calls placed"
             />
           </div>
         </div>

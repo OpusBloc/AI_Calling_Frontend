@@ -18,6 +18,14 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
   max_live_calls?: number;
   /** Max new calls started per second */
   calls_per_second?: number;
+  /** Numbers assigned through Plivo pools on the campaign detail response */
+  pools?: Array<{
+    pool_id: string;
+    pool_name: string;
+    numbers: Array<{ phone_e164: string; calls: number }>;
+  }>;
+  /** Direct caller numbers and their call totals */
+  direct_numbers?: Array<{ phone_e164: string; calls: number }>;
 };
 /** Leads now come from an uploaded sheet, so there are no lead pools on create */
 export type CampaignCreate = Omit<

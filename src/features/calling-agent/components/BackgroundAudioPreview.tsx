@@ -53,7 +53,23 @@ function RangeControl({
           <Volume2 size={17} className="text-muted" aria-hidden />
           {label}
         </label>
-        <span className="rounded-lg bg-primary-soft px-2.5 py-1 text-xs font-semibold tabular-nums text-info">{value.toFixed(1)} / 5</span>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.1"
+            value={value}
+            aria-label={`${label} numeric value`}
+            onChange={(event) => {
+              const nextValue = Number(event.target.value);
+              if (event.target.value !== "" && Number.isFinite(nextValue)) onChange(Math.min(5, Math.max(0, nextValue)));
+            }}
+            onBlur={() => onCommit?.(value)}
+            className={`h-8 w-[72px] rounded-md border border-hairline-strong bg-surface px-2 text-right text-sm tabular-nums text-heading ${buttonFocus}`}
+          />
+          <span className="text-xs text-muted">/ 5</span>
+        </div>
       </div>
       <input
         id={id}
@@ -139,7 +155,10 @@ function TrackRow({
         <div className="mt-4 grid gap-3 border-t border-hairline pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] sm:items-end">
           <div>
             <label htmlFor={`track-volume-${track.id}`} className="mb-1 block text-xs font-semibold text-muted">Playback volume</label>
-            <input id={`track-volume-${track.id}`} type="range" min="0" max="5" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-2 w-full accent-primary" />
+            <div className="flex items-center gap-3">
+              <input id={`track-volume-${track.id}`} type="range" min="0" max="5" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-primary" />
+              <input type="number" min="0" max="5" step="0.1" value={volume} aria-label={`Playback volume for ${track.name}`} onChange={(event) => { const nextValue = Number(event.target.value); if (event.target.value !== "" && Number.isFinite(nextValue)) setVolume(Math.min(5, Math.max(0, nextValue))); }} className={`h-9 w-[72px] rounded-md border border-hairline-strong bg-surface px-2 text-right text-sm tabular-nums text-heading ${buttonFocus}`} />
+            </div>
           </div>
           <span className="text-xs text-muted">Rename the track or adjust its volume.</span>
           <div className="flex gap-2">
@@ -481,10 +500,11 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
             <div className="min-w-0">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <label htmlFor="new-audio-volume" className="text-sm font-semibold text-heading">Playback volume</label>
-                <span className="rounded-md bg-primary-soft px-2 py-1 text-xs font-semibold tabular-nums text-info">{newVolume.toFixed(1)} / 5</span>
+                <span className="text-xs text-muted">/ 5</span>
               </div>
-              <div className="flex h-10 items-center rounded-md border border-hairline-strong bg-surface px-3">
-                <input id="new-audio-volume" type="range" min="0" max="5" step="0.1" value={newVolume} aria-label="New track playback volume" onChange={(event) => setNewVolume(Number(event.target.value))} className="h-2 w-full accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+              <div className="flex h-10 items-center gap-3 rounded-md border border-hairline-strong bg-surface px-3">
+                <input id="new-audio-volume" type="range" min="0" max="5" step="0.1" value={newVolume} aria-label="New track playback volume" onChange={(event) => setNewVolume(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+                <input type="number" min="0" max="5" step="0.1" value={newVolume} aria-label="New track playback volume numeric value" onChange={(event) => { const nextValue = Number(event.target.value); if (event.target.value !== "" && Number.isFinite(nextValue)) setNewVolume(Math.min(5, Math.max(0, nextValue))); }} className={`h-8 w-[72px] rounded-md border border-hairline-strong bg-surface px-2 text-right text-sm tabular-nums text-heading ${buttonFocus}`} />
               </div>
             </div>
 
