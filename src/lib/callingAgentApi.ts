@@ -187,6 +187,89 @@ export const deleteSpeakSample = (sampleId: string) =>
 export const getSpeakAudio = (id: string) =>
   api<Blob>(`/voices/speak/${encodeURIComponent(id)}/audio`, { responseType: "blob" });
 
+/* -------------------------- Background audio ----------------------------- */
+
+export interface BackgroundAudioSettings {
+  enabled: boolean;
+  volume: number;
+  source: string;
+  active_id: string | null;
+  active_name: string | null;
+  updated_at: string | null;
+  preview_url: string | null;
+}
+
+export const getBackgroundAudioSettings = (agentId?: string) => {
+  const query = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  return api<BackgroundAudioSettings>(`/background-audio/settings${query}`, { notifyError: false });
+};
+
+export const updateBackgroundAudioSettings = (body: {
+  enabled: boolean;
+  volume: number;
+  agent_id?: string;
+}) => api<BackgroundAudioSettings>("/background-audio/settings", { method: "PUT", body, notifyError: false });
+
+export const postBackgroundAudioSettings = (body: {
+  enabled: boolean;
+  volume: number;
+  agent_id?: string;
+}) => api<BackgroundAudioSettings>("/background-audio/settings", { method: "POST", body, notifyError: false });
+
+export interface BackgroundAudio {
+  id: string;
+  name: string;
+  volume: number;
+  active: boolean;
+  duration_seconds: number;
+  size_bytes: number;
+  source_filename: string;
+  created_at: string;
+  updated_at: string;
+  audio_url: string;
+}
+
+const backgroundAudioList = (value: unknown): BackgroundAudio[] => {
+  if (Array.isArray(value)) return value as BackgroundAudio[];
+  if (!value || typeof value !== "object") return [];
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["items", "audios", "background_audio", "background_audios", "backgroundAudio", "tracks", "audio_files", "clips", "results", "data", "records"]) {
+    if (key in record) {
+      const list = backgroundAudioList(record[key]);
+      if (list.length || Array.isArray(record[key])) return list;
+    }
+  }
+  for (const child of Object.values(record)) {
+    const list = backgroundAudioList(child);
+    if (list.length) return list;
+  }
+  return [];
+};
+
+export const listBackgroundAudios = async (): Promise<BackgroundAudio[]> =>
+  backgroundAudioList(await api<unknown>("/background-audio", { notifyError: false }));
+
+export const createBackgroundAudio = (body: FormData) =>
+  api<BackgroundAudio>("/background-audio", { method: "POST", body, notifyError: false });
+
+export const getBackgroundAudioPreview = (agentId?: string) => {
+  const query = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  return api<Blob>(`/background-audio/preview${query}`, { responseType: "blob", notifyError: false });
+};
+
+export const getBackgroundAudio = (id: string) =>
+  api<BackgroundAudio>(`/background-audio/${encodeURIComponent(id)}`, { notifyError: false });
+
+export const updateBackgroundAudio = (id: string, body: FormData) =>
+  api<BackgroundAudio>(`/background-audio/${encodeURIComponent(id)}`, { method: "PATCH", body, notifyError: false });
+
+export const deleteBackgroundAudio = (id: string) =>
+  api<void>(`/background-audio/${encodeURIComponent(id)}`, { method: "DELETE", notifyError: false });
+
+export const getBackgroundAudioFile = (id: string) =>
+  api<Blob>(`/background-audio/${encodeURIComponent(id)}/audio`, { responseType: "blob", notifyError: false });
+
 export interface TestCallInput {
   /** Digits, optionally starting with "+" */
   phone: string;

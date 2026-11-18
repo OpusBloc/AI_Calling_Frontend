@@ -80,7 +80,7 @@ export default function RepresentativesTab() {
         title="Call Transfer"
         description="People a live call can be transferred to. Campaigns ring active transfer agents in turn."
         action={
-          <Button onClick={() => router.push("/calling-agent/representatives/new")} disabled={loading}>
+          <Button className="btn-blue" onClick={() => router.push("/calling-agent/representatives/new")} disabled={loading}>
             <Plus size={16} aria-hidden /> Add transfer agent
           </Button>
         }
@@ -105,10 +105,11 @@ export default function RepresentativesTab() {
             icon={<PhoneForwarded size={20} />}
             title="No transfer agents yet"
             text="Add the people who should take a call when a lead is interested."
-            action={<Button onClick={() => router.push("/calling-agent/representatives/new")}>Add transfer agent</Button>}
+            action={<Button className="btn-blue" onClick={() => router.push("/calling-agent/representatives/new")}>Add transfer agent</Button>}
           />
         ) : reps.length > 0 ? (
           <>
+            <div className="recent-table blue-table">
             <Table head={REPRESENTATIVE_COLUMNS.map((column) => column.label)} columns={REPRESENTATIVE_COLUMNS} label="Transfer agents">
               {pagination.pageItems.map((rep) => (
                 <tr key={rep.id}>
@@ -120,6 +121,7 @@ export default function RepresentativesTab() {
                         label={`${rep.name} active`}
                         checked={rep.active}
                         disabled={busyId === rep.id}
+                        className="[&[aria-checked=true]]:!bg-info"
                         onChange={(active) =>
                           run(rep.id, () => updateRepresentative(rep.id, { active }), [
                             active ? "Transfer activated" : "Transfer deactivated",
@@ -127,13 +129,13 @@ export default function RepresentativesTab() {
                           ])
                         }
                       />
-                      <Badge tone={rep.active ? "gain" : "neutral"}>{rep.active ? "Active" : "Inactive"}</Badge>
+                      <Badge tone={rep.active ? "info" : "neutral"}>{rep.active ? "Active" : "Inactive"}</Badge>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(rep.updated_at)}</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center justify-end gap-2">
-                      <IconButton label={`Edit ${rep.name}`} className="h-8 w-8 p-1 [&>svg]:h-[18px] [&>svg]:w-[18px]" onClick={() => router.push(`/calling-agent/representatives/${rep.id}/edit`)}>
+                      <IconButton label={`Edit ${rep.name}`} className="h-8 w-8 p-1 text-info hover:bg-info-bg hover:text-info [&>svg]:h-[18px] [&>svg]:w-[18px]" onClick={() => router.push(`/calling-agent/representatives/${rep.id}/edit`)}>
                         <Pencil size={18} />
                       </IconButton>
                       <DeleteIconButton
@@ -145,6 +147,7 @@ export default function RepresentativesTab() {
                 </tr>
               ))}
             </Table>
+            </div>
             <Pagination {...pagination} noun="transfer agents" />
           </>
         ) : null}

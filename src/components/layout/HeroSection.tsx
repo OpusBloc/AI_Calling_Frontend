@@ -9,6 +9,7 @@ import {
   NumberPoolSkeleton,
   TemplatesSkeleton,
 } from "@/components/skeletons";
+import FeatureAccessGate from "@/components/auth/FeatureAccessGate";
 
 export type HeroSectionId = "dashboard" | "campaigns" | "number-pool" | "calling-agent" | "templates";
 
@@ -38,5 +39,17 @@ const sections: Record<HeroSectionId, ComponentType> = {
 
 export default function HeroSection({ section }: { section: HeroSectionId }) {
   const Section = sections[section];
-  return <Section />;
+  const featureBySection: Partial<Record<HeroSectionId, string>> = {
+    campaigns: "campaigns",
+    "number-pool": "plivo",
+    templates: "whatsapp",
+  };
+  const feature = featureBySection[section];
+  return feature ? (
+    <FeatureAccessGate feature={feature}>
+      <Section />
+    </FeatureAccessGate>
+  ) : (
+    <Section />
+  );
 }

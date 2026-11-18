@@ -168,7 +168,7 @@ function DashboardPageContent() {
   const steps = [
     { done: !!agents.data?.length, label: "Create a calling agent", href: "/calling-agent/agents/new" },
     { done: !!plivoPools.data?.length, label: "Group Plivo numbers into a Plivo pool", href: "/number-pool" },
-    { done: activeReps > 0, label: "Add a transfer agent to take interested leads", href: "/calling-agent?tab=representatives" },
+    { done: activeReps > 0, label: "Add a transfer agent to take interested leads", href: "/?tab=calling-agent&callingTab=representatives" },
     { done: !!campaigns.data?.length, label: "Create a campaign and upload its leads sheet", href: "/campaigns/new" },
   ];
   const loaded = [agents, plivoPools, representatives, campaigns].every((q) => q.isSuccess);
@@ -190,7 +190,7 @@ function DashboardPageContent() {
             value={count(agents)}
             label="agents"
             loading={agents.isLoading || callerDailyCalls.isLoading}
-            href="/calling-agent?tab=agents"
+            href="/?tab=calling-agent&callingTab=agents"
           >
             <MiniBars
               data={recentAgentStats.map((agent) => agent.usage?.calls ?? 0)}
@@ -206,7 +206,7 @@ function DashboardPageContent() {
             value={count(representatives)}
             label={`${activeReps} active`}
             loading={representatives.isLoading}
-            href="/calling-agent?tab=representatives"
+            href="/?tab=calling-agent&callingTab=representatives"
           >
             <DonutRing
               value={activeReps}

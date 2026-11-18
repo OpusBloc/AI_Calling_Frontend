@@ -62,17 +62,22 @@ export default function AgentPartEditor({
               <span className="text-sm font-normal text-faint">optional</span>
             )}
           </h3>
-          <p className="mt-0.5 text-sm text-muted">{meta.description}</p>
+          <p className="mt-0.5 text-sm text-muted">
+            {part === "extra"
+              ? 'Anything else, added to the prompt as "Additional notes".'
+              : meta.description}
+          </p>
         </div>
-        <div className="inline-flex rounded-md border border-hairline bg-surface p-0.5 text-xs">
+        <div className="inline-flex rounded-md border border-[#cfd6e6] bg-[#f4f7ff] p-0.5 text-xs">
           <button
             type="button"
             onClick={() => switchMode("text")}
             className={clsx(
               "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2",
               mode === "text"
-                ? "bg-accent text-on-accent shadow-xs"
-                : "text-muted hover:text-heading",
+                ? "bg-[#2f5bea] text-white shadow-xs"
+                : "text-[#566079] hover:bg-[#eef2ff] hover:text-[#2f5bea]",
             )}
           >
             <PenLine size={13} /> Type text
@@ -82,9 +87,10 @@ export default function AgentPartEditor({
             onClick={() => switchMode("file")}
             className={clsx(
               "flex items-center gap-1 rounded px-2.5 py-1 font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2",
               mode === "file"
-                ? "bg-accent text-on-accent shadow-xs"
-                : "text-muted hover:text-heading",
+                ? "bg-[#2f5bea] text-white shadow-xs"
+                : "text-[#566079] hover:bg-[#eef2ff] hover:text-[#2f5bea]",
             )}
           >
             <Upload size={13} /> Upload file

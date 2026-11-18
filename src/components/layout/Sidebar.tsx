@@ -41,7 +41,7 @@ export default function Sidebar() {
             />
             <span className="ob-brand-copy ob-sidebar-label">
               <span className="ob-brand-name">Opus Bloc</span>
-              <span className="ob-brand-admin">Admin</span>
+              <span className="ob-brand-admin">User</span>
             </span>
           </Link>
           <SidebarToggle />

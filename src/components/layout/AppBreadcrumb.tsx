@@ -42,15 +42,17 @@ export default function AppBreadcrumb() {
     crumbs.push({ label: title ?? "Pool", href: editing ? `/number-pool/pools/${poolId}` : undefined, loading: poolId !== "new" && pool.isLoading });
     if (editing) crumbs.push({ label: "Edit" });
   } else if (agentId) {
-    if (agentId !== "new") crumbs.push({ label: "Agents", href: "/calling-agent?tab=agents" });
+    if (agentId !== "new") crumbs.push({ label: "Agents", href: "/?tab=calling-agent&callingTab=agents" });
     const title = agentId === "new" ? "New agent" : agent.data?.name;
     crumbs.push({ label: title ?? "Agent", href: editing ? `/calling-agent/agents/${agentId}` : undefined, loading: agentId !== "new" && agent.isLoading });
     if (editing) crumbs.push({ label: "Edit" });
   } else if (representativeId) {
-    crumbs.push({ label: "Call Transfer", href: "/calling-agent?tab=representatives" });
+    crumbs.push({ label: "Call Transfer", href: "/?tab=calling-agent&callingTab=representatives" });
     const title = representativeId === "new" ? "New transfer agent" : representative.data?.name;
-    crumbs.push({ label: title ?? "Transfer agent", href: editing ? `/calling-agent/representatives/${representativeId}` : undefined, loading: representativeId !== "new" && representative.isLoading });
-    if (editing) crumbs.push({ label: "Edit" });
+    crumbs.push({
+      label: editing ? `Edit (${title ?? "Transfer agent"})` : (title ?? "Transfer agent"),
+      loading: representativeId !== "new" && representative.isLoading,
+    });
   }
 
   if (crumbs.length === 1) crumbs[0].href = undefined;
