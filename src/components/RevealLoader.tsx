@@ -25,7 +25,6 @@ export default function RevealLoader() {
   const pathname = usePathname();
   const [active, setActive] = useState(false);
   const flyRef = useRef<HTMLDivElement>(null);
-  const spinRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Re-check the flag on every route change (layout doesn't remount after login)
@@ -42,9 +41,8 @@ export default function RevealLoader() {
   useEffect(() => {
     if (!active) return;
     const fly = flyRef.current;
-    const spin = spinRef.current;
     const backdrop = backdropRef.current;
-    if (!fly || !spin || !backdrop) return;
+    if (!fly || !backdrop) return;
 
     let cancelled = false;
     let mark: HTMLElement | null = null;
@@ -93,50 +91,23 @@ export default function RevealLoader() {
         ]);
         if (cancelled) return;
 
-        // 2. Rotate 360° with slight zoom
-        await animate(
-          spin,
-          [
-            { transform: "rotate(0deg) scale(1)" },
-            { transform: "rotate(180deg) scale(1.3)", offset: 0.5 },
-            { transform: "rotate(360deg) scale(1)" },
-          ],
-          { duration: 1100, easing: "ease-in-out" }
-        );
-        if (cancelled) return;
-
-        // 3. Wait for the real sidebar logo
+        // 2. Wait for the real sidebar logo
         const target = await waitForTarget(".ob-brand-mark");
         if (cancelled) return;
 
         if (target) {
-          const rect = target.getBoundingClientRect();
           mark = target;
           target.style.opacity = "0";
 
-          const dx = rect.left + rect.width / 2 - window.innerWidth / 2;
-          const dy = rect.top + rect.height / 2 - window.innerHeight / 2;
-          const scale = Math.max(rect.width, rect.height) / LOGO;
-
-          // 4. Fly to sidebar + fade the white overlay
+          // Fade the centered mark away and reveal the unchanged sidebar logo.
           await Promise.all([
-            animate(
-              fly,
-              [
-                { transform: "translate(0,0) scale(1)" },
-                { transform: `translate(${dx}px, ${dy}px) scale(${scale})` },
-              ],
-              { duration: 1100, easing: "cubic-bezier(0.65,0,0.35,1)" }
-            ),
-            animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], {
-              duration: 900,
-              delay: 200,
-            }),
+            animate(fly, [{ opacity: 1 }, { opacity: 0 }], { duration: 500 }),
+            animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 700 }),
+            animate(target, [{ opacity: 0 }, { opacity: 1 }], { duration: 500 }),
           ]);
           if (cancelled) return;
 
           target.style.opacity = "1";
-          await animate(fly, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
         } else {
           await Promise.all([
             animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 600 }),
@@ -186,7 +157,7 @@ export default function RevealLoader() {
           marginTop: -LOGO / 2,
         }}
       >
-        <div ref={spinRef} style={{ position: "relative", width: LOGO, height: LOGO }}>
+        <div style={{ position: "relative", width: LOGO, height: LOGO }}>
 {/* lower-left half: enters from the left */}
 {half("logo-left", "polygon(0 0, 0 100%, 100% 100%)")}
 

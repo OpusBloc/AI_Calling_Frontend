@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {  useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import clsx from "clsx";
 import {
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ArrowDownUp,
   ArrowDown,
@@ -32,7 +33,7 @@ import {
 } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
-import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsResponse, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport } from "@/types/types";
+import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsResponse, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport, PlivoPool } from "@/types/types";
 import {
   useAgents,
   useCampaign,
@@ -143,6 +144,7 @@ function CampaignDetails() {
   const ids = useCampaignIds();
   const exists = ids.data?.includes(id) ?? false;
   const campaignQuery = useCampaign(id, ids.isSuccess && exists);
+  const plivoPools = usePlivoPools();
   const report = useCampaignReport(id, campaignQuery.isSuccess);
  const costCalls = useCampaignCalls(id, campaignQuery.isSuccess && (tab === "costs" || tab === "overview" || tab === "calls"));
   const schedule = useScheduleCampaign();
@@ -264,6 +266,7 @@ function CampaignDetails() {
               campaignId={id}
               calls={report.data?.calls}
               callRecords={costCalls.data?.calls}
+              pools={plivoPools.data}
               loading={report.isLoading}
               error={report.isError ? (report.error as Error).message : null}
               onRetry={() => report.refetch()}
@@ -775,6 +778,7 @@ function CallsCard({
   campaignId,
   calls,
   callRecords,
+  pools,
   loading,
   error,
   onRetry,
@@ -782,6 +786,7 @@ function CallsCard({
   campaignId: string;
   calls: CampaignCallSummary[] | undefined;
   callRecords: CampaignCallsResponse["calls"] | undefined;
+  pools: PlivoPool[] | undefined;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -789,6 +794,7 @@ function CallsCard({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [callerNumberFilter, setCallerNumberFilter] = useState("all");
+  const [poolFilter, setPoolFilter] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const router = useRouter();
 const pathname = usePathname();
@@ -847,15 +853,23 @@ const closeCall = () => {
       .filter((number): number is string => Boolean(number?.trim()))
       .map((number) => number.trim()),
   )].sort();
+  const poolOptions = (pools ?? []).map((pool) => ({
+    id: pool.id,
+    name: pool.name,
+    numbers: new Set(pool.phone_numbers.map((number) => number.replace(/\D/g, ""))),
+  }));
+  const selectedPool = poolOptions.find((pool) => pool.id === poolFilter);
   const statusFilter = filter.startsWith("status:") ? filter.slice("status:".length) : null;
   const term = search.trim().toLowerCase();
   const filtered = list.filter(
     (c) =>
       (!statusFilter || c.status === statusFilter) &&
       (filter !== "messages:sent" || c.has_whatsapp_messages) &&
+      (!selectedPool || selectedPool.numbers.has((callerNumberOf(c) ?? "").replace(/\D/g, ""))) &&
       (callerNumberFilter === "all" || callerNumberOf(c) === callerNumberFilter) &&
       (!term || `${c.lead_name ?? ""} ${c.phone}`.toLowerCase().includes(term)),
   );
+  const filteredRowCount = filtered.length;
   const activeSort = sort;
   const sortedCalls = activeSort
     ? [...filtered].sort((a, b) => {
@@ -908,8 +922,9 @@ const closeCall = () => {
       <Card
         flush
         className="blue-fields"
+        actionsClassName="w-full"
         title="Calls"
-        description="One row per lead. Open a call to see every attempt, its recording and the transcript. The last opened call stays highlighted after you close it."
+        description={`One row per lead. ${filteredRowCount} rows shown (${list.length} total calls). Open a call to see every attempt, its recording and the transcript.`}
         actions={
           list.length > 0 && (
             <>
@@ -928,6 +943,22 @@ const closeCall = () => {
                 ))}
                 <option value="messages:sent">Messages sent</option>
               </Select>
+              {poolOptions.length > 0 && (
+                <Select
+                  aria-label="Filter calls by Plivo pool"
+                  value={poolFilter}
+                  onChange={(e) => {
+                    setPoolFilter(e.target.value);
+                    pagination.setPage(1);
+                  }}
+                  className="w-full sm:w-48"
+                >
+                  <option value="all">All Number Pools</option>
+                  {poolOptions.map((pool) => (
+                    <option key={pool.id} value={pool.id}>{pool.name}</option>
+                  ))}
+                </Select>
+              )}
               {plivoNumbers.length > 0 && (
                 <Select
                   aria-label="Filter calls by Plivo number"
@@ -944,6 +975,9 @@ const closeCall = () => {
                   ))}
                 </Select>
               )}
+              <span className="ml-auto whitespace-nowrap text-right text-base font-semibold text-heading" aria-live="polite">
+                {filteredRowCount} {filteredRowCount === 1 ? "row" : "rows"}
+              </span>
             </>
           )
         }
@@ -1341,30 +1375,7 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
             }))}
           />
           <div className="md:col-span-2">
-            <InfoTile
-              title="Plivo pools"
-              icon={<Phone />}
-              color="amber"
-              items={campaign.plivo_pool_ids.map((id) => ({
-                key: id,
-                name: campaign.pools?.find((pool) => pool.pool_id === id)?.pool_name ?? nameOf(plivoPools.data, id),
-                href: `/number-pool/pools/${id}`,
-              }))}
-              extraItems={[
-                ...(campaign.pools ?? []).flatMap((pool) => pool.numbers.map((number) => ({
-                  key: `${pool.pool_id}:${number.phone_e164}`,
-                  name: `${pool.pool_name}: ${number.phone_e164} · ${number.calls} calls`,
-                }))),
-                ...(campaign.direct_numbers ?? []).map((number) => ({
-                  key: `direct:${number.phone_e164}`,
-                  name: `${number.phone_e164} · ${number.calls} calls`,
-                })),
-                ...campaign.plivo_numbers
-                  .filter((number) => !(campaign.direct_numbers ?? []).some((direct) => direct.phone_e164 === number))
-                  .map((number) => ({ key: `configured:${number}`, name: number })),
-              ]}
-              extraLabel="Numbers used and calls placed"
-            />
+            <PlivoPoolsInfoTile campaign={campaign} availablePools={plivoPools.data} />
           </div>
         </div>
       </Card>
@@ -1409,6 +1420,148 @@ const INFO_TILE_COLORS = {
     avatar: "bg-amber-100 text-amber-700 dark:bg-primary-soft dark:text-primary-soft-text",
   },
 } as const;
+
+function PlivoPoolsInfoTile({
+  campaign,
+  availablePools,
+}: {
+  campaign: Campaign;
+  availablePools: PlivoPool[] | undefined;
+}) {
+  const poolIds = [...new Set([
+    ...campaign.plivo_pool_ids,
+    ...(campaign.pools ?? []).map((pool) => pool.pool_id),
+  ])];
+  const pools = poolIds.map((id) => {
+    const campaignPool = campaign.pools?.find((pool) => pool.pool_id === id);
+    const availablePool = availablePools?.find((pool) => pool.id === id);
+    const callsByNumber = new Map<string, number>(
+      (campaignPool?.numbers ?? []).map((number) => [number.phone_e164, number.calls] as const),
+    );
+    const poolPhoneNumbers = [...new Set([
+      ...(availablePool?.phone_numbers ?? []),
+      ...(campaignPool?.numbers.map((number) => number.phone_e164) ?? []),
+    ])];
+    const mergedNumbers = poolPhoneNumbers.map((phone) => ({
+      phone,
+      calls: callsByNumber.get(phone) ?? (campaignPool ? 0 : undefined),
+    }));
+    return {
+      id,
+      name: campaignPool?.pool_name ?? availablePool?.name ?? `${id.slice(0, 8)}…`,
+      numbers: mergedNumbers,
+    };
+  });
+  const poolNumbers = new Set(pools.flatMap((pool) => pool.numbers.map((number) => number.phone)));
+  const directNumbers = campaign.direct_numbers ?? [];
+  const directNumberSet = new Set(directNumbers.map((number) => number.phone_e164));
+  const otherConfiguredNumbers = campaign.plivo_numbers.filter(
+    (number) => !poolNumbers.has(number) && !directNumberSet.has(number),
+  );
+
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-hairline bg-raised/30 p-4">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${INFO_TILE_COLORS.amber.iconBox}`} aria-hidden="true">
+          <Phone />
+        </span>
+        <h3 className="text-xs font-medium uppercase tracking-wide text-muted">Plivo pools</h3>
+      </div>
+
+      {pools.length > 0 ? (
+        <div className="space-y-2">
+          {pools.map((pool) => (
+            <details key={pool.id} className="group min-w-0 overflow-hidden rounded-lg border border-hairline bg-surface">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-link [&::-webkit-details-marker]:hidden">
+                <ChevronDown size={16} className="shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-heading">{pool.name}</span>
+                <span className="shrink-0 text-xs text-muted">{pool.numbers.length} {pool.numbers.length === 1 ? "number" : "numbers"}</span>
+              </summary>
+              <div className="border-t border-hairline px-3 py-2.5">
+                {pool.numbers.length > 0 ? (
+                  <PoolNumbersList poolId={pool.id} numbers={pool.numbers} />
+                ) : (
+                  <p className="text-sm text-muted">No phone numbers in this pool.</p>
+                )}
+                <Link href={`/number-pool/pools/${pool.id}`} className="mt-3 inline-flex text-xs font-medium text-link underline-offset-2 hover:underline">
+                  Open pool
+                </Link>
+              </div>
+            </details>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-hairline-strong px-3 py-2 text-sm text-muted">None assigned</div>
+      )}
+
+      {(directNumbers.length > 0 || otherConfiguredNumbers.length > 0) && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium uppercase tracking-wide text-muted">Other configured numbers</h4>
+          <div className="flex flex-wrap gap-2">
+            {directNumbers.map((number) => (
+              <span key={`direct:${number.phone_e164}`} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-heading">
+                <span className="break-all">{number.phone_e164}</span>
+                <span className="shrink-0 text-xs text-muted">{number.calls} {number.calls === 1 ? "call" : "calls"}</span>
+              </span>
+            ))}
+            {otherConfiguredNumbers.map((number) => (
+              <span key={`configured:${number}`} className="max-w-full break-all rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-heading">{number}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PoolNumbersList({
+  poolId,
+  numbers,
+}: {
+  poolId: string;
+  numbers: Array<{ phone: string; calls: number | undefined }>;
+}) {
+  const [visibleCount, setVisibleCount] = useState(30);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = scrollAreaRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel || visibleCount >= numbers.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((count) => Math.min(count + 30, numbers.length));
+        }
+      },
+      { root, rootMargin: "80px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [numbers.length, visibleCount]);
+
+  return (
+    <div
+      ref={scrollAreaRef}
+      className="max-h-64 overflow-y-auto overscroll-contain pr-2"
+      aria-label={`Numbers in pool ${poolId}`}
+    >
+      <ul className="divide-y divide-hairline">
+        {numbers.slice(0, visibleCount).map((number) => (
+          <li key={`${poolId}:${number.phone}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 first:pt-0 last:pb-0">
+            <span className="break-all text-sm text-heading">{number.phone}</span>
+            <span className="shrink-0 text-xs text-muted">
+              {number.calls === undefined ? "Call count unavailable" : `${number.calls} ${number.calls === 1 ? "call" : "calls"}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {visibleCount < numbers.length && <div ref={sentinelRef} className="h-1" aria-hidden="true" />}
+    </div>
+  );
+}
 
 type InfoTileColor = keyof typeof INFO_TILE_COLORS;
 type InfoTileItem = { key: string; name: string; href?: string };

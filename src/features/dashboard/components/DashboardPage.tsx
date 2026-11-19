@@ -7,13 +7,11 @@ import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
 import type { CostTrendPoint } from "@/components/CostSplit";
-import { getCallCostSummary, getCallCosts } from "@/lib/api";
+import { getCallCostSummary } from "@/lib/api";
 import type { CallCostSummary } from "@/types/types";
 import CampaignsStatCard from "@/features/dashboard/components/CampaignsStatCard";
 import StatCard from "@/features/dashboard/components/StatCard";
-import { DonutRing, MiniBars } from "@/features/dashboard/components/StatVisuals";
-import CallerNumbersMiniChart, { type DailyCallDatum } from "@/features/dashboard/components/CallerNumbersMiniChart";
-import { useAgents, useCampaigns, usePlivoNumberCallStats, usePlivoNumbers, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
+import { useAgents, useCampaigns, usePlivoNumbers, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { formatWindow } from "@/features/campaigns/components/CampaignsTab";
 import {
   Card,
@@ -35,7 +33,6 @@ const PERIODS = [
   { days: 30, label: "30 days" },
   { days: 0, label: "All time" },
 ] as const;
-const CALL_COST_PAGE_SIZE = 500;
 const CostSplit = dynamic(() => import("@/components/CostSplit"), {
   loading: () => (
     <div className="grid min-w-0 grid-cols-1 gap-4 overflow-visible xl:grid-cols-2">
@@ -44,15 +41,6 @@ const CostSplit = dynamic(() => import("@/components/CostSplit"), {
     </div>
   ),
 });
-type DashboardCallData = {
-  dailyCalls: DailyCallDatum[];
-  recentlyUsedAgents: Array<{ agentId: string; lastUsed: number; calls: number }>;
-};
-
-function localDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function costTrendFromSummary(summary?: CallCostSummary): CostTrendPoint[] {
   const trend = [...(summary?.by_day ?? [])]
     .sort((a, b) => a.day.localeCompare(b.day))
@@ -77,71 +65,12 @@ function costTrendFromSummary(summary?: CallCostSummary): CostTrendPoint[] {
   return trend;
 }
 
-async function loadDailyCalls(): Promise<DashboardCallData> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const firstDay = new Date(today);
-  firstDay.setDate(firstDay.getDate() - 6);
-
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(firstDay);
-    date.setDate(firstDay.getDate() + index);
-    return { date, key: localDateKey(date) };
-  });
-  const callIdsByDate = new Map(days.map((day) => [day.key, new Set<string>()]));
-  const agentCalls = new Map<string, { lastUsed: number; callIds: Set<string> }>();
-
-  // TODO: Add start/end date filters to GET /call-costs and use them here.
-  // The current API client only exposes page/page_size, so keep paging newest
-  // first until the seven-day window is covered.
-  for (let page = 1; ; page += 1) {
-    const result = await getCallCosts(page, CALL_COST_PAGE_SIZE);
-    const validDates: number[] = [];
-    for (const call of result.items) {
-      if (!call.started_at) continue;
-      const date = new Date(call.started_at);
-      if (!Number.isFinite(date.getTime())) continue;
-      validDates.push(date.getTime());
-      const callIds = callIdsByDate.get(localDateKey(date));
-      if (callIds) callIds.add(call.call_uuid);
-      if (callIds && call.agent_id) {
-        const activity = agentCalls.get(call.agent_id) ?? { lastUsed: 0, callIds: new Set<string>() };
-        activity.callIds.add(call.call_uuid);
-        activity.lastUsed = Math.max(activity.lastUsed, date.getTime());
-        agentCalls.set(call.agent_id, activity);
-      }
-    }
-
-    if (result.items.length === 0 || page * CALL_COST_PAGE_SIZE >= result.total) break;
-    const oldestOnPage = validDates.length ? Math.min(...validDates) : null;
-    if (oldestOnPage === null || oldestOnPage < firstDay.getTime()) break;
-  }
-
-  return {
-    dailyCalls: days.map(({ date, key }) => ({
-      date: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      calls: callIdsByDate.get(key)?.size ?? 0,
-    })),
-    recentlyUsedAgents: [...agentCalls.entries()]
-      .map(([agentId, activity]) => ({ agentId, lastUsed: activity.lastUsed, calls: activity.callIds.size }))
-      .sort((a, b) => b.lastUsed - a.lastUsed),
-  };
-}
-
-
-
 function DashboardPageContent() {
   const campaigns = useCampaigns();
   const agents = useAgents();
   const representatives = useRepresentatives();
   const plivoNumbers = usePlivoNumbers();
   const plivoPools = usePlivoPools();
-  const plivoNumberCallStats = usePlivoNumberCallStats();
-  const callerDailyCalls = useQuery({
-    queryKey: ["dashboard", "caller-number-daily-calls", 7],
-    queryFn: loadDailyCalls,
-    retry: false,
-  });
   const [days, setDays] = useState<number>(30);
   const showRecentSkeleton = useSkeletonVisibility(campaigns.isLoading && !campaigns.data);
 
@@ -150,20 +79,6 @@ function DashboardPageContent() {
   const scheduled = campaigns.data?.filter((c) => c.status === "scheduled").length ?? 0;
   const activeReps = representatives.data?.filter((r) => r.active).length ?? 0;
   const recent = [...(campaigns.data ?? [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6);
-  const recentAgentStats = (agents.data ?? [])
-    .map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      usage: callerDailyCalls.data?.recentlyUsedAgents.find((item) => item.agentId === agent.id),
-    }))
-    .filter((agent) => agent.usage)
-    .sort((a, b) => (b.usage?.lastUsed ?? 0) - (a.usage?.lastUsed ?? 0))
-    .slice(0, 7);
-  const topUsedCallerNumbers = (plivoNumberCallStats.data ?? [])
-    .filter((number) => number.total_calls > 0)
-    .sort((a, b) => b.total_calls - a.total_calls)
-    .slice(0, 3)
-    .map((number) => ({ phone: number.phone_e164, calls: number.total_calls }));
 
   const steps = [
     { done: !!agents.data?.length, label: "Create a calling agent", href: "/calling-agent/agents/new" },
@@ -181,57 +96,35 @@ function DashboardPageContent() {
         <h2 id="analytics-heading" className="mb-5 text-lg font-semibold text-heading">
         Analytics
       </h2>
-        <div className="grid w-full gap-4 overflow-visible grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-1 gap-6 overflow-visible sm:grid-cols-2 lg:grid-cols-4">
           <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} loading={campaigns.isLoading} />
           <StatCard
             title="Agents"
             icon={<Bot size={22} />}
-            accent={{ light: "var(--dashboard-blue-accent)", dark: "var(--series-1)" }}
+            tone="blue"
             value={count(agents)}
             label="agents"
-            loading={agents.isLoading || callerDailyCalls.isLoading}
+            loading={agents.isLoading}
             href="/?tab=calling-agent&callingTab=agents"
-          >
-            <MiniBars
-              data={recentAgentStats.map((agent) => agent.usage?.calls ?? 0)}
-              labels={recentAgentStats.map((agent) => agent.name)}
-              metricLabel="calls in the last seven days"
-              highlightIndex={0}
-            />
-          </StatCard>
+          />
           <StatCard
             title="Transfer agents"
             icon={<PhoneForwarded size={22} />}
-            accent={{ light: "var(--dashboard-green-accent)", dark: "var(--series-3)" }}
+            tone="green"
             value={count(representatives)}
             label={`${activeReps} active`}
             loading={representatives.isLoading}
             href="/?tab=calling-agent&callingTab=representatives"
-          >
-            <DonutRing
-              value={activeReps}
-              max={representatives.data?.length ?? 0}
-              color="var(--stat-transfer-green)"
-              trackColor="var(--stat-transfer-green)"
-              ariaLabel={`${activeReps} active of ${representatives.data?.length ?? 0} transfer agents`}
-              tooltip={`${activeReps} active of ${representatives.data?.length ?? 0} transfer agents`}
-            />
-          </StatCard>
+          />
           <StatCard
             title="Caller numbers"
             icon={<Phone size={22} />}
-            accent={{ light: "var(--caller-chart-default)", dark: "var(--series-4)" }}
+            tone="purple"
             value={count(plivoNumbers)}
             label={`${plivoPools.data?.length ?? 0} pools`}
-            loading={plivoNumbers.isLoading || plivoPools.isLoading || plivoNumberCallStats.isLoading}
+            loading={plivoNumbers.isLoading || plivoPools.isLoading}
             href="/number-pool"
-          >
-  <CallerNumbersMiniChart
-  numbers={topUsedCallerNumbers}
-  dailyCalls={[]}
-  color="var(--caller-chart-default)"
-/>
-          </StatCard>
+          />
         </div>
       </div>
 

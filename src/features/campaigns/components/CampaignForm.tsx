@@ -370,12 +370,17 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   if(!campaign) localStorage.removeItem(CAMPAIGN_DRAFT_KEY);
 
       queryClient.setQueryData(["campaigns", saved.id], saved);
-      await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      await queryClient.invalidateQueries({ queryKey: ["campaign-ids"] });
+      if (!campaign) {
+        queryClient.setQueryData<string[]>(["campaign-ids"], (ids) =>
+          ids ? (ids.includes(saved.id) ? ids : [...ids, saved.id]) : [saved.id],
+        );
+      }
       showSuccessNotification(`"${saved.name}" was ${campaign ? "updated" : "created"}.`, {
         title: campaign ? "Campaign updated" : "Campaign created",
       });
       router.replace(`/campaigns/${saved.id}`);
+      void queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      void queryClient.invalidateQueries({ queryKey: ["campaign-ids"] });
     },
   });
   

@@ -39,11 +39,10 @@ export const REPRESENTATIVE_COLUMNS: TableColumnConfig[] = [
 ];
 
 export const POOL_COLUMNS: TableColumnConfig[] = [
-  { label: "Pool", width: "26%", kind: "text" },
-  { label: "Status", width: "18%", kind: "status" },
-  { label: "Numbers", width: "18%", kind: "number" },
-  { label: "Created", width: "28%", kind: "date" },
-  { label: "", width: "10%", kind: "actions" },
+  { label: "Pool", width: "30%", kind: "text" },
+  { label: "Status", width: "20%", kind: "status" },
+  { label: "Numbers", width: "20%", kind: "number" },
+  { label: "Created", width: "30%", kind: "date" },
 ];
 
 export const TEMPLATE_COLUMNS: TableColumnConfig[] = [

@@ -1,11 +1,18 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { SkeletonBoundary } from "@/components/skeletons";
-import { DashboardStatValueSkeleton, DashboardStatVisualSkeleton, OverviewStatValueSkeleton } from "@/components/skeletons";
+import { DashboardStatValueSkeleton, OverviewStatValueSkeleton } from "@/components/skeletons";
 
-type Accent = { light: string; dark: string };
+const TONES = {
+  green: "bg-emerald-100 text-emerald-900 dark:bg-primary-soft dark:text-primary-soft-text",
+  amber: "bg-amber-100 text-amber-900 dark:bg-primary-soft dark:text-primary-soft-text",
+  pink: "bg-pink-100 text-pink-900 dark:bg-primary-soft dark:text-primary-soft-text",
+  purple: "bg-purple-100 text-purple-900 dark:bg-primary-soft dark:text-primary-soft-text",
+  blue: "bg-sky-100 text-sky-900 dark:bg-primary-soft dark:text-primary-soft-text",
+} as const;
+type Tone = keyof typeof TONES;
 
 const OVERVIEW_COLORS = {
   blue: { pill: "bg-blue-100 dark:bg-primary-soft", icon: "text-blue-700 dark:text-primary-soft-text", title: "text-blue-700 dark:text-primary-soft-text" },
@@ -35,12 +42,11 @@ type OverviewProps = {
 type DashboardProps = {
   title: string;
   icon: ReactNode;
-  accent: Accent;
+  tone: Tone;
   value: ReactNode;
   label: ReactNode;
   loading?: boolean;
   href?: string;
-  children: ReactNode;
 };
 
 export default function StatCard(props: OverviewProps | DashboardProps) {
@@ -66,51 +72,35 @@ export default function StatCard(props: OverviewProps | DashboardProps) {
     );
   }
 
-  const { title, icon, accent, value, label, loading = false, href, children } = props;
-  const style = {
-    "--stat-accent-light": accent.light,
-    "--stat-accent-dark": accent.dark,
-  } as CSSProperties;
+  const { title, icon, tone, value, label, loading = false, href } = props;
 
   const content = (
-    <div className="relative h-full w-full min-w-0 overflow-hidden">
-      {/* Title: top-left */}
-      <div className="flex min-w-0 max-w-[58%] items-center gap-2">
-        <span className="shrink-0 [&>svg]:h-[20px] [&>svg]:w-[20px]" style={{ color: "var(--stat-accent)" }} aria-hidden="true">
+    <div className="rounded-2xl border border-hairline bg-surface p-1.5">
+      <div className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${TONES[tone]}`}>
+        <span className="shrink-0" aria-hidden="true">
           {icon}
         </span>
-        <h2 className="min-w-0 truncate text-sm font-medium leading-tight text-heading">{title}</h2>
+        <span className="truncate">{title}</span>
       </div>
-
-      {/* Value + label: bottom-left */}
-      <div className="absolute bottom-0 left-0 min-w-0 max-w-[55%]">
+      <div className="min-w-0 px-3 pb-2.5 pt-2">
         <SkeletonBoundary loading={loading} skeleton={<DashboardStatValueSkeleton />}>
           <>
-            <p className="text-xl font-semibold leading-none tracking-tight text-heading">{value}</p>
-            <p className="mt-2 whitespace-nowrap text-sm text-muted">{label}</p>
+            <p className="truncate text-2xl font-bold tabular-nums font-numeric text-heading">{value}</p>
+            <p className="mt-1.5 truncate text-xs text-muted">{label}</p>
           </>
-        </SkeletonBoundary>
-      </div>
-
-      {/* Chart: fills the right side of the card and scales to fit */}
-      <div
-        className="absolute inset-y-0 right-0 flex w-[60%] min-w-0 items-center justify-center overflow-hidden [&>*]:max-h-full [&>*]:max-w-full [&>svg]:h-full [&>svg]:w-full"
-      >
-        <SkeletonBoundary loading={loading} skeleton={<DashboardStatVisualSkeleton />}>
-          {children}
         </SkeletonBoundary>
       </div>
     </div>
   );
 
-  const className = `dashboard-stat-card relative flex h-[130px] min-w-0 origin-center flex-col rounded-2xl border border-[var(--stat-card-border)] bg-surface px-3 pt-2 pb-3 shadow-md transition-all duration-200 ease-out hover:z-10 motion-safe:hover:scale-[1.01] hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:scale-100${href ? " cursor-pointer" : ""}`;
+  const className = `w-full min-w-0 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md motion-reduce:transition-none${href ? " block cursor-pointer" : ""}`;
 
   return href ? (
-    <Link href={href} className={className} style={style}>
+    <Link href={href} className={className}>
       {content}
     </Link>
   ) : (
-    <div className={className} style={style}>
+    <div className={className}>
       {content}
     </div>
   );

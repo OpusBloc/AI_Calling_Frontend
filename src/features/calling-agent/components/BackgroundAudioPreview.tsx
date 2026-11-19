@@ -2,18 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Music, Pause, Pencil, Play, Plus, Mic, Trash2, Volume2, X } from "lucide-react";
+import { Music, Pause, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 
 import {
   createBackgroundAudio,
   deleteBackgroundAudio,
   getBackgroundAudioFile,
-  getBackgroundAudioPreview,
   getBackgroundAudioSettings,
   listBackgroundAudios,
   postBackgroundAudioSettings,
   updateBackgroundAudio,
-  updateBackgroundAudioSettings,
   type BackgroundAudio,
 } from "@/lib/callingAgentApi";
 import { ErrorBanner, errorMessage } from "@/components/ui";
@@ -31,63 +29,6 @@ const formatTime = (seconds: number) => {
 
 const buttonFocus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 const primaryButton = `inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45 ${buttonFocus}`;
-const outlineButton = `inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-surface px-4 text-sm font-semibold text-info transition hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-50 ${buttonFocus}`;
-
-function RangeControl({
-  id,
-  value,
-  onChange,
-  onCommit,
-  label,
-}: {
-  id: string;
-  value: number;
-  onChange: (value: number) => void;
-  onCommit?: (value: number) => void;
-  label: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="flex items-center gap-2 text-sm font-semibold text-heading">
-          <Volume2 size={17} className="text-muted" aria-hidden />
-          {label}
-        </label>
-        <div className="flex items-center gap-1.5">
-          <input
-            type="number"
-            min="0"
-            max="5"
-            step="0.1"
-            value={value}
-            aria-label={`${label} numeric value`}
-            onChange={(event) => {
-              const nextValue = Number(event.target.value);
-              if (event.target.value !== "" && Number.isFinite(nextValue)) onChange(Math.min(5, Math.max(0, nextValue)));
-            }}
-            onBlur={() => onCommit?.(value)}
-            className={`h-8 w-[72px] rounded-md border border-hairline-strong bg-surface px-2 text-right text-sm tabular-nums text-heading ${buttonFocus}`}
-          />
-          <span className="text-xs text-muted">/ 5</span>
-        </div>
-      </div>
-      <input
-        id={id}
-        type="range"
-        min="0"
-        max="5"
-        step="0.1"
-        value={value}
-        aria-label={label}
-        onChange={(event) => onChange(Number(event.target.value))}
-        onPointerUp={(event) => onCommit?.(Number(event.currentTarget.value))}
-        onKeyUp={(event) => onCommit?.(Number(event.currentTarget.value))}
-        className="mt-3 h-2 w-full cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      />
-      <div className="mt-1 flex justify-between text-xs text-muted"><span>Subtle</span><span>Loud</span></div>
-    </div>
-  );
-}
 
 function TrackRow({
   track,
@@ -97,6 +38,7 @@ function TrackRow({
   disabled,
   onPlay,
   onSelect,
+  onVolumeChange,
   onRename,
   onDelete,
 }: {
@@ -107,6 +49,7 @@ function TrackRow({
   disabled: boolean;
   onPlay: () => void;
   onSelect: () => void;
+  onVolumeChange: (volume: number) => void;
   onRename: (name: string, volume: number) => void;
   onDelete: () => void;
 }) {
@@ -150,6 +93,23 @@ function TrackRow({
         <button type="button" aria-label={`Delete ${track.name}`} title="Delete track" onClick={onDelete} className={`flex h-10 w-10 items-center justify-center rounded-xl border border-loss/30 bg-surface text-loss transition hover:bg-loss-bg ${buttonFocus}`}>
           <Trash2 size={17} aria-hidden />
         </button>
+      </div>
+      <div className="mt-3 flex items-center gap-3 border-t border-hairline pt-3">
+        <label htmlFor={`track-playback-volume-${track.id}`} className="shrink-0 text-xs font-semibold text-muted">Playback volume</label>
+        <input
+          id={`track-playback-volume-${track.id}`}
+          type="range"
+          min="0"
+          max="5"
+          step="0.1"
+          value={volume}
+          aria-label={`Playback volume for ${track.name}`}
+          onChange={(event) => setVolume(Number(event.target.value))}
+          onPointerUp={(event) => onVolumeChange(Number(event.currentTarget.value))}
+          onKeyUp={(event) => onVolumeChange(Number(event.currentTarget.value))}
+          className="h-2 min-w-0 flex-1 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
+        <span className="w-14 text-right text-xs tabular-nums text-muted">{volume.toFixed(1)} / 5</span>
       </div>
       {editing && (
         <div className="mt-4 grid gap-3 border-t border-hairline pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] sm:items-end">
@@ -201,7 +161,6 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   });
   const tracks = tracksQuery.data ?? [];
   const selectedId = settings.data?.active_id ?? tracks.find((track) => track.active)?.id ?? null;
-  const selectedTrack = tracks.find((track) => track.id === selectedId) ?? null;
 
   const [enabled, setEnabled] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -211,10 +170,7 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   const [dragging, setDragging] = useState(false);
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [loadingPlayId, setLoadingPlayId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [previewError, setPreviewError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playerUrlRef = useRef<string | null>(null);
@@ -253,11 +209,6 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
       showErrorNotification(errorMessage(error), { title: "Background audio settings failed" });
     },
   });
-  const saveCallVolume = useMutation({
-    mutationFn: updateBackgroundAudioSettings,
-    onSuccess: (result) => queryClient.setQueryData(settingsKey, result),
-    onError: (error) => showErrorNotification(errorMessage(error), { title: "Volume update failed" }),
-  });
   const addTrack = useMutation({
     mutationFn: createBackgroundAudio,
     onSuccess: async () => {
@@ -282,8 +233,6 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     if (playerUrlRef.current) URL.revokeObjectURL(playerUrlRef.current);
     const nextUrl = URL.createObjectURL(blob);
     playerUrlRef.current = nextUrl;
-    setCurrentTime(0);
-    setLoadedId(id);
     setPlayingId(id);
     setPlayerUrl(nextUrl);
   };
@@ -306,25 +255,6 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
       setLoadingPlayId(null);
     }
   };
-  const playVoicePreview = async () => {
-    if (playingId === "voice-preview") {
-      audioRef.current?.pause();
-      setPlayingId(null);
-      return;
-    }
-    setPreviewError(null);
-    setLoadingPlayId("voice-preview");
-    audioRef.current?.pause();
-    setPlayingId(null);
-    try {
-      replacePlayerSource(await getBackgroundAudioPreview(agentId), "voice-preview");
-    } catch (error) {
-      setPreviewError(errorMessage(error));
-      showErrorNotification(errorMessage(error), { title: "Audio preview failed" });
-    } finally {
-      setLoadingPlayId(null);
-    }
-  };
   const selectTrack = (track: BackgroundAudio) => {
     const body = new FormData();
     body.set("active", "true");
@@ -333,6 +263,12 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   const renameTrack = (track: BackgroundAudio, name: string, trackVolume: number) => {
     const body = new FormData();
     body.set("name", name);
+    body.set("volume", String(trackVolume));
+    patchTrack.mutate({ id: track.id, body });
+  };
+  const updateTrackVolume = (track: BackgroundAudio, trackVolume: number) => {
+    if (trackVolume === track.volume) return;
+    const body = new FormData();
     body.set("volume", String(trackVolume));
     patchTrack.mutate({ id: track.id, body });
   };
@@ -355,20 +291,12 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     setEnabled(nextEnabled);
     setCallSettings.mutate({ enabled: nextEnabled, volume, agent_id: agentId });
   };
-  const commitVolume = (nextVolume: number) => {
-    setVolume(nextVolume);
-    saveCallVolume.mutate({ enabled, volume: nextVolume, agent_id: agentId });
-  };
 
-  const selectedDuration = selectedTrack?.duration_seconds ?? 0;
-  const playedRatio = loadedId === selectedTrack?.id && selectedDuration > 0 ? Math.min(1, currentTime / selectedDuration) : 0;
-  const waveform = [20, 33, 25, 39, 50, 34, 45, 60, 40, 54, 30, 48, 62, 38, 51, 31, 46, 58, 35, 49, 26, 42, 55, 32, 45, 27, 39, 52, 30, 43, 56, 34];
 
   return (
-    <div className="min-w-0 space-y-4 font-sans text-body">
+    <div className="flex min-w-0 flex-col gap-4 font-sans text-body">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-info-bg text-info"><Music size={20} aria-hidden /></span>
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-heading">Background audio</h2>
             <p className="mt-0.5 text-sm text-muted">Add a soft sound behind your agent&apos;s voice during calls.</p>
@@ -395,70 +323,25 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
         </div>
       </header>
 
-      {(settings.error || tracksQuery.error || setCallSettings.error || saveCallVolume.error || addTrack.error || patchTrack.error || deleteTrack.error || previewError) && (
+      {(settings.error || tracksQuery.error || setCallSettings.error || addTrack.error || patchTrack.error || deleteTrack.error) && (
         <div className="space-y-2">
           {settings.error && <ErrorBanner message={errorMessage(settings.error)} />}
           {tracksQuery.error && <ErrorBanner message={errorMessage(tracksQuery.error)} />}
           {setCallSettings.error && <ErrorBanner message={errorMessage(setCallSettings.error)} />}
-          {saveCallVolume.error && <ErrorBanner message={errorMessage(saveCallVolume.error)} />}
           {addTrack.error && <ErrorBanner message={errorMessage(addTrack.error)} />}
           {patchTrack.error && <ErrorBanner message={errorMessage(patchTrack.error)} />}
           {deleteTrack.error && <ErrorBanner message={errorMessage(deleteTrack.error)} />}
-          {previewError && <ErrorBanner message={previewError} />}
         </div>
       )}
 
-      <section className="rounded-lg border border-hairline bg-surface p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Selected track</p>
-          <h3 className="mt-2 truncate text-base font-semibold text-heading">{selectedTrack?.name ?? "No audio selected"}</h3>
-            </div>
-            {selectedTrack && (
-              <span className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${enabled ? "bg-gain-bg text-gain" : "bg-warn-bg text-warn"}`}>
-                {enabled ? "Active on calls" : "Not active on calls"}
-              </span>
-            )}
-          </div>
-
-          {selectedTrack ? (
-            <div className="mt-5 grid items-stretch gap-5 md:grid-cols-2">
-              <div className="flex min-h-[120px] flex-col justify-center gap-2 rounded-lg bg-info-surface p-4">
-                <div className="flex items-center gap-4">
-                  <button type="button" aria-label={`${playingId === selectedTrack.id ? "Pause" : "Play"} selected track`} onClick={() => void playTrack(selectedTrack)} disabled={!!loadingPlayId} className={`flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-60 ${buttonFocus}`}>
-                    {loadingPlayId === selectedTrack.id ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-r-transparent" /> : playingId === selectedTrack.id ? <Pause size={21} fill="currentColor" /> : <Play size={21} fill="currentColor" />}
-                  </button>
-                  <div className="flex h-14 min-w-0 flex-1 items-center justify-between gap-[3px]" aria-label="Audio waveform">
-                    {waveform.map((height, index) => (
-                      <span key={index} className="w-[5px] max-w-[3%] rounded-full" style={{ height, backgroundColor: index / waveform.length <= playedRatio ? "var(--primary)" : "var(--hairline-strong)" }} />
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-3 flex justify-between text-[13px] tabular-nums text-muted">
-                  <span>{formatTime(loadedId === selectedTrack.id ? currentTime : 0)}</span>
-                  <span>{formatTime(selectedTrack.duration_seconds)}</span>
-                </div>
-              </div>
-              <div className="flex min-h-[160px] flex-col justify-between gap-4">
-                <RangeControl id="call-audio-volume" value={volume} label="Playback volume" onChange={setVolume} onCommit={commitVolume} />
-                <button type="button" onClick={() => void playVoicePreview()} disabled={Boolean(loadingPlayId)} className={`mt-auto w-full ${outlineButton}`}>
-                {loadingPlayId === "voice-preview" ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-r-transparent" /> : <Mic size={17} aria-hidden />}
-                Preview voice + background
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-5 flex min-h-[160px] flex-col items-center justify-center rounded-lg bg-info-surface px-5 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-info"><Music size={22} aria-hidden /></span>
-              <p className="mt-3 text-sm font-semibold text-heading">No audio selected</p>
-              <p className="mt-1 max-w-xs text-sm text-muted">Choose a track from Your tracks to hear it during calls.</p>
-            </div>
-          )}
-      </section>
-
-      <section className="rounded-lg border border-hairline bg-surface p-5 shadow-sm">
+      <section className="order-2 rounded-lg border border-hairline bg-surface p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-heading">Your tracks</h2>
+          <div>
+            <h2 className="text-base font-semibold text-heading">Your Background voices</h2>
+            <p className="mt-0.5 text-sm text-muted">Choose a background voice and set its playback volume.</p>
+          </div>
+        </div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <span className="text-[13px] text-muted">{tracksQuery.isLoading ? "Loading…" : `${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}`}</span>
         </div>
         {tracks.length > 0 ? (
@@ -473,6 +356,7 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
                 disabled={Boolean(loadingPlayId)}
                 onPlay={() => void playTrack(track)}
                 onSelect={() => selectTrack(track)}
+                onVolumeChange={(nextVolume) => updateTrackVolume(track, nextVolume)}
                 onRename={(name, trackVolume) => renameTrack(track, name, trackVolume)}
                 onDelete={() => void removeTrack(track)}
               />
@@ -483,17 +367,17 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
         ) : (
           <div className="rounded-[14px] border border-dashed border-info-border bg-info-surface px-4 py-8 text-center">
             <p className="text-sm font-semibold text-heading">No tracks yet</p>
-            <p className="mt-1 text-sm text-muted">Add your first background sound using the form below.</p>
+            <p className="mt-1 text-sm text-muted">Add your first background sound using the form above.</p>
           </div>
         )}
       </section>
 
-      <section className="rounded-lg border border-hairline bg-surface p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-heading">Add a new track</h2>
+      <section className="order-1 rounded-lg border border-hairline bg-surface p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-heading">Add a new Background voice</h2>
           <p className="mt-1 text-sm leading-5 text-muted">Upload a sound, name it, and set how loud it plays. You can change both later.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className="min-w-0">
-              <label htmlFor="background-track-name" className="mb-2 block text-sm font-semibold text-heading">Track name</label>
+              <label htmlFor="background-track-name" className="mb-2 block text-sm font-semibold text-heading">Background voice name</label>
               <input id="background-track-name" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="e.g. Calm office" maxLength={100} className={`h-10 w-full rounded-md border border-hairline-strong bg-surface px-3 text-sm text-heading placeholder:text-faint ${buttonFocus}`} />
             </div>
 
@@ -554,7 +438,6 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
       <audio
         ref={audioRef}
         className="sr-only"
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         onEnded={() => setPlayingId(null)}
         onPause={() => setPlayingId(null)}
       />

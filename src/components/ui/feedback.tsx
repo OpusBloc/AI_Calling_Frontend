@@ -202,6 +202,7 @@ export function Card({
   title,
   description,
   actions,
+  actionsClassName,
   children,
   className,
   flush,
@@ -209,6 +210,7 @@ export function Card({
   title?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  actionsClassName?: string;
   children: ReactNode;
   className?: string;
   /** No body padding — for tables that run edge to edge */
@@ -232,7 +234,7 @@ export function Card({
             )}
           </div>
           {actions && (
-            <div className="flex flex-wrap items-center gap-2">{actions}</div>
+            <div className={clsx("flex flex-wrap items-center gap-2", actionsClassName)}>{actions}</div>
           )}
         </div>
       )}

@@ -1,7 +1,7 @@
 export { Skeleton, SkeletonBoundary, RouteSkeleton, useSkeletonVisibility } from "./skeleton";
 export type { SkeletonProps } from "./skeleton";
 export { TableSkeleton, TableSkeletonShell } from "./table-skeleton";
-export { StatCardSkeleton, SummaryCardSkeleton, DashboardStatValueSkeleton, DashboardStatVisualSkeleton, OverviewStatValueSkeleton } from "./card-skeleton";
+export { StatCardSkeleton, SummaryCardSkeleton, DashboardStatValueSkeleton, OverviewStatValueSkeleton } from "./card-skeleton";
 export { ChartSkeleton, DonutChartSkeleton } from "./chart-skeleton";
 export { FormSkeleton, MultiSelectOptionsSkeleton, ActionProgressSkeleton, FieldControlSkeleton, TemplateOptionsSkeleton } from "./form-skeleton";
 export { SidebarProfileSkeleton } from "./sidebar-profile-skeleton";

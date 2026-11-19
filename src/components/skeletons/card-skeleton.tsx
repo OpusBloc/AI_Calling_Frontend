@@ -23,10 +23,6 @@ export function DashboardStatValueSkeleton() {
   return <div aria-hidden="true" className="space-y-1.5"><Skeleton className="h-7 w-14 rounded-md" /><Skeleton className="h-3 w-16 rounded-md" /></div>;
 }
 
-export function DashboardStatVisualSkeleton() {
-  return <div aria-hidden="true" className="flex h-10 w-16 items-end justify-around gap-1">{[50, 75, 40, 90, 60].map((height, index) => <Skeleton key={index} className="w-2 rounded-t" height={`${height}%`} />)}</div>;
-}
-
 export function OverviewStatValueSkeleton() {
   return <div aria-hidden="true" className="space-y-2"><Skeleton className="h-7 w-20 rounded" /><Skeleton className="h-3 w-28 rounded" /></div>;
 }
