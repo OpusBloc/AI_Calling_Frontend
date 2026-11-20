@@ -200,6 +200,7 @@ export default function VoicePicker({
   const selectedCustomVoice = customVoices.find((voice) => voice.id === value);
   const selectedCatalogVoice = voices.find((voice) => voice.voice_id === value);
   const currentVoiceName = selectedCustomVoice?.name ?? selectedCatalogVoice?.speaker ?? defaultVoice?.name;
+  const previewLanguage = selectedCatalogVoice?.language_code ?? selectedCustomVoice?.language ?? agentLanguage;
 
   const removeCustomVoice = useMutation({
     mutationFn: deleteVoice,
@@ -346,10 +347,6 @@ export default function VoicePicker({
               className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "custom" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
               Custom voices ({customVoiceCount})
             </button>
-            <button type="button" role="tab" id="voice-tab-samples" aria-controls="voice-panel-samples" aria-selected={voiceSection === "samples"} onClick={() => switchVoiceSection("samples")}
-              className={clsx("-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "samples" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
-              Saved samples ({samples.data?.pages[0]?.total ?? 0})
-            </button>
             <button type="button" role="tab" id="voice-tab-background" aria-controls="voice-panel-background" aria-selected={voiceSection === "background"} onClick={() => switchVoiceSection("background")}
               className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "background" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
               Background audio
@@ -412,7 +409,7 @@ export default function VoicePicker({
             )}
             {voiceSection === "background" && (
               <section id="voice-panel-background" role="tabpanel" aria-labelledby="voice-tab-background">
-                <BackgroundAudioPreview agentId={agentId} />
+                <BackgroundAudioPreview agentId={agentId} speaker={selectedCatalogVoice?.voice_id} language={previewLanguage} text={previewText} />
               </section>
             )}
             {voiceSection === "samples" && (

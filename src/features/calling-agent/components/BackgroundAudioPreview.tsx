@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Music, Pause, Pencil, Play, Plus, Trash2, X } from "lucide-react";
+import { Check, Loader2, Mic, Music, Pause, Pencil, Play, Plus, Trash2, X } from "lucide-react";
 
 import {
   createBackgroundAudio,
   deleteBackgroundAudio,
+  getBackgroundAudio,
   getBackgroundAudioFile,
+  getBackgroundAudioPreview,
   getBackgroundAudioSettings,
   listBackgroundAudios,
   postBackgroundAudioSettings,
   updateBackgroundAudio,
+  updateBackgroundAudioSettings,
   type BackgroundAudio,
 } from "@/lib/callingAgentApi";
 import { ErrorBanner, errorMessage } from "@/components/ui";
-import { confirmDialog } from "@/components/ConfirmDialog";
 import { showErrorNotification } from "@/hooks/useNotification";
+import VolumeDial from "./VolumeDial";
 
 const isNotFoundError = (error: unknown) =>
   Boolean(error && typeof error === "object" && "status" in error && (error as { status?: number }).status === 404);
@@ -30,108 +33,284 @@ const formatTime = (seconds: number) => {
 const buttonFocus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 const primaryButton = `inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45 ${buttonFocus}`;
 
-function TrackRow({
+export type Track = { id: string; name: string; durationSec: number; volume: number; isSelected: boolean };
+
+export function useBackgroundPreview({ agentId, speaker, language, text }: {
+  agentId?: string;
+  speaker?: string;
+  language?: string;
+  text?: string;
+}) {
+  const contextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const volumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestRef = useRef(0);
+  const activeTrackRef = useRef<Track | null>(null);
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const stop = useCallback(() => {
+    requestRef.current += 1;
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
+    timerRef.current = null;
+    volumeTimerRef.current = null;
+    activeTrackRef.current = null;
+    if (sourceRef.current) sourceRef.current.onended = null;
+    try { sourceRef.current?.stop(); } catch { /* already stopped */ }
+    sourceRef.current = null;
+    setPlayingTrackId(null);
+    setLoadingTrackId(null);
+    setElapsed(0);
+  }, []);
+
+  const loadPreview = useCallback(async (track: Track, volume: number) => {
+    const requestId = ++requestRef.current;
+    activeTrackRef.current = track;
+    setLoadingTrackId(track.id);
+    try {
+      const context = contextRef.current ?? new AudioContext();
+      contextRef.current = context;
+      await context.resume();
+      const previewBlob = await getBackgroundAudioPreview({ agentId, volume, audioId: track.id, speaker, language, text });
+      const previewBuffer = await context.decodeAudioData(await previewBlob.arrayBuffer());
+      if (requestId !== requestRef.current) return;
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (sourceRef.current) sourceRef.current.onended = null;
+      try { sourceRef.current?.stop(); } catch { /* already stopped */ }
+      const source = context.createBufferSource();
+      source.buffer = previewBuffer;
+      source.connect(context.destination);
+      sourceRef.current = source;
+      source.onended = () => {
+        if (requestId !== requestRef.current) return;
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
+        timerRef.current = null;
+        volumeTimerRef.current = null;
+        sourceRef.current = null;
+        activeTrackRef.current = null;
+        setPlayingTrackId(null);
+        setElapsed(0);
+      };
+      setDuration(previewBuffer.duration);
+      setElapsed(0);
+      setPlayingTrackId(track.id);
+      const startedAt = context.currentTime;
+      timerRef.current = setInterval(() => setElapsed(Math.min(previewBuffer.duration, context.currentTime - startedAt)), 100);
+      source.start();
+    } catch (error) {
+      if (requestId !== requestRef.current) return;
+      setLoadingTrackId(null);
+      showErrorNotification(errorMessage(error), { title: "Preview failed" });
+    } finally {
+      if (requestId === requestRef.current) setLoadingTrackId(null);
+    }
+  }, [agentId, language, speaker, text]);
+
+  const play = useCallback((track: Track, volume: number) => {
+    if (playingTrackId === track.id || loadingTrackId === track.id) {
+      stop();
+      return;
+    }
+    stop();
+    void loadPreview(track, volume);
+  }, [loadPreview, loadingTrackId, playingTrackId, stop]);
+
+  const setVolume = useCallback((volume: number) => {
+    const track = activeTrackRef.current;
+    if (!track) return;
+    if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
+    volumeTimerRef.current = setTimeout(() => {
+      volumeTimerRef.current = null;
+      void loadPreview(track, volume);
+    }, 200);
+  }, [loadPreview]);
+
+  useEffect(() => () => {
+    requestRef.current += 1;
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
+    if (sourceRef.current) sourceRef.current.onended = null;
+    try { sourceRef.current?.stop(); } catch { /* already stopped */ }
+    void contextRef.current?.close();
+  }, []);
+
+  return { playingTrackId, loadingTrackId, elapsed, duration, play, stop, setVolume };
+}
+
+export function BackgroundVoiceCard({
   track,
-  selected,
-  playing,
-  loading,
-  disabled,
-  onPlay,
+  isTrackPlaying,
+  isTrackLoading,
+  isPreviewPlaying,
+  isPreviewLoading,
+  radioTabStop,
+  elapsed,
+  previewDuration,
   onSelect,
-  onVolumeChange,
+  onPlay,
+  onPreview,
+  onPreviewVolume,
   onRename,
+  onVolume,
   onDelete,
 }: {
-  track: BackgroundAudio;
-  selected: boolean;
-  playing: boolean;
-  loading: boolean;
-  disabled: boolean;
-  onPlay: () => void;
+  track: Track;
+  isTrackPlaying: boolean;
+  isTrackLoading: boolean;
+  isPreviewPlaying: boolean;
+  isPreviewLoading: boolean;
+  radioTabStop: boolean;
+  elapsed: number;
+  previewDuration: number;
   onSelect: () => void;
-  onVolumeChange: (volume: number) => void;
-  onRename: (name: string, volume: number) => void;
+  onPlay: () => void;
+  onPreview: (volume: number) => void;
+  onPreviewVolume: (volume: number) => void;
+  onRename: (name: string) => Promise<void>;
+  onVolume: (volume: number) => Promise<void>;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(track.name);
   const [volume, setVolume] = useState(track.volume);
-
-  useEffect(() => {
-    setName(track.name);
-    setVolume(track.volume);
-  }, [track.name, track.volume]);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { setName(track.name); setVolume(track.volume); }, [track.name, track.volume]);
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+  const saveName = () => {
+    const nextName = name.trim();
+    if (!nextName) return;
+    void onRename(nextName).then(() => setEditing(false)).catch(() => setName(track.name));
+  };
+  const changeVolume = (nextVolume: number) => {
+    setVolume(nextVolume);
+    onPreviewVolume(nextVolume);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => void onVolume(nextVolume).catch(() => {
+      setVolume(track.volume);
+      onPreviewVolume(track.volume);
+    }), 500);
+  };
+  const progress = isPreviewPlaying && previewDuration > 0 ? Math.min(100, (elapsed / previewDuration) * 100) : 0;
 
   return (
-    <li className={`rounded-lg border p-3 transition-colors ${selected ? "border-primary bg-info-surface" : "border-hairline bg-surface hover:bg-surface-hover"}`}>
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <button
-          type="button"
-          aria-label={`${playing ? "Pause" : "Play"} ${track.name}`}
-          onClick={onPlay}
-          disabled={disabled}
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-hairline-strong bg-surface text-info transition hover:border-primary hover:bg-primary-soft disabled:opacity-50 ${buttonFocus}`}
-        >
-          {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-r-transparent" /> : playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-        </button>
-        <div className="min-w-0 flex-1">
-          {editing ? (
-            <input autoFocus value={name} onChange={(event) => setName(event.target.value)} aria-label={`Rename ${track.name}`} className={`h-10 w-full rounded-xl border border-hairline-strong bg-surface px-3 text-sm font-semibold text-heading ${buttonFocus}`} />
-          ) : (
-            <p className="truncate text-[15px] font-semibold text-heading">{track.name}</p>
-          )}
-          <p className="mt-0.5 text-[13px] text-muted">{formatTime(track.duration_seconds)} · Volume {track.volume.toFixed(1)} / 5</p>
+    <li className={`relative min-w-0 max-w-md rounded-xl border-2 p-4 transition-colors ${track.isSelected ? "border-indigo-600 bg-indigo-50 dark:border-[#AFA9EC] dark:bg-[#26215C]" : "border-slate-200 bg-white dark:border-hairline-strong dark:bg-surface"}`}>
+      <div className="flex min-w-0 items-center gap-3 pr-6">
+        <div className="flex shrink-0 flex-col items-center gap-3">
+          <button type="button" role="radio" tabIndex={radioTabStop ? 0 : -1} aria-checked={track.isSelected} aria-label={`Select ${track.name}`} onClick={onSelect} className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border ${track.isSelected ? "border-[#534AB7] dark:border-[#AFA9EC]" : "border-hairline-strong"} ${buttonFocus}`}>
+            {track.isSelected && <span className="h-2.5 w-2.5 rounded-full bg-[#534AB7] dark:bg-[#AFA9EC]" />}
+          </button>
+          <button type="button" aria-label={`${isTrackPlaying ? "Pause" : "Play"} ${track.name}`} aria-pressed={isTrackPlaying} disabled={isTrackLoading} onClick={onPlay} className={`flex h-11 w-11 items-center justify-center rounded-full bg-indigo-700 text-white transition hover:bg-indigo-800 disabled:opacity-60 ${buttonFocus}`}>
+            {isTrackLoading ? <Loader2 size={18} className="animate-spin" /> : isTrackPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
         </div>
-        {selected ? (
-          <span className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white">Selected</span>
-        ) : (
-          <button type="button" onClick={onSelect} className={`h-10 rounded-xl border border-primary px-3 text-sm font-semibold text-info transition hover:bg-primary-soft ${buttonFocus}`}>Use this</button>
-        )}
-        <button type="button" aria-label={`Rename ${track.name}`} title="Rename track" onClick={() => setEditing((value) => !value)} className={`flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-surface text-muted transition hover:border-primary hover:bg-primary-soft hover:text-info ${buttonFocus}`}>
-          <Pencil size={17} aria-hidden />
-        </button>
-        <button type="button" aria-label={`Delete ${track.name}`} title="Delete track" onClick={onDelete} className={`flex h-10 w-10 items-center justify-center rounded-xl border border-loss/30 bg-surface text-loss transition hover:bg-loss-bg ${buttonFocus}`}>
-          <Trash2 size={17} aria-hidden />
-        </button>
-      </div>
-      <div className="mt-3 flex items-center gap-3 border-t border-hairline pt-3">
-        <label htmlFor={`track-playback-volume-${track.id}`} className="shrink-0 text-xs font-semibold text-muted">Playback volume</label>
-        <input
-          id={`track-playback-volume-${track.id}`}
-          type="range"
-          min="0"
-          max="5"
-          step="0.1"
-          value={volume}
-          aria-label={`Playback volume for ${track.name}`}
-          onChange={(event) => setVolume(Number(event.target.value))}
-          onPointerUp={(event) => onVolumeChange(Number(event.currentTarget.value))}
-          onKeyUp={(event) => onVolumeChange(Number(event.currentTarget.value))}
-          className="h-2 min-w-0 flex-1 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        />
-        <span className="w-14 text-right text-xs tabular-nums text-muted">{volume.toFixed(1)} / 5</span>
-      </div>
-      {editing && (
-        <div className="mt-4 grid gap-3 border-t border-hairline pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)_auto] sm:items-end">
-          <div>
-            <label htmlFor={`track-volume-${track.id}`} className="mb-1 block text-xs font-semibold text-muted">Playback volume</label>
-            <div className="flex items-center gap-3">
-              <input id={`track-volume-${track.id}`} type="range" min="0" max="5" step="0.1" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-2 min-w-0 flex-1 accent-primary" />
-              <input type="number" min="0" max="5" step="0.1" value={volume} aria-label={`Playback volume for ${track.name}`} onChange={(event) => { const nextValue = Number(event.target.value); if (event.target.value !== "" && Number.isFinite(nextValue)) setVolume(Math.min(5, Math.max(0, nextValue))); }} className={`h-9 w-[72px] rounded-md border border-hairline-strong bg-surface px-2 text-right text-sm tabular-nums text-heading ${buttonFocus}`} />
-            </div>
+        <div className="min-w-0 flex-1 text-left">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {editing ? (
+              <input autoFocus value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => {
+                if (event.key === "Enter") { event.preventDefault(); saveName(); }
+                if (event.key === "Escape") { setName(track.name); setEditing(false); }
+              }} aria-label={`Rename ${track.name}`} className={`h-8 min-w-0 flex-1 rounded-md border border-hairline-strong bg-surface px-2 text-sm text-heading ${buttonFocus}`} />
+            ) : <span className="truncate text-sm font-semibold text-heading">{track.name}</span>}
+            {editing ? (
+              <button type="button" aria-label="Save voice name" disabled={!name.trim()} onClick={saveName} className={`flex h-8 w-8 items-center justify-center rounded-full text-[#534AB7] dark:text-[#AFA9EC] ${buttonFocus}`}><Check size={17} /></button>
+            ) : (
+              <button type="button" aria-label={`Rename ${track.name}`} onClick={() => setEditing(true)} className={`flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-hover hover:text-heading ${buttonFocus}`}><Pencil size={15} /></button>
+            )}
           </div>
-          <span className="text-xs text-muted">Rename the track or adjust its volume.</span>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => { onRename(name.trim(), volume); setEditing(false); }} disabled={!name.trim()} className={`h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-white disabled:opacity-50 ${buttonFocus}`}>Save</button>
-            <button type="button" onClick={() => { setName(track.name); setVolume(track.volume); setEditing(false); }} aria-label="Cancel rename" className={`flex h-10 w-10 items-center justify-center rounded-xl border border-hairline-strong bg-surface text-muted ${buttonFocus}`}><X size={17} /></button>
-          </div>
+          <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{formatTime(track.durationSec)} · <span className={track.isSelected ? "font-medium text-indigo-600 dark:text-[#AFA9EC]" : "text-slate-500 dark:text-slate-400"}>{track.isSelected ? "In use" : "Background voice"}</span></p>
+          <button type="button" onClick={() => onPreview(volume)} aria-pressed={isPreviewPlaying} disabled={isPreviewLoading} className={`mt-3 inline-flex h-8 max-w-full items-center gap-2 rounded-full border px-3 text-xs font-semibold disabled:opacity-50 ${isPreviewPlaying ? "border-indigo-700 bg-indigo-700 text-white hover:bg-indigo-800 dark:border-[#AFA9EC] dark:bg-[#AFA9EC] dark:text-[#26215C] dark:hover:bg-[#9b95d9]" : "border-indigo-600 bg-white text-indigo-700 hover:bg-indigo-50 dark:border-[#AFA9EC] dark:bg-[#26215C] dark:text-[#AFA9EC] dark:hover:bg-[#26215C]"} ${buttonFocus}`}>
+            {isPreviewLoading ? <Loader2 size={14} className="shrink-0 animate-spin" /> : isPreviewPlaying ? <X size={14} className="shrink-0" /> : <Mic size={14} className="shrink-0" />}
+            <span className="truncate">{isPreviewPlaying ? "Stop preview" : "Play with voice"}</span>
+          </button>
+          {isPreviewPlaying && <div className="mt-1 min-w-0">
+            <div className="h-1 overflow-hidden rounded-full bg-[#EEEDFE] dark:bg-[#26215C]"><div className="h-full bg-[#534AB7] transition-[width] dark:bg-[#AFA9EC]" style={{ width: `${progress}%` }} /></div>
+            <p className="mt-1 truncate text-xs text-muted">Agent voice + {track.name} at {volume.toFixed(1)} · {formatTime(elapsed)}</p>
+          </div>}
         </div>
-      )}
+        <div className="mr-4 flex shrink-0 flex-col items-center">
+          <VolumeDial value={volume} label={`Playback volume for ${track.name}`} onChange={changeVolume} />
+          <span className="-mt-1 text-[11px] text-slate-500 dark:text-slate-400">Volume</span>
+        </div>
+      </div>
+      <button type="button" aria-label={`Delete ${track.name}`} onClick={onDelete} className={`absolute right-2.5 top-2.5 rounded p-1.5 text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30 ${buttonFocus}`}><Trash2 size={20} /></button>
     </li>
   );
 }
 
-export default function BackgroundAudioPreview({ agentId }: { agentId?: string }) {
+export function DeleteVoiceDialog({ voice, loading, onCancel, onConfirm }: {
+  voice: string | null;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!voice) return null;
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" role="alertdialog" aria-modal="true" aria-label="Delete this voice?">
+    <div className="w-full max-w-sm rounded-xl border border-hairline bg-surface p-5 text-heading">
+      <h3 className="text-base font-semibold">Delete this voice?</h3>
+      <p className="mt-2 text-sm text-muted">“{voice}” will be permanently deleted.</p>
+      <div className="mt-5 flex justify-end gap-2">
+        <button type="button" disabled={loading} onClick={onCancel} className="h-9 rounded-full border border-hairline-strong px-4 text-sm font-medium">Cancel</button>
+        <button type="button" disabled={loading} onClick={onConfirm} className="inline-flex h-9 items-center gap-2 rounded-full border border-loss px-4 text-sm font-semibold text-loss disabled:opacity-60">{loading && <Loader2 size={14} className="animate-spin" />}Delete</button>
+      </div>
+    </div>
+  </div>;
+}
+
+export function BackgroundVoiceList({ tracks, loading, loadingTrackId, playingTrackId, preview, onSelect, onPlay, onRename, onVolume, onDelete, onStopAudio }: {
+  tracks: Track[];
+  loading: boolean;
+  loadingTrackId: string | null;
+  playingTrackId: string | null;
+  preview: ReturnType<typeof useBackgroundPreview>;
+  onSelect: (track: Track) => void;
+  onPlay: (track: Track) => void;
+  onRename: (track: Track, name: string) => Promise<void>;
+  onVolume: (track: Track, volume: number) => Promise<void>;
+  onDelete: (track: Track) => void;
+  onStopAudio: () => void;
+}) {
+  return <>
+    <header className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="text-base font-semibold text-heading">Your background voices</h2>
+      <span className="text-sm text-muted">{tracks.length} {tracks.length === 1 ? "track" : "tracks"}</span>
+    </header>
+    {loading ? <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">{[0, 1].map((item) => <li key={item} className="min-w-0 rounded-xl border border-hairline p-3">
+      <div className="flex items-center gap-3">
+        <span className="h-[22px] w-[22px] shrink-0 animate-pulse rounded-full bg-raised" />
+        <span className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-raised" />
+        <div className="min-w-0 flex-1 space-y-2"><span className="block h-4 w-2/3 animate-pulse rounded bg-raised" /><span className="block h-3 w-1/3 animate-pulse rounded bg-raised" /></div>
+        <span className="h-24 w-24 shrink-0 animate-pulse rounded-full bg-raised" />
+        <span className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-raised" />
+      </div>
+    </li>)}</ul> : tracks.length ? (
+      <ul role="radiogroup" aria-label="Your background voices" className="grid max-h-[420px] grid-cols-1 gap-4 overflow-y-auto overscroll-contain pr-2 md:grid-cols-2" onKeyDown={(event) => {
+        if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) return;
+        const radios = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]"));
+        const current = radios.indexOf(event.target as HTMLButtonElement);
+        if (current < 0 || radios.length < 2) return;
+        event.preventDefault();
+        const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
+        const next = radios[(current + (forward ? 1 : -1) + radios.length) % radios.length];
+        next.focus();
+        next.click();
+      }}>
+        {tracks.map((track, index) => <BackgroundVoiceCard key={track.id} track={track} radioTabStop={track.isSelected || (!tracks.some((item) => item.isSelected) && index === 0)} isTrackPlaying={playingTrackId === track.id} isTrackLoading={loadingTrackId === track.id} isPreviewPlaying={preview.playingTrackId === track.id} isPreviewLoading={preview.loadingTrackId === track.id} elapsed={preview.elapsed} previewDuration={preview.duration} onSelect={() => onSelect(track)} onPlay={() => onPlay(track)} onPreview={(volume) => { onStopAudio(); void preview.play(track, volume); }} onPreviewVolume={(volume) => { if (preview.playingTrackId === track.id) preview.setVolume(volume); }} onRename={(name) => onRename(track, name)} onVolume={(volume) => onVolume(track, volume)} onDelete={() => onDelete(track)} />)}
+      </ul>
+    ) : <p className="rounded-xl border border-dashed border-hairline px-4 py-8 text-center text-sm text-muted">No background voices yet. Upload an audio file to add one.</p>}
+  </>;
+}
+
+export default function BackgroundAudioPreview({ agentId, speaker, language, text }: {
+  agentId?: string;
+  speaker?: string;
+  language?: string;
+  text?: string;
+}) {
   const queryClient = useQueryClient();
   const settingsKey = ["background-audio", "settings", agentId ?? null];
   const libraryKey = ["background-audio", "library"];
@@ -139,9 +318,9 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     queryKey: settingsKey,
     queryFn: async () => {
       try {
-        return await getBackgroundAudioSettings(agentId);
+        return { ...await getBackgroundAudioSettings(agentId), exists: true };
       } catch (error) {
-        if (isNotFoundError(error)) return { enabled: false, volume: 1, source: "", active_id: null, active_name: null, updated_at: null, preview_url: null };
+        if (isNotFoundError(error)) return { enabled: false, volume: 1, source: "", active_id: null, active_name: null, updated_at: null, preview_url: null, exists: false };
         throw error;
       }
     },
@@ -160,7 +339,9 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     retry: false,
   });
   const tracks = tracksQuery.data ?? [];
-  const selectedId = settings.data?.active_id ?? tracks.find((track) => track.active)?.id ?? null;
+  const [selectedTrackOverride, setSelectedTrackOverride] = useState<string | null>(null);
+  const selectedId = selectedTrackOverride ?? settings.data?.active_id ?? tracks.find((track) => track.active)?.id ?? null;
+  const preview = useBackgroundPreview({ agentId, speaker, language, text });
 
   const [enabled, setEnabled] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -171,9 +352,12 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingPlayId, setLoadingPlayId] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [deletingTrack, setDeletingTrack] = useState<BackgroundAudio | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playerUrlRef = useRef<string | null>(null);
+  const audioRequestRef = useRef(0);
 
   useEffect(() => {
     if (!settings.data) return;
@@ -199,10 +383,11 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     ]);
   };
   const setCallSettings = useMutation({
-    mutationFn: postBackgroundAudioSettings,
+    mutationFn: ({ body, create }: { body: { enabled: boolean; volume: number; agent_id?: string }; create: boolean }) =>
+      create ? postBackgroundAudioSettings(body) : updateBackgroundAudioSettings(body),
     onSuccess: (result) => {
       setEnabled(result.enabled);
-      queryClient.setQueryData(settingsKey, result);
+      queryClient.setQueryData(settingsKey, { ...result, exists: true });
     },
     onError: (error) => {
       setEnabled(settings.data?.enabled ?? false);
@@ -226,17 +411,33 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   });
   const deleteTrack = useMutation({
     mutationFn: deleteBackgroundAudio,
-    onSuccess: refreshTracks,
+    onSuccess: async (_result, deletedId) => {
+      const remaining = (await listBackgroundAudios()).filter((track) => track.id !== deletedId);
+      queryClient.setQueryData(libraryKey, remaining);
+      if (deletedId === selectedId && remaining[0]) {
+        setSelectedTrackOverride(remaining[0].id);
+        const body = new FormData();
+        body.set("active", "true");
+        await updateBackgroundAudio(remaining[0].id, body);
+      } else if (deletedId === selectedId) {
+        setSelectedTrackOverride(null);
+      }
+      await refreshTracks();
+      setDeletingTrack(null);
+    },
     onError: (error) => showErrorNotification(errorMessage(error), { title: "Track deletion failed" }),
   });
-  const replacePlayerSource = (blob: Blob, id: string) => {
+  const replacePlayerSource = (blob: Blob, id: string, trackVolume = 5) => {
     if (playerUrlRef.current) URL.revokeObjectURL(playerUrlRef.current);
     const nextUrl = URL.createObjectURL(blob);
     playerUrlRef.current = nextUrl;
     setPlayingId(id);
     setPlayerUrl(nextUrl);
+    if (audioRef.current) audioRef.current.volume = Math.min(1, Math.max(0, trackVolume / 5));
   };
   const playTrack = async (track: BackgroundAudio) => {
+    preview.stop();
+    const requestId = ++audioRequestRef.current;
     if (playingId === track.id) {
       audioRef.current?.pause();
       setPlayingId(null);
@@ -247,34 +448,47 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
     audioRef.current?.pause();
     setPlayingId(null);
     try {
-      replacePlayerSource(await getBackgroundAudioFile(track.id), track.id);
+      const [latestTrack, audio] = await Promise.all([
+        getBackgroundAudio(track.id),
+        getBackgroundAudioFile(track.id),
+      ]);
+      if (requestId !== audioRequestRef.current) return;
+      replacePlayerSource(audio, track.id, latestTrack.volume);
     } catch (error) {
-      setPreviewError(errorMessage(error));
-      showErrorNotification(errorMessage(error), { title: "Audio preview failed" });
+      if (requestId === audioRequestRef.current) {
+        setPreviewError(errorMessage(error));
+        showErrorNotification(errorMessage(error), { title: "Audio preview failed" });
+      }
     } finally {
-      setLoadingPlayId(null);
+      if (requestId === audioRequestRef.current) setLoadingPlayId(null);
     }
   };
   const selectTrack = (track: BackgroundAudio) => {
+    const previousId = selectedId;
+    setSelectedTrackOverride(track.id);
     const body = new FormData();
     body.set("active", "true");
-    patchTrack.mutate({ id: track.id, body });
+    patchTrack.mutate({ id: track.id, body }, {
+      onError: () => setSelectedTrackOverride((current) => current === track.id ? previousId : current),
+    });
   };
-  const renameTrack = (track: BackgroundAudio, name: string, trackVolume: number) => {
+  const renameTrack = async (track: BackgroundAudio, name: string) => {
     const body = new FormData();
     body.set("name", name);
-    body.set("volume", String(trackVolume));
-    patchTrack.mutate({ id: track.id, body });
+    await patchTrack.mutateAsync({ id: track.id, body });
   };
-  const updateTrackVolume = (track: BackgroundAudio, trackVolume: number) => {
+  const updateTrackVolume = async (track: BackgroundAudio, trackVolume: number) => {
     if (trackVolume === track.volume) return;
     const body = new FormData();
     body.set("volume", String(trackVolume));
-    patchTrack.mutate({ id: track.id, body });
+    await patchTrack.mutateAsync({ id: track.id, body });
   };
-  const removeTrack = async (track: BackgroundAudio) => {
-    const confirmed = await confirmDialog({ title: "Delete background audio?", message: `“${track.name}” will be permanently deleted.`, confirmLabel: "Delete" });
-    if (confirmed) deleteTrack.mutate(track.id);
+  const removeTrack = (track: BackgroundAudio) => setDeletingTrack(track);
+  const confirmRemoveTrack = () => {
+    if (!deletingTrack) return;
+    if (playingId === deletingTrack.id) audioRef.current?.pause();
+    if (preview.playingTrackId === deletingTrack.id) preview.stop();
+    deleteTrack.mutate(deletingTrack.id);
   };
   const createTrack = () => {
     if (!newName.trim() || !newFile) return;
@@ -289,7 +503,7 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
   };
   const toggleCalls = (nextEnabled: boolean) => {
     setEnabled(nextEnabled);
-    setCallSettings.mutate({ enabled: nextEnabled, volume, agent_id: agentId });
+    setCallSettings.mutate({ body: { enabled: nextEnabled, volume, agent_id: agentId }, create: settings.data?.exists !== true });
   };
 
 
@@ -323,7 +537,7 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
         </div>
       </header>
 
-      {(settings.error || tracksQuery.error || setCallSettings.error || addTrack.error || patchTrack.error || deleteTrack.error) && (
+      {(settings.error || tracksQuery.error || setCallSettings.error || addTrack.error || patchTrack.error || deleteTrack.error || previewError) && (
         <div className="space-y-2">
           {settings.error && <ErrorBanner message={errorMessage(settings.error)} />}
           {tracksQuery.error && <ErrorBanner message={errorMessage(tracksQuery.error)} />}
@@ -331,49 +545,29 @@ export default function BackgroundAudioPreview({ agentId }: { agentId?: string }
           {addTrack.error && <ErrorBanner message={errorMessage(addTrack.error)} />}
           {patchTrack.error && <ErrorBanner message={errorMessage(patchTrack.error)} />}
           {deleteTrack.error && <ErrorBanner message={errorMessage(deleteTrack.error)} />}
+          {previewError && <ErrorBanner message={previewError} />}
         </div>
       )}
 
       <section className="order-2 rounded-lg border border-hairline bg-surface p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-heading">Your Background voices</h2>
-            <p className="mt-0.5 text-sm text-muted">Choose a background voice and set its playback volume.</p>
-          </div>
-        </div>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-          <span className="text-[13px] text-muted">{tracksQuery.isLoading ? "Loading…" : `${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}`}</span>
-        </div>
-        {tracks.length > 0 ? (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {tracks.map((track) => (
-              <TrackRow
-                key={track.id}
-                track={track}
-                selected={track.id === selectedId}
-                playing={playingId === track.id}
-                loading={loadingPlayId === track.id}
-                disabled={Boolean(loadingPlayId)}
-                onPlay={() => void playTrack(track)}
-                onSelect={() => selectTrack(track)}
-                onVolumeChange={(nextVolume) => updateTrackVolume(track, nextVolume)}
-                onRename={(name, trackVolume) => renameTrack(track, name, trackVolume)}
-                onDelete={() => void removeTrack(track)}
-              />
-            ))}
-          </ul>
-        ) : tracksQuery.isLoading ? (
-          <div className="flex min-h-24 items-center justify-center text-sm text-muted">Loading your tracks…</div>
-        ) : (
-          <div className="rounded-[14px] border border-dashed border-info-border bg-info-surface px-4 py-8 text-center">
-            <p className="text-sm font-semibold text-heading">No tracks yet</p>
-            <p className="mt-1 text-sm text-muted">Add your first background sound using the form above.</p>
-          </div>
-        )}
+        <BackgroundVoiceList
+          tracks={tracks.map((track) => ({ id: track.id, name: track.name, durationSec: track.duration_seconds, volume: track.volume, isSelected: track.id === selectedId }))}
+          loading={tracksQuery.isLoading}
+          loadingTrackId={loadingPlayId}
+          playingTrackId={playingId}
+          preview={preview}
+          onSelect={(track) => { const source = tracks.find((item) => item.id === track.id); if (source) selectTrack(source); }}
+          onPlay={(track) => { const source = tracks.find((item) => item.id === track.id); if (source) void playTrack(source); }}
+          onRename={(track, name) => { const source = tracks.find((item) => item.id === track.id); return source ? renameTrack(source, name) : Promise.resolve(); }}
+          onVolume={(track, nextVolume) => { const source = tracks.find((item) => item.id === track.id); return source ? updateTrackVolume(source, nextVolume) : Promise.resolve(); }}
+          onDelete={(track) => { const source = tracks.find((item) => item.id === track.id); if (source) removeTrack(source); }}
+          onStopAudio={() => { audioRequestRef.current += 1; audioRef.current?.pause(); setPlayingId(null); setLoadingPlayId(null); }}
+        />
       </section>
+      <DeleteVoiceDialog voice={deletingTrack?.name ?? null} loading={deleteTrack.isPending} onCancel={() => setDeletingTrack(null)} onConfirm={confirmRemoveTrack} />
 
       <section className="order-1 rounded-lg border border-hairline bg-surface p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-heading">Add a new Background voice</h2>
+          <h2 className="text-base font-semibold text-heading">Add a new background voice</h2>
           <p className="mt-1 text-sm leading-5 text-muted">Upload a sound, name it, and set how loud it plays. You can change both later.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className="min-w-0">

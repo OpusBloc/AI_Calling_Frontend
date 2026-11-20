@@ -4,7 +4,6 @@
 
   import { useEffect, useId, useRef, useState } from "react";
   import { formatMoney } from "@/components/ui";
-  import { ChartSkeleton, SkeletonBoundary, SummaryCardSkeleton } from "@/components/skeletons";
   import type { CallCostSummary } from "@/types/types";
 
   export type CostTrendPoint = { date: string; cost: number };
@@ -420,6 +419,7 @@ if (
     description = "",
     trend,
     trendLoading,
+    stackUntil2xl = false,
   }: {
     parts?: CostParts;
     summaryData?: CallCostSummary;
@@ -432,6 +432,7 @@ if (
     description?: string;
     trend?: CostTrendPoint[];
     trendLoading?: boolean;
+    stackUntil2xl?: boolean;
   }) {
     const [active, setActive] = useState<string | null>(null);
 
@@ -500,7 +501,7 @@ if (
 
 
   return (
-    <div className="relative z-0 grid min-w-0 grid-cols-1 items-stretch gap-4 overflow-visible xl:grid-cols-2">
+    <div data-costsplit-ready={!loading && !trendLoading ? "true" : undefined} className={`relative z-0 grid min-w-0 grid-cols-1 items-stretch gap-4 overflow-visible ${stackUntil2xl ? "dashboard-cost-layout" : "xl:grid-cols-2"}`}>
 
       {/* Cost breakdown card */}
       <section className="relative z-20 flex h-full min-w-0 flex-col overflow-visible rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
@@ -512,21 +513,22 @@ if (
           <p className="mt-0.5 text-xs text-muted">{description}</p>
         )}
 
-        <SkeletonBoundary loading={loading} skeleton={<div className="mt-4"><SummaryCardSkeleton /><div className="mt-4"><ChartSkeleton height="h-56" /></div></div>}>
-          {grandTotal === 0 ? (
+        {loading ? (
+          <p className="mt-4 flex min-h-[280px] items-center justify-center text-sm text-muted">Loading cost details…</p>
+        ) : grandTotal === 0 ? (
             <p className="py-4 text-center text-sm text-muted">No AI or Plivo spend yet.</p>
           ) : (
             <div className="mt-4 min-w-0">
               <SemiDonut parts={allParts} grandTotal={grandTotal} totalLabel={centerLabel} caption={centerCaption} active={active} setActive={setActive} />
             </div>
           )}
-        </SkeletonBoundary>
       </section>
 
       {/* Cost trend card */}
       <section className="relative z-0 h-full min-w-0 rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
-        <SkeletonBoundary loading={!!trendLoading} skeleton={<ChartSkeleton height="h-72" />}>
-          {trend && trend.length > 0 ? (
+        {trendLoading ? (
+          <div className="flex min-h-[280px] items-center justify-center text-sm text-muted">Loading cost trend…</div>
+        ) : trend && trend.length > 0 ? (
             <TrendChart data={trend} />
           ) : (
           <div className="flex h-full min-h-[240px] flex-col items-center justify-center text-center">
@@ -538,7 +540,6 @@ if (
             </p>
           </div>
           )}
-        </SkeletonBoundary>
       </section>
 
     </div>

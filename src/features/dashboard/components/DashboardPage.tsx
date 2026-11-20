@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import dynamic from "next/dynamic";
 import clsx from "clsx";
 import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
 import type { CostTrendPoint } from "@/components/CostSplit";
+import CostSplit from "@/components/CostSplit";
 import { getCallCostSummary } from "@/lib/api";
 import type { CallCostSummary } from "@/types/types";
 import CampaignsStatCard from "@/features/dashboard/components/CampaignsStatCard";
@@ -23,7 +23,6 @@ import {
   formatDuration,
   formatMoney,
 } from "@/components/ui";
-import { ChartSkeleton, DashboardSkeleton, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
 import { DASHBOARD_CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
 
 
@@ -33,14 +32,6 @@ const PERIODS = [
   { days: 30, label: "30 days" },
   { days: 0, label: "All time" },
 ] as const;
-const CostSplit = dynamic(() => import("@/components/CostSplit"), {
-  loading: () => (
-    <div className="grid min-w-0 grid-cols-1 gap-4 overflow-visible xl:grid-cols-2">
-      <ChartSkeleton height="h-72" />
-      <ChartSkeleton height="h-72" />
-    </div>
-  ),
-});
 function costTrendFromSummary(summary?: CallCostSummary): CostTrendPoint[] {
   const trend = [...(summary?.by_day ?? [])]
     .sort((a, b) => a.day.localeCompare(b.day))
@@ -72,7 +63,6 @@ function DashboardPageContent() {
   const plivoNumbers = usePlivoNumbers();
   const plivoPools = usePlivoPools();
   const [days, setDays] = useState<number>(30);
-  const showRecentSkeleton = useSkeletonVisibility(campaigns.isLoading && !campaigns.data);
 
   const count = (q: { isLoading: boolean; data?: unknown[] }) => (q.isLoading || !q.data ? "—" : q.data.length);
   const running = campaigns.data?.filter((c) => c.status === "running").length ?? 0;
@@ -87,24 +77,25 @@ function DashboardPageContent() {
     { done: !!campaigns.data?.length, label: "Create a campaign and upload its leads sheet", href: "/campaigns/new" },
   ];
   const loaded = [agents, plivoPools, representatives, campaigns].every((q) => q.isSuccess);
+  const dashboardReady = true;
   const setupDone = steps.every((s) => s.done);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-dashboard-ready={dashboardReady ? "true" : undefined}>
       
       <div className="w-full overflow-visible mt-5">
         <h2 id="analytics-heading" className="mb-5 text-lg font-semibold text-heading">
         Analytics
       </h2>
         <div className="grid w-full grid-cols-1 gap-6 overflow-visible sm:grid-cols-2 lg:grid-cols-4">
-          <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} loading={campaigns.isLoading} />
+          <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} />
           <StatCard
             title="Agents"
             icon={<Bot size={22} />}
             tone="blue"
             value={count(agents)}
             label="agents"
-            loading={agents.isLoading}
+            loading={false}
             href="/?tab=calling-agent&callingTab=agents"
           />
           <StatCard
@@ -113,7 +104,7 @@ function DashboardPageContent() {
             tone="green"
             value={count(representatives)}
             label={`${activeReps} active`}
-            loading={representatives.isLoading}
+            loading={false}
             href="/?tab=calling-agent&callingTab=representatives"
           />
           <StatCard
@@ -122,7 +113,7 @@ function DashboardPageContent() {
             tone="purple"
             value={count(plivoNumbers)}
             label={`${plivoPools.data?.length ?? 0} pools`}
-            loading={plivoNumbers.isLoading || plivoPools.isLoading}
+            loading={false}
             href="/number-pool"
           />
         </div>
@@ -145,7 +136,7 @@ function DashboardPageContent() {
             <div className="p-5">
               <ErrorState message={(campaigns.error as Error).message} onRetry={() => campaigns.refetch()} />
             </div>
-          ) : campaigns.isSuccess && recent.length === 0 && !showRecentSkeleton ? (
+          ) : campaigns.isSuccess && recent.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted">
               No campaigns yet.{" "}
               <Link href="/campaigns/new" className="font-medium text-accent-text underline underline-offset-2">
@@ -153,7 +144,8 @@ function DashboardPageContent() {
               </Link>
             </p>
           ) : (
-            <Table bare head={RECENT_HEAD} columns={DASHBOARD_CAMPAIGN_COLUMNS} label="Recent campaigns" loading={campaigns.isLoading || showRecentSkeleton} skeleton={<TableSkeleton columns={DASHBOARD_CAMPAIGN_COLUMNS} rows={4} />}>
+            <Table bare head={RECENT_HEAD} columns={DASHBOARD_CAMPAIGN_COLUMNS} label="Recent campaigns">
+              {campaigns.isLoading && <tr><td colSpan={RECENT_HEAD.length} className="px-4 py-8 text-center text-sm text-muted">Loading campaigns…</td></tr>}
               {recent.map((c) => (
                   <LinkRow key={c.id} href={`/campaigns/${c.id}`}>
                     <td className="px-4 py-3 font-medium text-heading">{c.name}</td>
@@ -191,11 +183,7 @@ function DashboardPageContent() {
   );
 }
 
-const DashboardPage = dynamic(() => Promise.resolve(DashboardPageContent), {
-  loading: () => <DashboardSkeleton />,
-});
-
-export default DashboardPage;
+export default DashboardPageContent;
 
 /*------------------------------- CostStatCard UI ---------------------------------------*/
 const TONES = {
@@ -249,7 +237,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
   const callDays = days > 0 ? days : s?.by_day?.length || 1; // "All time" uses the number of days with data
 
   return (
-    <section aria-labelledby="cost-heading" className="space-y-4">
+    <section aria-labelledby="cost-heading" className="space-y-4" data-dashboard-costs-error={summary.isError ? "true" : undefined}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="cost-heading" className="text-lg font-semibold text-heading">
@@ -339,6 +327,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
             totalLabel="Total Campaigns cost"
             trend={trend}
             trendLoading={summary.isLoading}
+            stackUntil2xl
           />
           <p className="text-xs text-muted">Per-call costs are on each campaign&apos;s Costs tab.</p>
         </>

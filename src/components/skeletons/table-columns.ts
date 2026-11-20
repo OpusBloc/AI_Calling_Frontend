@@ -46,10 +46,9 @@ export const POOL_COLUMNS: TableColumnConfig[] = [
 ];
 
 export const TEMPLATE_COLUMNS: TableColumnConfig[] = [
-  { label: "Name", width: "30%", kind: "text" },
-  { label: "Template ID", width: "30%", kind: "text" },
-  { label: "Updated", width: "30%", kind: "date" },
-  { label: "", width: "10%", kind: "actions" },
+  { label: "Name", width: "34%", kind: "text" },
+  { label: "Template ID", width: "33%", kind: "text" },
+  { label: "Updated", width: "33%", kind: "date" },
 ];
 
 export const CALL_COLUMNS: TableColumnConfig[] = [

@@ -6,16 +6,19 @@ import { useEffect, useRef, useState } from "react";
 
 const FLAG = "play_login_intro";
 const LOGO = 120;
-const LOGO_SRC = "/Opus_bloc_loder_image.png"; // same image for BOTH halves
+const LOGO_SRC = "/Opus_bloc_loder_image.png";
+const COVER = LOGO * 1.7;
+const COVER_OFFSET = (LOGO - COVER) / 2;
+const REVEAL_IN_DURATION = 650;
+const REVEAL_OUT_DURATION = 520;
 
-const waitForTarget = (selector: string, timeout = 1500) =>
+const waitForDashboardUI = () =>
   new Promise<HTMLElement | null>((resolve) => {
-    const start = performance.now();
     const tick = () => {
-      const el = document.querySelector<HTMLElement>(selector);
-      const r = el?.getBoundingClientRect();
-      if (el && r && r.width > 0 && r.height > 0) return resolve(el);
-      if (performance.now() - start > timeout) return resolve(null);
+      const dashboard = document.querySelector<HTMLElement>('[data-dashboard-ready="true"]');
+      const costUiReady = document.querySelector('[data-dashboard-costs-error="true"], [data-costsplit-ready="true"]');
+      const bounds = dashboard?.getBoundingClientRect();
+      if (dashboard && costUiReady && bounds && bounds.width > 0 && bounds.height > 0) return resolve(dashboard);
       requestAnimationFrame(tick);
     };
     tick();
@@ -33,7 +36,6 @@ export default function RevealLoader() {
     try {
       if (!sessionStorage.getItem(FLAG)) return;
       sessionStorage.removeItem(FLAG);
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       setActive(true);
     } catch {}
   }, [pathname]);
@@ -45,7 +47,7 @@ export default function RevealLoader() {
     if (!fly || !backdrop) return;
 
     let cancelled = false;
-    let mark: HTMLElement | null = null;
+    let dashboard: HTMLElement | null = null;
     const animations: Animation[] = [];
 
     const animate = (
@@ -61,89 +63,100 @@ export default function RevealLoader() {
     const finish = () => {
       if (!cancelled) setActive(false);
     };
-    const safety = window.setTimeout(finish, 7000);
-
     (async () => {
       try {
-        const left = fly.querySelector<HTMLElement>(".logo-left");
-        const right = fly.querySelector<HTMLElement>(".logo-right");
-        if (!left || !right) return;
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const cover = fly.querySelector<HTMLElement>(".post-login-logo-cover");
+        if (!cover) return;
 
-        // 1. Halves enter and merge
-        const ease = "cubic-bezier(0.22,1,0.36,1)";
+        if (!reducedMotion) {
+          const revealIn = cover.getAnimations()[0];
+          if (revealIn) await revealIn.finished;
+          else await new Promise((resolve) => window.setTimeout(resolve, REVEAL_IN_DURATION));
+        }
+        if (cancelled) return;
+
+        // Keep the logo moving while the dashboard and cost summary load. Without
+        // this, the intro finishes its first reveal and appears stuck on the logo.
+        const waitingAnimation = !reducedMotion
+          ? cover.animate(
+              [
+                { transform: "rotate(45deg) scaleY(0)" },
+                { transform: "rotate(45deg) scaleY(1)" },
+              ],
+              {
+                duration: 1100,
+                direction: "alternate",
+                iterations: Infinity,
+                easing: "cubic-bezier(0.65,0,0.35,1)",
+              },
+            )
+          : null;
+        if (waitingAnimation) animations.push(waitingAnimation);
+
+        dashboard = await waitForDashboardUI();
+        if (cancelled || !dashboard) return;
+
+        waitingAnimation?.cancel();
+        cover.style.transform = "rotate(45deg) scaleY(0)";
+
+        dashboard.style.opacity = "0";
+        if (!reducedMotion) {
+          const revealOut = cover.animate(
+            [
+              { transform: "rotate(45deg) scaleY(0)" },
+              { transform: "rotate(45deg) scaleY(1)" },
+            ],
+            { duration: REVEAL_OUT_DURATION, easing: "cubic-bezier(0.65,0,0.35,1)", fill: "forwards" },
+          );
+          animations.push(revealOut);
+          await revealOut.finished;
+        }
+        if (cancelled) return;
+
         await Promise.all([
-          animate(
-            left,
-            [
-              { transform: "translateX(-60vw)", opacity: 0 },
-              { transform: "translateX(0)", opacity: 1 },
-            ],
-            { duration: 900, easing: ease }
-          ),
-          animate(
-            right,
-            [
-              { transform: "translateX(60vw)", opacity: 0 },
-              { transform: "translateX(0)", opacity: 1 },
-            ],
-            { duration: 900, easing: ease }
-          ),
+          animate(fly, [{ opacity: 1 }, { opacity: 0 }], { duration: 500 }),
+          animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 700 }),
+          animate(dashboard, [{ opacity: 0 }, { opacity: 1 }], { duration: 700 }),
         ]);
         if (cancelled) return;
 
-        // 2. Wait for the real sidebar logo
-        const target = await waitForTarget(".ob-brand-mark");
-        if (cancelled) return;
-
-        if (target) {
-          mark = target;
-          target.style.opacity = "0";
-
-          // Fade the centered mark away and reveal the unchanged sidebar logo.
-          await Promise.all([
-            animate(fly, [{ opacity: 1 }, { opacity: 0 }], { duration: 500 }),
-            animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 700 }),
-            animate(target, [{ opacity: 0 }, { opacity: 1 }], { duration: 500 }),
-          ]);
-          if (cancelled) return;
-
-          target.style.opacity = "1";
-        } else {
-          await Promise.all([
-            animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 600 }),
-            animate(fly, [{ opacity: 1 }, { opacity: 0 }], { duration: 600 }),
-          ]);
-        }
+        dashboard.style.opacity = "1";
       } catch {
         // animations cancelled
       } finally {
-        window.clearTimeout(safety);
-        if (mark) mark.style.opacity = "";
+        if (dashboard) dashboard.style.opacity = "";
         finish();
       }
     })();
 
     return () => {
       cancelled = true;
-      window.clearTimeout(safety);
       animations.forEach((a) => a.cancel());
-      if (mark) mark.style.opacity = "";
+      if (dashboard) dashboard.style.opacity = "";
     };
   }, [active]);
 
   if (!active) return null;
 
-  const half = (cls: string, clip: string) => (
-    <div
-      className={cls}
-      style={{ position: "absolute", inset: 0, clipPath: clip, opacity: 0 }}
-    >
-      <Image src={LOGO_SRC} alt="" width={LOGO} height={LOGO} priority />
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 z-[9999]" aria-hidden>
+      <style>{`
+        @keyframes opus-cover {
+          from { transform: rotate(45deg) scaleY(1); }
+          to { transform: rotate(45deg) scaleY(0); }
+        }
+        .post-login-logo-cover {
+          transform-origin: center;
+          animation: opus-cover ${REVEAL_IN_DURATION}ms cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .post-login-logo-cover {
+            animation: none;
+            transform: rotate(45deg) scaleY(1);
+          }
+        }
+      `}</style>
       <div ref={backdropRef} className="absolute inset-0 bg-surface" />
       <div
         ref={flyRef}
@@ -157,13 +170,21 @@ export default function RevealLoader() {
           marginTop: -LOGO / 2,
         }}
       >
-        <div style={{ position: "relative", width: LOGO, height: LOGO }}>
-{/* lower-left half: enters from the left */}
-{half("logo-left", "polygon(0 0, 0 100%, 100% 100%)")}
-
-{/* upper-right half: enters from the right */}
-{half("logo-right", "polygon(0 0, 100% 0, 100% 100%)")}
+        <div className="post-login-logo-mark">
+          <Image src={LOGO_SRC} alt="" width={LOGO} height={LOGO} priority style={{ objectFit: "contain", display: "block" }} />
         </div>
+        <div
+          className="post-login-logo-cover"
+          style={{
+            position: "absolute",
+            left: COVER_OFFSET,
+            top: COVER_OFFSET,
+            width: COVER,
+            height: COVER,
+            backgroundColor: "var(--surface)",
+            pointerEvents: "none",
+          }}
+        />
       </div>
     </div>
   );

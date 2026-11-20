@@ -26,28 +26,18 @@ export default function AgentPromptTab({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-2">
       <div>
         <h2 className="text-xl font-semibold text-heading">Prompt</h2>
-        <p className="mt-0.5 text-sm text-muted">
+        <p className=" text-sm text-muted">
           Everything that makes up the system prompt. Pick a section below to edit it.
         </p>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-[#dfe4ef] bg-white">
-        <div className="p-5 sm:p-6">
-          <AgentPartEditor
-            key={promptPart}
-            part={promptPart}
-            value={draft.parts[promptPart]}
-            savedText={agent ? (agent[promptPart] ?? "") : null}
-            onChange={(value) => setPart(promptPart, value)}
-          />
-        </div>
-
         <nav
           aria-label="Prompt section navigation"
-          className="grid grid-cols-2 items-center gap-x-3 gap-y-3 border-t border-[#e6eaf3] bg-[#fafbfe] px-4 py-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 sm:px-6 sm:py-3.5"
+          className="grid grid-cols-2 items-center gap-x-3 gap-y-3 border-b border-[#e6eaf3] bg-[#fafbfe] px-4 py-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 sm:px-6 sm:py-3.5"
         >
           <div className="col-span-2 order-first flex flex-col items-center gap-1.5 sm:order-none sm:col-span-1 sm:col-start-2 sm:row-start-1">
             <div className="flex items-center gap-1.5" aria-label="Prompt progress">
@@ -89,6 +79,16 @@ export default function AgentPromptTab({
             Next section <ArrowRight size={16} strokeWidth={2.2} />
           </button>
         </nav>
+
+        <div className="p-5 sm:p-6">
+          <AgentPartEditor
+            key={promptPart}
+            part={promptPart}
+            value={draft.parts[promptPart]}
+            savedText={agent ? (agent[promptPart] ?? "") : null}
+            onChange={(value) => setPart(promptPart, value)}
+          />
+        </div>
       </section>
     </div>
   );

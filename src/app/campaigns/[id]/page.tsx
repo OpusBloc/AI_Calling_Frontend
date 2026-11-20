@@ -102,10 +102,10 @@ const formatDateWithSeconds = (value: string | null | undefined) =>
     ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
     : "—";
 const formatInitiationTime = (value: string | null | undefined) => {
-  if (!value) return "12:00:00 AM";
+  if (!value) return "—";
   const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
   const date = new Date(normalizedValue);
-  if (Number.isNaN(date.getTime())) return "12:00:00 AM";
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -975,7 +975,7 @@ const closeCall = () => {
                   ))}
                 </Select>
               )}
-              <span className="ml-auto whitespace-nowrap text-right text-base font-semibold text-heading" aria-live="polite">
+              <span className="ml-auto whitespace-nowrap text-right text-base font-semibold text-blue-600" aria-live="polite">
                 {filteredRowCount} {filteredRowCount === 1 ? "row" : "rows"}
               </span>
             </>

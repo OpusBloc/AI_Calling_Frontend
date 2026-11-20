@@ -253,9 +253,24 @@ export const listBackgroundAudios = async (): Promise<BackgroundAudio[]> =>
 export const createBackgroundAudio = (body: FormData) =>
   api<BackgroundAudio>("/background-audio", { method: "POST", body, notifyError: false });
 
-export const getBackgroundAudioPreview = (agentId?: string) => {
-  const query = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
-  return api<Blob>(`/background-audio/preview${query}`, { responseType: "blob", notifyError: false });
+export const getBackgroundAudioPreview = (params: {
+  agentId?: string;
+  volume?: number;
+  audioId?: string;
+  text?: string;
+  speaker?: string;
+  language?: string;
+} = {}) => {
+  const query = new URLSearchParams();
+  if (params.agentId) query.set("agent_id", params.agentId);
+  if (params.volume !== undefined) query.set("volume", String(params.volume));
+  if (params.audioId) query.set("audio_id", params.audioId);
+  if (params.text) query.set("text", params.text);
+  if (params.speaker) query.set("speaker", params.speaker);
+  if (params.language) query.set("language", params.language);
+  const queryString = query.toString();
+  const suffix = queryString ? `?${queryString}` : "";
+  return api<Blob>(`/background-audio/preview${suffix}`, { responseType: "blob", notifyError: false });
 };
 
 export const getBackgroundAudio = (id: string) =>
@@ -306,6 +321,10 @@ export const listTestCallRepresentatives = () => api<TestCallRepresentative[]>("
 /** Ring `phone` right now with this agent */
 export const testCallAgent = (id: string, body: TestCallInput) =>
   api<TestCallResult>(`/agents/${id}/test-call`, { method: "POST", body });
+
+/** Test-call records, transcripts, recordings, and timestamps for one agent. */
+export const getAgentTestCalls = (id: string) =>
+  api<unknown>(`/agents/${encodeURIComponent(id)}/test-calls`);
 
 /* ----------------------------- Representatives ---------------------------- */
 
