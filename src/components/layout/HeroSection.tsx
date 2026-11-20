@@ -2,10 +2,10 @@
 
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
+import Dashboard from "@/features/dashboard/components/DashboardPage";
 import {
   CallingAgentSkeleton,
   CampaignsRouteSkeleton,
-  DashboardSkeleton,
   NumberPoolSkeleton,
   TemplatesSkeleton,
 } from "@/components/skeletons";
@@ -13,9 +13,6 @@ import FeatureAccessGate from "@/components/auth/FeatureAccessGate";
 
 export type HeroSectionId = "dashboard" | "campaigns" | "number-pool" | "calling-agent" | "templates";
 
-const Dashboard = dynamic(() => import("@/features/dashboard/components/DashboardPage"), {
-  loading: () => <DashboardSkeleton />,
-});
 const Campaigns = dynamic(() => import("@/features/campaigns/components/CampaignsPage"), {
   loading: () => <CampaignsRouteSkeleton />,
 });

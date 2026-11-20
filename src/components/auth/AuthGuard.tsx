@@ -3,7 +3,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import RevealLoader from "@/components/RevealLoader";
-import { AuthGuardSkeleton, useSkeletonVisibility } from "@/components/skeletons";
 import {
   getToken,
   clearToken,
@@ -26,7 +25,6 @@ export default function AuthGuard({ children }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [allowed, setAllowed] = useState(false);
-  const showLoadingSkeleton = useSkeletonVisibility(!allowed);
 
   useEffect(() => {
     const check = () => {
@@ -65,14 +63,10 @@ export default function AuthGuard({ children }: Props) {
     return onAuthChange(check);
   }, [pathname, router]);
 
-  if (!allowed) {
-    return showLoadingSkeleton ? <AuthGuardSkeleton /> : null;
-  }
-
-    return (
+  return (
     <>
       <RevealLoader />
-      {children}
+      {allowed ? children : null}
     </>
   );
 

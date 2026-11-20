@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Check,
   CircleAlert,
+  History,
   PhoneCall,
   Save,
   Trash2,
@@ -62,6 +63,9 @@ const AgentPromptTab = dynamic(() => import("./AgentPromptTab"), { loading: Step
 const AgentReview = dynamic(() => import("./AgentReview"), { loading: StepLoadingPlaceholder });
 
 const TestCallDrawer = dynamic(() => import("./TestCallDrawer"), {
+  loading: () => <DrawerLoadingPlaceholder />,
+});
+const AgentTestCallsDrawer = dynamic(() => import("./AgentTestCallsDrawer"), {
   loading: () => <DrawerLoadingPlaceholder />,
 });
 
@@ -168,6 +172,7 @@ export default function AgentEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [viewingTestCalls, setViewingTestCalls] = useState(false);
   // Which sub-tab is open inside the Prompt tab
   const [promptPart, setPromptPart] = useState<AgentPart>(AGENT_PARTS[0]);
 
@@ -345,6 +350,16 @@ export default function AgentEditor({
             </Button>
           )}
           {!isNew && (
+            <Button
+              variant="secondary"
+              className="btn-blue"
+              onClick={() => setViewingTestCalls(true)}
+              disabled={saving}
+            >
+              <History size={16} aria-hidden /> Test call history
+            </Button>
+          )}
+          {!isNew && (
             <Button className="btn-red" onClick={handleDelete} disabled={saving}>
               <Trash2 size={16} aria-hidden /> Delete
             </Button>
@@ -354,6 +369,9 @@ export default function AgentEditor({
 
       {testing && agent && (
         <TestCallDrawer agentId={agent.id} onClose={() => setTesting(false)} />
+      )}
+      {viewingTestCalls && agent && (
+        <AgentTestCallsDrawer agentId={agent.id} onClose={() => setViewingTestCalls(false)} />
       )}
 
       {showRestored && dirty && (

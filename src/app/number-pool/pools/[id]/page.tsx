@@ -1,35 +1,22 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowDownUp, ArrowUp, Gauge, Megaphone, Pencil, Phone, Settings, Trash2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { ArrowDown, ArrowDownUp, ArrowUp, Gauge, Megaphone, Phone } from "lucide-react";
 
-import { useCampaigns, useDeletePlivoPool, usePlivoNumberCallStats, usePlivoNumbers, usePlivoPool, usePlivoPools } from "@/hooks/hooks";
-import { patchPlivoNumber } from "@/lib/api";
-import { showSuccessNotification } from "@/hooks/useNotification";
-import { confirmDialog } from "@/components/ConfirmDialog";
+import { useCampaigns, usePlivoNumberCallStats, usePlivoNumbers, usePlivoPool, usePlivoPools } from "@/hooks/hooks";
 import PageHeader from "@/components/PageHeader";
-import { deletePoolMessage } from "@/features/number-pool/components/pools-tab";
-import type { PlivoHealthStatus, PlivoNumber, PlivoNumberUpdate } from "@/types/types";
+import StatCard from "@/features/dashboard/components/StatCard";
 import {
   Badge,
-  Button,
   Card,
   ChipList,
-  Drawer,
   EmptyState,
   ErrorState,
-  Field,
-  Select,
-  StatTile,
   StatusBadge,
   Table,
-  TextInput,
 } from "@/components/ui";
 import { PoolDetailSkeleton, PoolNumberCountSkeleton, SkeletonBoundary, useSkeletonVisibility } from "@/components/skeletons";
-import { useEffect, useState } from "react";
-
-const HEALTH_STATUSES: PlivoHealthStatus[] = ["unknown", "healthy", "degraded", "unhealthy"];
+import { useState } from "react";
 
 function CallCountSortHeader({
   order,
@@ -55,7 +42,6 @@ function CallCountSortHeader({
 
 export default function PlivoPoolPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   // Confirm the ID exists via the list so a bad link reads "not found", not an error
   const pools = usePlivoPools();
   const exists = pools.data?.some((p) => p.id === id) ?? false;
@@ -63,8 +49,6 @@ export default function PlivoPoolPage() {
   const numbers = usePlivoNumbers();
   const callStats = usePlivoNumberCallStats();
   const campaigns = useCampaigns();
-  const remove = useDeletePlivoPool();
-  const [editingNumber, setEditingNumber] = useState<PlivoNumber | null>(null);
   const [callCountOrder, setCallCountOrder] = useState<"normal" | "desc" | "asc">("normal");
   const showPoolSkeleton = useSkeletonVisibility(pools.isLoading);
 
@@ -104,51 +88,43 @@ export default function PlivoPoolPage() {
   });
   const usedBy = (campaigns.data ?? []).filter((c) => c.plivo_pool_ids.includes(pool.id));
 
-  const handleDelete = async () => {
-    const ok = await confirmDialog({ title: `Delete "${pool.name}"?`, message: deletePoolMessage(pool.name), confirmLabel: "Delete pool" });
-    if (!ok) return;
-    remove.mutate(pool.id, {
-      onSuccess: () => {
-        showSuccessNotification(`"${pool.name}" was deleted.`, { title: "Pool deleted" });
-        router.replace("/number-pool");
-      },
-    });
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
         title={pool.name}
         meta={<StatusBadge status={pool.status} />}
         description={`Created ${new Date(pool.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })} · Updated ${new Date(pool.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}`}
-        actions={
-          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={remove.isPending}
-              className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-[var(--danger)] bg-transparent px-3 text-sm font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-4"
-            >
-              <Trash2 size={16} aria-hidden />
-              Delete
-            </button>
-            <Button className="btn-blue-filled min-w-0 flex-1 sm:flex-none" onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>
-              <Pencil size={16} aria-hidden /> Edit pool
-            </Button>
-          </div>
-        }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatTile label="Numbers" value={pool.phone_numbers.length} icon={<Phone size={16} />} />
-        <StatTile label="Concurrency limit" value={pool.concurrency_limit} icon={<Gauge size={16} />} hint="Calls this pool can carry at once" />
-        <StatTile label="Used by campaigns" value={<SkeletonBoundary loading={campaigns.isLoading} skeleton={<PoolNumberCountSkeleton />}>{usedBy.length}</SkeletonBoundary>} icon={<Megaphone size={16} />} />
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title="Numbers"
+          icon={<Phone size={22} />}
+          tone="purple"
+          value={pool.phone_numbers.length}
+          label={pool.phone_numbers.length === 1 ? "number in this pool" : "numbers in this pool"}
+        />
+        <StatCard
+          title="Concurrency limit"
+          icon={<Gauge size={22} />}
+          tone="blue"
+          value={pool.concurrency_limit}
+          label="calls this pool can carry at once"
+        />
+        <StatCard
+          title="Used by campaigns"
+          icon={<Megaphone size={22} />}
+          tone="green"
+          value={usedBy.length}
+          label={usedBy.length === 1 ? "campaign uses this pool" : "campaigns use this pool"}
+          loading={campaigns.isLoading}
+        />
       </div>
 
       <Card flush title="Numbers" description="Plivo numbers in this pool. Calls are placed from these as the caller ID.">
         {pool.phone_numbers.length === 0 ? (
           <div className="p-5">
-            <EmptyState title="No numbers in this pool" text="Edit the pool to add numbers." action={<Button className="btn-blue-filled" onClick={() => router.push(`/number-pool/pools/${pool.id}/edit`)}>Add numbers</Button>} />
+            <EmptyState title="No numbers in this pool" text="This pool does not have any numbers yet." />
           </div>
         ) : (
           <Table bare className="blue-table" head={[
@@ -162,7 +138,6 @@ export default function PlivoPoolPage() {
               onClick={() => setCallCountOrder((order) => order === "normal" ? "desc" : order === "desc" ? "asc" : "normal")}
             />,
             "Limits",
-            "",
           ]} label="Pool numbers">
             {orderedPhones.map((phone) => {
               const n = details.get(phone);
@@ -207,20 +182,6 @@ export default function PlivoPoolPage() {
                     <p className="tnum text-sm font-medium text-heading">{n?.daily_attempt_limit ?? "—"} <span className="font-normal text-muted">daily</span></p>
                     <p className="tnum mt-1 text-xs text-muted">{n?.max_concurrent_calls ?? "—"} concurrent</p>
                   </td>
-                  <td className="w-px whitespace-nowrap px-3 py-2">
-                    {n && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="btn-blue p-0"
-                        aria-label={`Number settings for ${phone}`}
-                        title={`Number settings for ${phone}`}
-                        onClick={() => setEditingNumber(n)}
-                      >
-                        <Settings size={16} aria-hidden />
-                      </Button>
-                    )}
-                  </td>
                 </tr>
               );
             })}
@@ -243,97 +204,6 @@ export default function PlivoPoolPage() {
           items={usedBy.map((c) => ({ key: c.id, label: c.name, href: `/campaigns/${c.id}` }))}
         />
       </Card>
-
-      {editingNumber && (
-        <PlivoNumberSettingsDrawer
-          number={editingNumber}
-          onClose={() => setEditingNumber(null)}
-        />
-      )}
     </div>
-  );
-}
-
-function PlivoNumberSettingsDrawer({
-  number,
-  onClose,
-}: {
-  number: PlivoNumber;
-  onClose: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const updateNumber = useMutation({
-    mutationFn: ({ phoneE164, body }: { phoneE164: string; body: PlivoNumberUpdate }) =>
-      patchPlivoNumber(phoneE164, body),
-    onSuccess: async (updated) => {
-      queryClient.setQueryData<PlivoNumber[]>(["plivo-numbers"], (numbers) =>
-        numbers?.map((number) => number.phone_e164 === updated.phone_e164 ? updated : number),
-      );
-      await queryClient.invalidateQueries({ queryKey: ["plivo-pools"] });
-    },
-  });
-  const [dailyLimit, setDailyLimit] = useState(String(number.daily_attempt_limit));
-  const [maxConcurrent, setMaxConcurrent] = useState(String(number.max_concurrent_calls));
-  const [healthStatus, setHealthStatus] = useState<PlivoHealthStatus>(number.health_status);
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDailyLimit(String(number.daily_attempt_limit));
-    setMaxConcurrent(String(number.max_concurrent_calls));
-    setHealthStatus(number.health_status);
-  }, [number]);
-
-  const save = () => {
-    const daily = Number(dailyLimit);
-    const concurrent = Number(maxConcurrent);
-    if (!Number.isInteger(daily) || daily < 0 || !Number.isInteger(concurrent) || concurrent < 1) {
-      setValidationError("Enter a whole number: daily limit must be 0 or greater and max concurrent must be at least 1.");
-      return;
-    }
-    setValidationError(null);
-    const body: PlivoNumberUpdate = {
-      daily_attempt_limit: daily,
-      max_concurrent_calls: concurrent,
-      health_status: healthStatus,
-    };
-    updateNumber.mutate(
-      { phoneE164: number.phone_e164, body },
-      {
-        onSuccess: () => {
-          showSuccessNotification(`${number.phone_e164} settings were updated.`, { title: "Number updated" });
-          onClose();
-        },
-      },
-    );
-  };
-
-  return (
-    <Drawer
-      title="Number settings"
-      description={number.phone_e164}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" className="btn-blue" onClick={onClose}>Cancel</Button>
-          <Button className="btn-blue-filled" onClick={save} loading={updateNumber.isPending}>Save changes</Button>
-        </>
-      }
-    >
-      <div className="blue-fields space-y-4">
-        <Field label="Daily attempt limit" hint="Set to 0 to prevent new attempts from this number.">
-          <TextInput type="number" min={0} step={1} value={dailyLimit} onChange={(event) => setDailyLimit(event.target.value)} />
-        </Field>
-        <Field label="Max concurrent calls">
-          <TextInput type="number" min={1} step={1} value={maxConcurrent} onChange={(event) => setMaxConcurrent(event.target.value)} />
-        </Field>
-        <Field label="Health status">
-          <Select value={healthStatus} onChange={(event) => setHealthStatus(event.target.value as PlivoHealthStatus)}>
-            {HEALTH_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
-          </Select>
-        </Field>
-        {validationError && <p role="alert" className="text-sm text-loss">{validationError}</p>}
-        {updateNumber.isError && <p role="alert" className="text-sm text-loss">{(updateNumber.error as Error).message}</p>}
-      </div>
-    </Drawer>
   );
 }

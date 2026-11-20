@@ -1,12 +1,10 @@
-import Link from "next/link";
-
 import { FormSkeleton } from "./form-skeleton";
 import { RouteSkeleton, Skeleton } from "./skeleton";
 import { TableSkeletonShell } from "./table-skeleton";
 import { POOL_COLUMNS } from "./table-columns";
 
 export function NumberPoolSkeleton() {
-  return <RouteSkeleton><div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold text-heading">Plivo pools</h2><p className="mt-1 text-sm text-muted">Groups of Plivo numbers that campaigns call from.</p></div><div className="flex gap-2"><button type="button" disabled className="h-9 rounded-md border border-hairline px-3 text-sm text-muted">Sync numbers</button><Link href="/number-pool/pools/new" className="btn-blue-filled inline-flex h-9 items-center rounded-md px-3 text-sm font-medium">New pool</Link></div></div><input aria-label="Search pools or numbers" placeholder="Search pools or numbers" disabled className="h-10 w-full rounded-md border border-hairline-strong bg-surface-input px-3 text-sm sm:w-72" /><TableSkeletonShell columns={POOL_COLUMNS} rows={5} label="Plivo pools" /></div></RouteSkeleton>;
+  return <RouteSkeleton><div className="space-y-4"><div><h2 className="text-lg font-semibold text-heading">Plivo pools</h2><p className="mt-1 text-sm text-muted">Groups of Plivo numbers that campaigns call from.</p></div><input aria-label="Search pools or numbers" placeholder="Search pools or numbers" disabled className="h-10 w-full rounded-md border border-hairline-strong bg-surface-input px-3 text-sm sm:w-72" /><TableSkeletonShell columns={POOL_COLUMNS} rows={5} label="Plivo pools" /></div></RouteSkeleton>;
 }
 
 export function PoolDetailSkeleton() {

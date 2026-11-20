@@ -108,15 +108,15 @@ const newButton = (
                       </div>
                     </td>
                     <td className="px-4 py-3 text-body">
-                      {agent.llm_model || <span className="text-faint">Default</span>}
+                      {agent.llm_model || "_"}
                     </td>
                     <td className="px-4 py-3 text-body">
-                      {agent.stt_model || <span className="text-faint">Default</span>}
+                      {agent.stt_model || "_"}
                     </td>
                     <td className="px-4 py-3 text-body">
                       {agent.voice
                         ? voiceCatalog?.voices.find((voice) => voice.voice_id === agent.voice)?.speaker ?? agent.voice
-                        : <span className="text-faint">Default</span>}
+                        : "_"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(agent.updated_at)}</td>
                     <td className="px-4 py-2">

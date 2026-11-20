@@ -2,44 +2,29 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, MessageSquare, Pencil, Plus } from "lucide-react";
+import { History, MessageSquare } from "lucide-react";
 
 import {
   getWhatsAppDelivery,
   listWhatsAppDeliveries,
   type WhatsAppDelivery,
-  type WhatsAppMessage,
 } from "@/lib/callingAgentApi";
-import {
-  useCreateWhatsAppMessage,
-  useDeleteWhatsAppMessage,
-  useUpdateWhatsAppMessage,
-  useWhatsAppMessages,
-} from "@/hooks/hooks";
-import { showSuccessNotification } from "@/hooks/useNotification";
-import { confirmDialog } from "@/components/ConfirmDialog";
+import { useWhatsAppMessages } from "@/hooks/hooks";
 import { setApiRequestInUrl } from "@/lib/apiUrlState";
-import { DeleteIconButton } from "@/components/ui/ActionIconButtons";
 import {
   Button,
   Badge,
   Drawer,
   EmptyState,
-  ErrorBanner,
   ErrorState,
-  IconButton,
-  Pagination,
   SectionHeader,
   Table,
   errorMessage,
-  usePagination,
   formatDate,
 } from "@/components/ui";
 import { DeliveryDetailSkeleton, DeliveryListSkeleton, SkeletonBoundary, TableSkeleton } from "@/components/skeletons";
 import { TEMPLATE_COLUMNS } from "@/components/skeletons/table-columns";
 
-type FormState = { name: string; content: string; template_id: string };
-const EMPTY: FormState = { name: "", content: "", template_id: "" };
 type DeliveryView = { kind: "all" } | { kind: "message"; messageId: string };
 
 const deliveryTone = (status: string): "gain" | "info" | "warn" | "loss" | "neutral" => {
@@ -51,13 +36,7 @@ const deliveryTone = (status: string): "gain" | "info" | "warn" | "loss" | "neut
 
 export default function WhatsAppMessagesTab() {
   const { data, error, isLoading, refetch } = useWhatsAppMessages();
-  const createMut = useCreateWhatsAppMessage();
-  const updateMut = useUpdateWhatsAppMessage();
-  const deleteMut = useDeleteWhatsAppMessage();
 
-  const [editingId, setEditingId] = useState<string | "new" | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [deliveryView, setDeliveryView] = useState<DeliveryView | null>(null);
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const deliveries = useQuery({
@@ -81,73 +60,6 @@ export default function WhatsAppMessagesTab() {
   });
 
   const messages = data ?? [];
-  const pagination = usePagination(messages);
-  const saving = createMut.isPending || updateMut.isPending;
-  const canSave =
-    form.name.trim() !== "" &&
-    form.content.trim() !== "" &&
-    form.template_id.trim() !== "" &&
-    !saving;
-
-  const openNew = () => {
-    setForm(EMPTY);
-    setEditingId("new");
-    setActionError(null);
-  };
-
-  const openEdit = (m: WhatsAppMessage) => {
-    setForm({ name: m.name ?? "", content: m.content, template_id: m.template_id });
-    setEditingId(m.id);
-    setActionError(null);
-  };
-
-  const close = () => {
-    setEditingId(null);
-    setForm(EMPTY);
-  };
-
-  const handleSave = async () => {
-    setActionError(null);
-    const body = {
-      name: form.name.trim(),
-      content: form.content.trim(),
-      template_id: form.template_id.trim(),
-    };
-    try {
-      if (editingId === "new") {
-        await createMut.mutateAsync(body);
-        showSuccessNotification("Message created.", { title: "WhatsApp message" });
-      } else if (editingId) {
-        await updateMut.mutateAsync({ id: editingId, body });
-        showSuccessNotification("Message updated.", { title: "WhatsApp message" });
-      }
-      close();
-    } catch (err) {
-      setActionError(errorMessage(err));
-    }
-  };
-
-  const handleDelete = async (m: WhatsAppMessage) => {
-    const ok = await confirmDialog({
-      title: "Delete message?",
-      message: `"${m.name || m.template_id}" will be permanently deleted. Agents using it will lose it.`,
-      confirmLabel: "Delete",
-    });
-    if (!ok) return;
-    setActionError(null);
-    try {
-      await deleteMut.mutateAsync(m.id);
-      showSuccessNotification("Message was deleted.", { title: "Message deleted" });
-    } catch (err) {
-      setActionError(errorMessage(err));
-    }
-  };
-
-  const newButton = (
-    <Button className="btn-blue-filled" onClick={openNew}>
-      <Plus size={16} aria-hidden /> New message
-    </Button>
-  );
   const closeDeliveryView = () => {
     setDeliveryView(null);
     setDeliveryId(null);
@@ -177,80 +89,19 @@ export default function WhatsAppMessagesTab() {
     );
   };
 
-  const inputCls =
-    "w-full rounded-md border border-hairline-strong bg-surface-input px-3 py-2 text-sm text-body outline-none transition-colors hover:border-[var(--input-glow)] focus:border-[var(--input-glow)] focus:ring-2 focus:ring-[var(--input-glow)]";
-
   return (
     <section className="blue-fields">
       <SectionHeader
         title="WhatsApp messages"
         description="Template messages agents can send to the customer during or after a call. Attach them to an agent."
         action={
-          <>
-            <Button variant="secondary" className="btn-blue" onClick={openDeliveryActivity}>
-              <History size={16} aria-hidden /> Delivery activity
-            </Button>
-            {newButton}
-          </>
+          <Button variant="secondary" className="btn-blue" onClick={openDeliveryActivity}>
+            <History size={16} aria-hidden /> Delivery activity
+          </Button>
         }
       />
 
       <div className="space-y-3">
-        <ErrorBanner message={actionError} />
-
-        {editingId && (
-          <div className="space-y-3 rounded-lg border border-hairline bg-surface p-4">
-            <h3 className="font-medium text-heading">
-              {editingId === "new" ? "New message" : "Edit message"}
-            </h3>
-            <div>
-              <label className="mb-1 block text-sm text-muted" htmlFor="wa-name">
-                Name
-              </label>
-              <input
-                id="wa-name"
-                className={inputCls}
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Welcome message"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-muted" htmlFor="wa-template">
-                Template ID
-              </label>
-              <input
-                id="wa-template"
-                className={inputCls}
-                value={form.template_id}
-                onChange={(e) => setForm({ ...form, template_id: e.target.value })}
-                placeholder="e.g. welcome_offer_v1"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-muted" htmlFor="wa-content">
-                Content
-              </label>
-              <textarea
-                id="wa-content"
-                className={inputCls}
-                rows={5}
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
-                placeholder="Message text"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" className="btn-blue" onClick={close} disabled={saving}>
-                Cancel
-              </Button>
-              <Button className="btn-blue-filled" onClick={handleSave} disabled={!canSave}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </div>
-        )}
-
         {error && !data ? (
           <ErrorState message={errorMessage(error)} onRetry={() => refetch()} />
         ) : isLoading && !data ? (
@@ -259,14 +110,13 @@ export default function WhatsAppMessagesTab() {
         ) : messages.length === 0 ? (
           <EmptyState
             icon={<MessageSquare size={20} />}
-            title="No WhatsApp messages yet"
-            text="Create a message template here, then attach it to an agent."
-            action={newButton}
+            title="No WhatsApp messages"
+            text="WhatsApp message templates will appear here when available."
           />
         ) : (
           <>
             <Table head={TEMPLATE_COLUMNS.map((column) => column.label)} columns={TEMPLATE_COLUMNS} label="WhatsApp messages" className="blue-table">
-              {pagination.pageItems.map((m) => (
+              {messages.map((m) => (
                 <tr key={m.id}>
                   <td className="px-4 py-3 font-medium text-heading">{m.name}</td>
                   <td className="px-4 py-3 text-body">{m.template_id}</td>
@@ -275,20 +125,9 @@ export default function WhatsAppMessagesTab() {
                       ? new Date(m.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
                       : "—"}
                   </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center justify-end gap-3">
-                      <IconButton label={`Edit ${m.name || m.template_id}`} className="h-8 w-8 p-1 [&>svg]:h-[18px] [&>svg]:w-[18px]" onClick={() => openEdit(m)}>
-                        <Pencil size={18} />
-                      </IconButton>
-                      <DeleteIconButton
-                        onClick={() => handleDelete(m)}
-                      />
-                    </div>
-                  </td>
                 </tr>
               ))}
             </Table>
-            <Pagination {...pagination} noun="messages" />
           </>
         )}
       </div>
