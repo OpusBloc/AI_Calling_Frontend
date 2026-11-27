@@ -18,6 +18,8 @@ export type Campaign = components["schemas"]["CampaignResponse"] & {
   max_live_calls?: number;
   /** Max new calls started per second */
   calls_per_second?: number;
+  /** Maximum duration of an individual call, in seconds */
+  max_call_seconds?: number;
   /** Numbers assigned through Plivo pools on the campaign detail response */
   pools?: Array<{
     pool_id: string;
@@ -34,11 +36,13 @@ export type CampaignCreate = Omit<
 > & {
   max_live_calls?: number;
   calls_per_second?: number;
+  max_call_seconds?: number;
   call_days?: Weekday[];
 };
 export type CampaignUpdate = components["schemas"]["CampaignUpdate"] & {
   max_live_calls?: number | null;
   calls_per_second?: number | null;
+  max_call_seconds?: number | null;
   call_days?: Weekday[] | null;
 };
 export type CampaignScheduleResult = components["schemas"]["ScheduleResult"];
@@ -97,6 +101,10 @@ export type ScheduledCampaignCall = Omit<
   "attempt_history"
 > & {
   attempt_history?: CallAttempt[];
+  tag?: string | null;
+  transferred?: boolean;
+  transfer_status?: string | null;
+  transfer_reason?: string | null;
 
   // New API attributes (GET /campaigns/{id}/calls -> calls[])
   lead_id?: string | null;
@@ -124,6 +132,10 @@ export interface CampaignCallSummary {
   /** Plivo number used to call this lead, when included by the report API. */
   caller_number?: string | null;
   status: string;
+  tag?: string | null;
+  transferred?: boolean;
+  transfer_status?: string | null;
+  transfer_reason?: string | null;
   total_talk_seconds: number;
   plivo_cost: number;
   sarvam_cost: number;
@@ -172,6 +184,20 @@ export interface CampaignCallsSummary {
 export interface CampaignCallsResponse {
   summary: CampaignCallsSummary;
   calls: ScheduledCampaignCall[];
+}
+
+/** GET /campaigns/{id}/callbacks */
+export interface CampaignCallbacksResponse {
+  total_callbacks: number;
+  callbacks: Array<{
+    call_id?: string | null;
+    phone: string;
+    lead_name: string | null;
+    callback_at: string | null;
+    caller_number: string | null;
+    status: string;
+    last_outcome?: string | null;
+  }>;
 }
 
 /** GET /campaigns/{id}/report */
@@ -289,7 +315,7 @@ export interface DispatchControlResponse {
   live_calls_enabled: boolean;
 }
 
-/** AI usage cost (Sarvam STT/LLM/TTS) in INR — GET /call-costs/summary */
+/** AI usage cost (Sarvam STT/LLM/TTS) in INR - GET /call-costs/summary */
 export interface CallCostSummary {
   calls: number;
   seconds: number;
@@ -363,7 +389,7 @@ export interface CallCostSummary {
   };
 }
 
-/** One call's AI cost — GET /call-costs */
+/** One call's AI cost - GET /call-costs */
 export interface CallCost {
   call_uuid: string;
   /** Campaign dispatch attempt this cost belongs to; null for test calls */

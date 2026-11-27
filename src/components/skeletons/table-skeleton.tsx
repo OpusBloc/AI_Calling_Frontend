@@ -29,7 +29,7 @@ export function TableSkeleton({
 
 export function TableSkeletonShell({ columns, rows = 5, label }: { columns: TableColumnConfig[]; rows?: number; label?: string }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-hairline bg-surface shadow-sm">
+    <div className="no-scrollbar overflow-x-auto rounded-lg border border-hairline bg-surface shadow-sm">
       <table className="w-full text-left text-sm" aria-label={label}>
         <colgroup>{columns.map((column, index) => <col key={column.label || `actions-${index}`} style={{ width: column.width }} />)}</colgroup>
         <thead className="border-b border-hairline bg-raised text-[11px] uppercase tracking-[0.08em] text-muted"><tr>{columns.map((column, index) => <th key={column.label || `actions-${index}`} scope="col" className="whitespace-nowrap px-4 py-3 font-medium">{column.label || <span className="sr-only">Actions</span>}</th>)}</tr></thead>

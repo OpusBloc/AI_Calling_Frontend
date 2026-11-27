@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { ArrowRight, Bot, CheckCircle2, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, ChevronLeft, ChevronRight, Circle, Clock, IndianRupee, Phone, PhoneCall, PhoneForwarded, Sigma } from "lucide-react";
 import type { CostTrendPoint } from "@/components/CostSplit";
 import CostSplit from "@/components/CostSplit";
 import { getCallCostSummary } from "@/lib/api";
@@ -19,6 +19,7 @@ import {
   LinkRow,
   StatusBadge,
   Table,
+  usePagination,
   formatDate,
   formatDuration,
   formatMoney,
@@ -64,11 +65,12 @@ function DashboardPageContent() {
   const plivoPools = usePlivoPools();
   const [days, setDays] = useState<number>(30);
 
-  const count = (q: { isLoading: boolean; data?: unknown[] }) => (q.isLoading || !q.data ? "—" : q.data.length);
+  const count = (q: { isLoading: boolean; data?: unknown[] }) => (q.isLoading || !q.data ? "-" : q.data.length);
   const running = campaigns.data?.filter((c) => c.status === "running").length ?? 0;
   const scheduled = campaigns.data?.filter((c) => c.status === "scheduled").length ?? 0;
   const activeReps = representatives.data?.filter((r) => r.active).length ?? 0;
-  const recent = [...(campaigns.data ?? [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6);
+  const recent = [...(campaigns.data ?? [])].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  const recentPagination = usePagination(recent, 6);
 
   const steps = [
     { done: !!agents.data?.length, label: "Create a calling agent", href: "/calling-agent/agents/new" },
@@ -81,13 +83,13 @@ function DashboardPageContent() {
   const setupDone = steps.every((s) => s.done);
 
   return (
-    <div className="space-y-8" data-dashboard-ready={dashboardReady ? "true" : undefined}>
+    <div className="space-y-5 sm:space-y-8" data-dashboard-ready={dashboardReady ? "true" : undefined}>
       
-      <div className="w-full overflow-visible mt-5">
-        <h2 id="analytics-heading" className="mb-5 text-lg font-semibold text-heading">
+      <div className="w-full overflow-visible">
+        <h2 id="analytics-heading" className="mb-3 text-lg font-semibold text-heading">
         Analytics
       </h2>
-        <div className="grid w-full grid-cols-1 gap-6 overflow-visible sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-2 gap-3 overflow-visible sm:gap-4 lg:grid-cols-4">
           <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} />
           <StatCard
             title="Agents"
@@ -144,9 +146,10 @@ function DashboardPageContent() {
               </Link>
             </p>
           ) : (
-            <Table bare head={RECENT_HEAD} columns={DASHBOARD_CAMPAIGN_COLUMNS} label="Recent campaigns">
-              {campaigns.isLoading && <tr><td colSpan={RECENT_HEAD.length} className="px-4 py-8 text-center text-sm text-muted">Loading campaigns…</td></tr>}
-              {recent.map((c) => (
+            <>
+              <Table bare head={RECENT_HEAD} columns={DASHBOARD_CAMPAIGN_COLUMNS} label="Recent campaigns" loading={campaigns.isLoading}>
+                {campaigns.isLoading && <tr><td colSpan={RECENT_HEAD.length} className="px-4 py-8 text-center text-sm text-muted">Loading campaigns…</td></tr>}
+                {recentPagination.pageItems.map((c) => (
                   <LinkRow key={c.id} href={`/campaigns/${c.id}`}>
                     <td className="px-4 py-3 font-medium text-heading">{c.name}</td>
                     <td className="px-4 py-3">
@@ -155,8 +158,30 @@ function DashboardPageContent() {
                     <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatWindow(c.window_start, c.window_end)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(c.updated_at)}</td>
                   </LinkRow>
-              ))}
-            </Table>
+                ))}
+              </Table>
+              {recent.length > 6 && (
+                <div className="flex items-center justify-between gap-3 px-4 pb-4 pt-3 text-sm text-muted">
+                  <button
+                    type="button"
+                    onClick={() => recentPagination.setPage(recentPagination.page - 1)}
+                    disabled={recentPagination.page === 1}
+                    className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={16} aria-hidden /> Previous
+                  </button>
+                  <span aria-live="polite">Page {recentPagination.page} of {recentPagination.pageCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => recentPagination.setPage(recentPagination.page + 1)}
+                    disabled={recentPagination.page === recentPagination.pageCount}
+                    className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next <ChevronRight size={16} aria-hidden />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </Card>
 
@@ -233,11 +258,11 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
 
   const s = summary.data;
   const trend = costTrendFromSummary(s);
-  const v = (n: React.ReactNode) => (summary.isLoading || !s ? "—" : n);
+  const v = (n: React.ReactNode) => (summary.isLoading || !s ? "-" : n);
   const callDays = days > 0 ? days : s?.by_day?.length || 1; // "All time" uses the number of days with data
 
   return (
-    <section aria-labelledby="cost-heading" className="space-y-4" data-dashboard-costs-error={summary.isError ? "true" : undefined}>
+    <section aria-labelledby="cost-heading" className="space-y-3" data-dashboard-costs-error={summary.isError ? "true" : undefined}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="cost-heading" className="text-lg font-semibold text-heading">
@@ -273,13 +298,13 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
         <ErrorState title="Couldn't load call costs" message={(summary.error as Error).message} onRetry={() => summary.refetch()} />
       ) : (
         <>
-          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 [&>div]:min-w-0 [&>div>a]:relative [&>div>a]:z-0 [&>div>a]:shadow-sm [&>div>a]:transition-transform [&>div>a]:duration-200 [&>div>a:hover]:z-10 motion-safe:[&>div>a:hover]:scale-[1.01] [&>div>a:hover]:shadow-md [&>div>div]:relative [&>div>div]:z-0 [&>div>div]:shadow-sm [&>div>div]:transition-transform [&>div>div]:duration-200 [&>div>div:hover]:z-10 motion-safe:[&>div>div:hover]:scale-[1.01] [&>div>div:hover]:shadow-md motion-reduce:[&>div>a]:transition-none motion-reduce:[&>div>div]:transition-none">
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 [&>div]:min-w-0 [&>div>a]:relative [&>div>a]:z-0 [&>div>a]:shadow-sm [&>div>a]:transition-transform [&>div>a]:duration-200 [&>div>a:hover]:z-10 motion-safe:[&>div>a:hover]:scale-[1.01] [&>div>a:hover]:shadow-md [&>div>div]:relative [&>div>div]:z-0 [&>div>div]:shadow-sm [&>div>div]:transition-transform [&>div>div]:duration-200 [&>div>div:hover]:z-10 motion-safe:[&>div>div:hover]:scale-[1.01] [&>div>div:hover]:shadow-md motion-reduce:[&>div>a]:transition-none motion-reduce:[&>div>div]:transition-none [&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1">
 <div className="min-w-0">
   <CostStatCard
     tone="green"
     label="Total AI cost"
     icon={<IndianRupee size={20} />}
-    value={v(s?.total_cost === undefined ? "—" : `₹${formatMoney(s.total_cost)}`)}
+    value={v(s?.total_cost === undefined ? "-" : `₹${formatMoney(s.total_cost)}`)}
     hint={s ? `₹${formatMoney(s.average_per_call.total_cost, 2)} per call on average` : undefined}
   />
 </div>
@@ -288,7 +313,7 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
     tone="amber"
     label="Plivo cost"
     icon={<Phone size={20} />}
-    value={v(s?.plivo_cost_inr === undefined ? "—" : `₹${formatMoney(s.plivo_cost_inr)}`)}
+    value={v(s?.plivo_cost_inr === undefined ? "-" : `₹${formatMoney(s.plivo_cost_inr)}`)}
     hint={s?.plivo_billed_attempts !== undefined ? `${s.plivo_billed_attempts.toLocaleString()} billed attempts` : undefined}
   />
 </div>

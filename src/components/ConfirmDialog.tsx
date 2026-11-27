@@ -21,7 +21,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 /**
- * In-app replacement for window.confirm — resolves true when confirmed
+ * In-app replacement for window.confirm - resolves true when confirmed
  */
 export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
   pending?.resolve(false);

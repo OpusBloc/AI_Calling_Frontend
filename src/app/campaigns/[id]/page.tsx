@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {  useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ChevronDown,
+  Copy,
   Clock,
   ArrowDownUp,
   ArrowDown,
@@ -33,11 +34,12 @@ import {
 } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
-import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsResponse, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport, PlivoPool } from "@/types/types";
+import type { CampaignCallDetailAttempt, CampaignCallSummary, CampaignCallsResponse, CampaignCallbacksResponse, CampaignCallsSummary, CallOutcome, Campaign, CampaignReport, PlivoPool } from "@/types/types";
 import {
   useAgents,
   useCampaign,
   useCampaignCallDetail,
+  useCampaignCallbacks,
   useCampaignCalls,
   useCampaignClassificationCalls,
   useCampaignClassifications,
@@ -56,6 +58,8 @@ import PageHeader from "@/components/PageHeader";
 import { formatDays, formatWindow } from "@/features/campaigns/components/CampaignsTab";
 import DispatchPanel, { useToggleDispatch } from "@/features/campaigns/components/DispatchPanel";
 import CampaignCosts from "@/features/campaigns/components/CampaignCosts";
+import SelectMenu from "@/components/SelectMenu";
+import { PAGE_SIZE } from "@/lib/constants";
 import StatCard from "@/features/dashboard/components/StatCard";
 import type { ClassificationCall, ClassificationCallsResponse } from "@/lib/callingAgentApi";
 
@@ -69,7 +73,6 @@ import {
   Drawer,
   EmptyState,
   ErrorState,
-  Pagination,
   SearchInput,
   Select,
   StatusBadge,
@@ -80,7 +83,6 @@ import {
   formatDuration,
   formatMoney,
   humanize,
-  usePagination,
   useTabParam,
 } from "@/components/ui";
 import { CallDetailsSkeleton, CampaignClassificationSkeleton, CampaignDetailSkeleton, ChartSkeleton, SkeletonBoundary, TableSkeleton, useSkeletonVisibility } from "@/components/skeletons";
@@ -88,6 +90,21 @@ import { CALL_COLUMNS } from "@/components/skeletons/table-columns";
 
 const OUTCOMES: CallOutcome[] = ["completed", "no_answer", "not_connected", "busy", "failed", "hung_up", "cancelled"];
 const CALL_HEAD = CALL_COLUMNS.map((column) => column.label);
+const formatCallbackAtIST = (value: string | null | undefined) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h12",
+    timeZone: "Asia/Kolkata",
+  }).format(date);
+};
 type SortKey = "talk" | "plivo" | "ai" | "total";
 const CLASSIFICATION_BAR_COLORS = [
   "var(--classification-series-1)",
@@ -95,17 +112,37 @@ const CLASSIFICATION_BAR_COLORS = [
   "var(--classification-series-3)",
   "var(--classification-series-4)",
 ] as const;
+const CLASSIFICATION_COLORS: Record<string, string> = {
+  "call disconnected": "#2a8be6",
+  "call again": "#a23fd8",
+  "not answered": "#e879a8",
+  unclassified: "#1db88a",
+  "not interested": "#f0a40c",
+  "wrong number": "#ef6c3a",
+  interested: "#15965f",
+};
+const CLASSIFICATION_FALLBACK_COLORS = ["#7c63d8", "#0f9fb5", "#c84d75", "#697b35", "#82624d", "#5268c9"] as const;
 // Must match the backend: an outcome can only be recorded while a call is live
 const ACTIVE = new Set(["dialing", "ringing", "in_progress"]);
-const formatDateWithSeconds = (value: string | null | undefined) =>
-  value
-    ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
-    : "—";
+const displayAttemptText = (value: string | null | undefined) => {
+  const text = value?.trim();
+  return !text || text.startsWith("\u00e2\u20ac") || text.startsWith("\u00e2\u0080")
+    ? "Not available"
+    : text;
+};
+const formatDateWithSeconds = (value: string | null | undefined) => {
+  const text = displayAttemptText(value);
+  if (text === "Not available") return text;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime())
+    ? "Not available"
+    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
+};
 const formatInitiationTime = (value: string | null | undefined) => {
-  if (!value) return "—";
+  if (!value) return "-";
   const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
   const date = new Date(normalizedValue);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -163,13 +200,25 @@ function CampaignDetails() {
     },
   });
 
+  const backButton = (
+    <button
+      type="button"
+      aria-label="Back to campaigns"
+      title="Back to campaigns"
+      onClick={() => router.push("/?tab=campaigns")}
+      className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <ArrowLeft size={18} aria-hidden="true" />
+    </button>
+  );
+
   if (pageLoading || showPageSkeleton) return showPageSkeleton ? <CampaignDetailSkeleton /> : null;
 
   if (ids.isError || campaignQuery.isError) {
     const err = (ids.error ?? campaignQuery.error) as Error;
     return (
       <div className="space-y-6">
-        <PageHeader title="Campaign" />
+        <PageHeader title="Campaign" leading={backButton} />
         <ErrorState message={err.message} onRetry={() => (ids.isError ? ids.refetch() : campaignQuery.refetch())} />
       </div>
     );
@@ -178,7 +227,7 @@ function CampaignDetails() {
   if (!campaign) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Campaign not found" />
+        <PageHeader title="Campaign not found" leading={backButton} />
         <EmptyState
           title="This campaign doesn't exist"
           text="It may have been deleted, or the link is wrong."
@@ -226,6 +275,7 @@ function CampaignDetails() {
     <div className="space-y-6">
       <PageHeader
         title={campaign.name}
+        leading={backButton}
         meta={<StatusBadge status={campaign.status} />}
         description={
           <span className="flex flex-wrap items-center gap-x-1.5">
@@ -267,6 +317,7 @@ function CampaignDetails() {
               calls={report.data?.calls}
               callRecords={costCalls.data?.calls}
               pools={plivoPools.data}
+              poolIds={campaign.plivo_pool_ids ?? []}
               loading={report.isLoading}
               error={report.isError ? (report.error as Error).message : null}
               onRetry={() => report.refetch()}
@@ -287,6 +338,22 @@ function CampaignDetails() {
           )}
           {tab === "settings" && <SettingsTab campaign={campaign} />}
         </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+          <Button variant="secondary" className="btn-blue h-11 w-full min-w-0 sm:w-auto" onClick={() => router.push("/?tab=campaigns")}>
+            Cancel
+          </Button>
+          <Button
+            className="btn-blue-filled h-11 w-full min-w-0 sm:w-auto"
+            disabled={tab === TABS[TABS.length - 1].id}
+            onClick={() => {
+              const activeIndex = TABS.findIndex((item) => item.id === tab);
+              const nextTab = TABS[activeIndex + 1];
+              if (nextTab) setTab(nextTab.id);
+            }}
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -297,23 +364,12 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
   const configured = useClassifications(agentId, campaignId);
   const agents = useAgents();
   const [selected, setSelected] = useState<{ id: string | null; name: string } | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [graphPage, setGraphPage] = useState(1);
   const loading = summary.status === "pending" || configured.isLoading || agents.isLoading;
   const showLoading = useSkeletonVisibility(loading);
 
   if (loading || showLoading) return showLoading ? <ChartSkeleton height="h-72" /> : null;
-
-  if (selected) {
-    return selected.id ? (
-      <CampaignClassificationCalls
-        campaignId={campaignId}
-        classificationId={selected.id}
-        classificationName={selected.name}
-        onBack={() => setSelected(null)}
-      />
-    ) : (
-      <CampaignUnclassifiedCalls campaignId={campaignId} onBack={() => setSelected(null)} />
-    );
-  }
 
   if (summary.status === "error") return <ErrorState message={summary.error.message} onRetry={() => summary.refetch()} />;
 
@@ -333,19 +389,121 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
   if ((summary.data.unclassified_calls ?? 0) > 0 || bars.length === 0) {
     bars.push({ id: null, name: "Unclassified", calls: summary.data.unclassified_calls ?? 0 });
   }
+  const totalClassifiedCalls = bars.reduce((total, bar) => total + bar.calls, 0);
+  const donutItems = [...bars]
+    .sort((a, b) => b.calls - a.calls)
+    .map((bar, index) => {
+      const key = bar.name.replaceAll("_", " ").trim().toLowerCase();
+      return { ...bar, color: CLASSIFICATION_COLORS[key] ?? CLASSIFICATION_FALLBACK_COLORS[index % CLASSIFICATION_FALLBACK_COLORS.length] };
+    });
+  const circumference = 2 * Math.PI * 60;
   const noCallValues = bars.every((bar) => bar.calls === 0);
   const maxCalls = Math.max(1, ...bars.map((bar) => bar.calls));
+  const graphPageSize = 10;
+  const graphPageCount = Math.max(1, Math.ceil(bars.length / graphPageSize));
+  const graphBars = bars.slice((graphPage - 1) * graphPageSize, graphPage * graphPageSize);
   const yTicks = [...new Set([maxCalls, Math.ceil(maxCalls * 0.75), Math.ceil(maxCalls * 0.5), Math.ceil(maxCalls * 0.25), 0])];
 
   return (
+    <>
     <Card
       title="Call classifications"
-      description={`${summary.data.total_calls} calls grouped by classification. Select a bar to inspect its calls.`}
+      description={(
+        <>
+          <span className="md:hidden">Tap a slice or a row to view its calls.</span>
+          <span className="hidden md:inline">{summary.data.total_calls} calls grouped by classification. Select a bar to view its calls.</span>
+        </>
+      )}
+      flush
+      className="[&>div:first-child]:px-3.5 md:[&>div:first-child]:px-5"
     >
+      <div className="p-3.5 md:p-5">
+      <div className="md:hidden">
+        <svg viewBox="0 0 200 200" className="mx-auto block w-full max-w-[220px] outline-none focus:outline-none focus-visible:outline-none" style={{ WebkitTapHighlightColor: "transparent" }} role="img" aria-label={`Donut chart of ${totalClassifiedCalls} calls across ${donutItems.length} classifications`}>
+          {totalClassifiedCalls > 0 ? (
+            <>
+              {donutItems.reduce<{ offset: number; circles: ReactNode[] }>((acc, item) => {
+                const segmentLength = (item.calls / totalClassifiedCalls) * circumference;
+                const isSelected = Boolean(selected && selected.id === item.id && selected.name === item.name);
+                acc.circles.push(
+                  <circle
+                    key={item.id ?? item.name}
+                    cx="100"
+                    cy="100"
+                    r="60"
+                    fill="none"
+                    stroke={item.color}
+                    strokeWidth="28"
+                    strokeDasharray={`${Math.max(0, segmentLength - 1.5)} ${circumference - Math.max(0, segmentLength - 1.5)}`}
+                    strokeDashoffset={-acc.offset}
+                    transform="rotate(-90 100 100)"
+                    opacity={selected && !isSelected ? 0.3 : 1}
+                    className="cursor-pointer transition-opacity outline-none focus:outline-none focus-visible:outline-none"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                    aria-hidden="true"
+                    onClick={() => setSelected((current) => current && current.id === item.id && current.name === item.name ? null : { id: item.id, name: item.name })}
+                  />,
+                );
+                acc.offset += segmentLength;
+                return acc;
+              }, { offset: 0, circles: [] }).circles}
+              {selected ? (
+                <>
+                  <text x="100" y="96" textAnchor="middle" className="fill-heading font-mono text-[26px] font-medium">{donutItems.find((item) => item.id === selected.id && item.name === selected.name)?.calls ?? 0}</text>
+                  <text x="100" y="116" textAnchor="middle" fontSize={selected.name.length > 16 ? 8 : 11} className="fill-muted">{selected.name.replaceAll("_", " ")}</text>
+                </>
+              ) : (
+                <>
+                  <text x="100" y="96" textAnchor="middle" className="fill-heading font-mono text-[26px] font-medium">{totalClassifiedCalls}</text>
+                  <text x="100" y="116" textAnchor="middle" className="fill-muted text-[11px]">calls</text>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <circle cx="100" cy="100" r="60" fill="none" stroke="currentColor" strokeWidth="28" className="text-hairline outline-none focus:outline-none focus-visible:outline-none" style={{ WebkitTapHighlightColor: "transparent" }} aria-hidden="true" />
+              <text x="100" y="104" textAnchor="middle" className="fill-muted text-[11px]">No calls yet</text>
+            </>
+          )}
+        </svg>
+        <div className="mt-3 space-y-1">
+          {donutItems.map((item) => {
+            const isSelected = Boolean(selected && selected.id === item.id && selected.name === item.name);
+            const percentage = totalClassifiedCalls ? (item.calls / totalClassifiedCalls) * 100 : 0;
+            return (
+              <div key={item.id ?? item.name}>
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setSelected((current) => current && current.id === item.id && current.name === item.name ? null : { id: item.id, name: item.name })}
+                  className={clsx(
+                    "flex min-h-[48px] w-full items-center gap-2.5 rounded-md border px-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                    isSelected ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40" : "border-transparent hover:bg-surface-hover",
+                  )}
+                >
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-heading">{item.name.replaceAll("_", " ")}</span>
+                  <span className="tnum shrink-0 font-mono font-medium text-heading">{item.calls}</span>
+                  <span className="w-10 shrink-0 text-right text-xs text-muted">{percentage > 0 && percentage < 1 ? "<1%" : `${Math.round(percentage)}%`}</span>
+                </button>
+                {isSelected && (
+                  <Button
+                    className="btn-blue-filled mt-1 min-h-[44px] w-full"
+                    onClick={() => setDetailsOpen(true)}
+                  >
+                    View details
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="hidden md:block">
       <div
         role="group"
         aria-label="Calls by classification"
-        className="flex min-h-64 gap-2 overflow-x-auto px-2 pb-2 pt-5"
+        className="no-scrollbar flex min-h-64 gap-2 overflow-x-auto px-2 pb-2 pt-5"
       >
         <div className="relative h-40 w-7 shrink-0 text-right text-xs text-muted" aria-hidden="true">
           {yTicks.map((tick) => (
@@ -370,18 +528,22 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
           </div>
           <div
             className="relative z-10 grid h-56 w-full gap-3"
-            style={{ gridTemplateColumns: `repeat(${bars.length}, minmax(0, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${graphBars.length}, minmax(0, 1fr))` }}
           >
-            {bars.map((bar, index) => {
+            {graphBars.map((bar, pageIndex) => {
+              const index = (graphPage - 1) * graphPageSize + pageIndex;
               const color = CLASSIFICATION_BAR_COLORS[index % CLASSIFICATION_BAR_COLORS.length];
               const barHeight = noCallValues ? 28 + ((index * 37 + 19) % 58) : Math.max(5, (bar.calls / maxCalls) * 100);
               return (
                 <button
                   key={bar.id ?? "unclassified"}
                   type="button"
-                  onClick={() => setSelected({ id: bar.id, name: bar.name })}
-                  aria-label={`${bar.name}: ${bar.calls} calls. View calls`}
-                  className="group grid h-56 grid-rows-[10rem_2rem] justify-items-center gap-2 rounded-md text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  onClick={() => {
+                    setSelected({ id: bar.id, name: bar.name });
+                    setDetailsOpen(true);
+                  }}
+                  aria-label={`View ${bar.calls} calls for ${bar.name}`}
+                  className="group grid h-56 w-full grid-rows-[10rem_2rem] justify-items-center gap-2 rounded-md text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <span className="relative flex h-40 w-full items-end justify-center overflow-visible border-b border-hairline">
                     <span
@@ -402,7 +564,7 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
                       }}
                     />
                   </span>
-                  <span className="line-clamp-2 min-h-8 break-words text-xs font-medium text-heading">
+                  <span className="line-clamp-2 min-h-8 w-full break-words px-0.5 text-xs font-medium leading-normal text-heading">
                     {bar.name.replaceAll("_", " ")}
                   </span>
                 </button>
@@ -411,12 +573,41 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
           </div>
         </div>
       </div>
+      </div>
+      {graphPageCount > 1 && (
+        <div className="mt-3 hidden items-center justify-end gap-2 border-t border-hairline px-2 pt-3 text-sm text-muted md:flex">
+          <Button size="sm" className="btn-blue-filled" onClick={() => setGraphPage((current) => Math.max(1, current - 1))} disabled={graphPage <= 1}>
+            Previous graph
+          </Button>
+          <span className="shrink-0 whitespace-nowrap">Graph page {graphPage} of {graphPageCount}</span>
+          <Button size="sm" className="btn-blue-filled" onClick={() => setGraphPage((current) => Math.min(graphPageCount, current + 1))} disabled={graphPage >= graphPageCount}>
+            Next graph
+          </Button>
+        </div>
+      )}
       {noCallValues && (
-        <p className="px-5 pb-4 text-center text-xs text-muted">
+        <p className="hidden px-5 pb-4 text-center text-xs text-muted md:block">
           Placeholder bars show the available classifications. Values will appear when calls are classified.
         </p>
       )}
+      </div>
     </Card>
+    {detailsOpen && selected && (
+      <Drawer full offsetSidebar title={selected.name === "Unclassified" ? "Unclassified calls" : selected.name.replaceAll("_", " ")} onClose={() => setDetailsOpen(false)}>
+        {selected.id ? (
+          <CampaignClassificationCalls
+            campaignId={campaignId}
+            classificationId={selected.id}
+            classificationName={selected.name}
+            totalCalls={bars.find((bar) => bar.id === selected.id)?.calls ?? 0}
+            onBack={() => setDetailsOpen(false)}
+          />
+        ) : (
+          <CampaignUnclassifiedCalls campaignId={campaignId} totalCalls={bars.find((bar) => bar.id === null)?.calls ?? 0} onBack={() => setDetailsOpen(false)} />
+        )}
+      </Drawer>
+    )}
+    </>
   );
 }
 
@@ -424,15 +615,17 @@ function CampaignClassificationCalls({
   campaignId,
   classificationId,
   classificationName,
+  totalCalls,
   onBack,
 }: {
   campaignId: string;
   classificationId: string;
   classificationName: string;
+  totalCalls: number;
   onBack: () => void;
 }) {
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 10;
   const calls = useCampaignClassificationCalls(campaignId, classificationId, { page, page_size: pageSize });
 
   return (
@@ -440,6 +633,7 @@ function CampaignClassificationCalls({
       campaignId={campaignId}
       title={classificationName}
       data={calls.data}
+      totalCalls={totalCalls}
       loading={calls.isLoading}
       error={calls.isError ? calls.error.message : null}
       page={page}
@@ -451,9 +645,9 @@ function CampaignClassificationCalls({
   );
 }
 
-function CampaignUnclassifiedCalls({ campaignId, onBack }: { campaignId: string; onBack: () => void }) {
+function CampaignUnclassifiedCalls({ campaignId, totalCalls, onBack }: { campaignId: string; totalCalls: number; onBack: () => void }) {
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 10;
   const calls = useCampaignUnclassifiedCalls(campaignId, { page, page_size: pageSize });
 
   return (
@@ -461,6 +655,7 @@ function CampaignUnclassifiedCalls({ campaignId, onBack }: { campaignId: string;
       campaignId={campaignId}
       title="Unclassified calls"
       data={calls.data}
+      totalCalls={totalCalls}
       loading={calls.isLoading}
       error={calls.isError ? calls.error.message : null}
       page={page}
@@ -476,6 +671,7 @@ function ClassificationCallsPanel({
   campaignId,
   title,
   data,
+  totalCalls: fallbackTotal,
   loading,
   error,
   page,
@@ -487,6 +683,7 @@ function ClassificationCallsPanel({
   campaignId: string;
   title: string;
   data: ClassificationCallsResponse | undefined;
+  totalCalls: number;
   loading: boolean;
   error: string | null;
   page: number;
@@ -496,7 +693,7 @@ function ClassificationCallsPanel({
   onRetry: () => void;
 }) {
   const calls = useMemo(() => data?.calls ?? [], [data?.calls]);
-  const total = data?.total ?? 0;
+  const total = Math.max(data?.total ?? 0, fallbackTotal);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const [search, setSearch] = useState("");
   const [durationOrder, setDurationOrder] = useState<"normal" | "desc" | "asc">("normal");
@@ -517,14 +714,50 @@ function ClassificationCallsPanel({
         return durationOrder === "desc" ? bDuration - aDuration : aDuration - bDuration;
       });
   }, [calls, durationOrder, search]);
+  const mobileCallItems = visibleCalls.map((call, index) => {
+    const rowId = call.call_uuid ?? call.attempt_id ?? `${page}-${index}`;
+    return {
+      id: rowId,
+      avatar: "",
+      hideAvatar: true,
+      title: call.name || "Unnamed caller",
+      subtitle: call.phone || "-",
+      badge: call.status ? <StatusBadge status={call.status} /> : undefined,
+      keyValue: {
+        label: "Duration",
+        value: <span className="tnum">{call.duration_seconds != null ? formatDuration(call.duration_seconds) : "-"}</span>,
+      },
+      details: [
+        { label: "Time", value: formatDate(call.classified_at ?? call.ended_at), fullWidth: true },
+      ],
+      actions: [
+        {
+          label: "View details",
+          onClick: () => {
+            setSelectedCall(call);
+            setLastOpenedCallId(rowId);
+          },
+        },
+      ],
+    };
+  });
 
   return (
     <div className="space-y-4">
-      <Button variant="secondary" className="btn-blue" onClick={onBack}>
+      <Button className="btn-blue-filled" onClick={onBack}>
         <ArrowLeft size={16} aria-hidden /> All classifications
       </Button>
 
-      <Card title={title} description={`${total} call${total === 1 ? "" : "s"} in this classification.`}>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-heading">{title}</h2>
+            <p className="text-xs text-muted">{total} calls in this classification.</p>
+          </div>
+          <div className="blue-fields w-full sm:max-w-64">
+            <SearchInput value={search} onChange={(value) => { setSearch(value); onPageChange(1); }} placeholder="Search name, number or status" className="w-full" />
+          </div>
+        </div>
         {error ? (
           <ErrorState message={error} onRetry={onRetry} />
         ) : loading || showCallsSkeleton ? (
@@ -533,9 +766,6 @@ function ClassificationCallsPanel({
           <EmptyState title="No calls in this classification" text="No call records are available yet." />
         ) : (
             <div className="blue-fields space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-              <SearchInput value={search} onChange={(value) => { setSearch(value); onPageChange(1); }} placeholder="Search name, number or status" className="w-full sm:w-72" />
-            </div>
             <Table className="blue-table" head={[
               "Name",
               "Mobile number",
@@ -549,7 +779,7 @@ function ClassificationCallsPanel({
                 onClick={() => setDurationOrder((order) => order === "normal" ? "desc" : order === "desc" ? "asc" : "normal")}
               />,
               "Time",
-            ]} label={`${title} calls`}>
+            ]} label={`${title} calls`} mobileItems={mobileCallItems}>
               {visibleCalls.length === 0 ? (
                 <TableMessage cols={5}>No calls match your search.</TableMessage>
               ) : visibleCalls.map((call, index) => (
@@ -580,10 +810,10 @@ function ClassificationCallsPanel({
                       </span>
                     )}
                   </td>
-                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone || "—"}</td>
-                  <td className="px-4 py-3">{call.status ? <StatusBadge status={call.status} /> : "—"}</td>
+                  <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone || "-"}</td>
+                  <td className="px-4 py-3">{call.status ? <StatusBadge status={call.status} /> : "-"}</td>
                   <td className="tnum whitespace-nowrap px-4 py-3 text-body">
-                    {call.duration_seconds != null ? formatDuration(call.duration_seconds) : "—"}
+                    {call.duration_seconds != null ? formatDuration(call.duration_seconds) : "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted">
                     {formatDate(call.classified_at ?? call.ended_at)}
@@ -592,22 +822,27 @@ function ClassificationCallsPanel({
               ))}
             </Table>
 
+            <div className="flex flex-col gap-3 border-t border-hairline pt-4 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+              <span aria-live="polite">
+                Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} of {total} calls
+              </span>
             {pageCount > 1 && (
-              <div className="flex items-center justify-between gap-3 border-t border-hairline pt-4 text-sm text-muted">
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <span>Page {page} of {pageCount} · {total} calls</span>
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" className="btn-blue" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+                  <Button size="sm" className="btn-blue-filled" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
                     Previous
                   </Button>
-                  <Button variant="secondary" size="sm" className="btn-blue" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
+                  <Button size="sm" className="btn-blue-filled" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
                     Next
                   </Button>
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
-      </Card>
+      </div>
       {selectedCall && (
         <ClassificationCallDrawer campaignId={campaignId} call={selectedCall} classificationName={title} onClose={() => setSelectedCall(null)} />
       )}
@@ -646,16 +881,17 @@ function ClassificationCallDrawer({
     >
       <DetailList
         columns={2}
+        mobileTwoColumns
         items={[
-          { label: "Name", value: call.name || "Unnamed caller" },
-          { label: "Mobile number", value: <span className="tnum">{call.phone || "—"}</span> },
-          { label: "Status", value: call.status ? <StatusBadge status={call.status} /> : "—" },
-          { label: "Classification", value: call.classification || classificationName },
-          { label: "Time", value: formatDate(callTime) },
-          { label: "Classified at", value: formatDate(call.classified_at) },
-          { label: "Ended at", value: formatDate(call.ended_at) },
-          { label: "Transfer status", value: call.transfer_status ? humanize(call.transfer_status) : "—" },
-          { label: "Call ID", value: <span className="break-all font-mono text-xs">{call.call_uuid || "—"}</span> },
+          { label: "Name", value: call.name || "Unnamed caller", wide: (call.name?.length ?? 0) > 24 },
+          { label: "Mobile number", value: <span className="tnum">{call.phone || "-"}</span>, wide: (call.phone?.length ?? 0) > 18 },
+          { label: "Status", value: call.status ? <StatusBadge status={call.status} /> : "-" },
+          { label: "Classification", value: call.classification || classificationName, wide: (call.classification?.length ?? classificationName.length) > 24 },
+          { label: "Time", value: formatDate(callTime), wide: formatDate(callTime).length > 22 },
+          { label: "Classified at", value: formatDate(call.classified_at), wide: formatDate(call.classified_at).length > 22 },
+          { label: "Ended at", value: formatDate(call.ended_at), wide: formatDate(call.ended_at).length > 22 },
+          { label: "Transfer status", value: call.transfer_status ? humanize(call.transfer_status) : "-", wide: (call.transfer_status?.length ?? 0) > 22 },
+          { label: "Call ID", value: <span className="break-all font-mono text-xs">{call.call_uuid || "-"}</span>, wide: true },
         ]}
       />
 
@@ -673,11 +909,12 @@ function ClassificationCallDrawer({
           <>
             <DetailList
               columns={2}
+              mobileTwoColumns
               items={[
                 { label: "Attempts", value: <span className="tnum">{details.data.call.attempt_count} of {details.data.call.max_attempts}</span> },
-                { label: "Called from", value: <span className="tnum">{details.data.call.caller_number || "—"}</span> },
-                { label: "Created", value: formatDateWithSeconds(details.data.call.created_at) },
-                { label: "Updated", value: formatDateWithSeconds(details.data.call.updated_at) },
+                { label: "Called from", value: <span className="tnum">{details.data.call.caller_number || "-"}</span> },
+                { label: "Created", value: formatDateWithSeconds(details.data.call.created_at), wide: formatDateWithSeconds(details.data.call.created_at).length > 22 },
+                { label: "Updated", value: formatDateWithSeconds(details.data.call.updated_at), wide: formatDateWithSeconds(details.data.call.updated_at).length > 22 },
                   { label: "Total cost", value: <span className="tnum">₹{formatMoney(details.data.call.total_plivo_cost + details.data.call.total_sarvam_cost, 2)}</span> },
               ]}
             />
@@ -688,11 +925,12 @@ function ClassificationCallDrawer({
               </section>
             )}
             <div className="space-y-3">
-              {details.data.attempts.map((attempt) => <AttemptCard key={attempt.attempt_id} attempt={attempt} showDuration={false} showRecordingUrl={false} />)}
+              {details.data.attempts.map((attempt) => <AttemptCard key={attempt.attempt_id} attempt={attempt} showDuration={false} showRecordingUrl mobileTwoColumns />)}
             </div>
             {call.audio && details.data.attempts.every((attempt) => !attempt.recording_url) && (
               <section className="space-y-2">
                 <h4 className="eyebrow">Recording</h4>
+                <RecordingUrl value={call.audio} />
                 <audio controls preload="none" src={call.audio} className="w-full">
                   Your browser does not support audio.
                 </audio>
@@ -730,13 +968,13 @@ function Overview({
 }) {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   const s = report?.summary;
-  const v = (n: React.ReactNode) => (loading || !s ? "—" : n);
+  const v = (n: React.ReactNode) => (loading || !s ? "-" : n);
   const pct = (n: number) => (s && s.total_calls ? ` · ${Math.round((n / s.total_calls) * 100)}%` : "");
   const aiCost = callsSummary?.ai_costs?.total_cost_inr_including_tax;
   const plivoBilling = callsSummary?.total_plivo_cost_inr;
   const totalCampaignCost =
     aiCost !== undefined && plivoBilling !== undefined ? aiCost + plivoBilling : undefined;
-  const c = (n: React.ReactNode) => (callsLoading || callsSummary === undefined ? "—" : n);
+  const c = (n: React.ReactNode) => (callsLoading || callsSummary === undefined ? "-" : n);
   return (
     <>
       <div className="grid auto-rows-fr grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -749,8 +987,10 @@ function Overview({
         <StatCard title="Talk time" value={v(formatDuration(s?.total_call_seconds))} icon={<Clock />} color="violet" loading={loading} subtext={s ? `${s.total_call_minutes} min total` : undefined} />
         <StatCard title="Plivo billing" value={c(formatMoney(plivoBilling, 2))} icon={<Receipt />} color="amber" loading={loading || callsLoading} subtext="Billed by Plivo" />
         <StatCard title="AI cost" value={c(formatMoney(aiCost, 2))} icon={<IndianRupee />} color="teal" loading={loading || callsLoading} subtext="STT, LLM, TTS and tax" />
-        <StatCard title="Total campaign cost" value={c(totalCampaignCost === undefined ? "—" : formatMoney(totalCampaignCost, 2))} icon={<IndianRupee />} color="sky" loading={loading || callsLoading} subtext="AI cost + Plivo billing" />
-        <StatCard title="Running for" value={v(formatDuration(s?.total_run_seconds))} icon={<Timer />} color="indigo" loading={loading} subtext="Since the campaign started" />
+        <StatCard title="Total campaign cost" value={c(totalCampaignCost === undefined ? "-" : formatMoney(totalCampaignCost, 2))} icon={<IndianRupee />} color="sky" loading={loading || callsLoading} subtext="AI cost + Plivo billing" />
+        <div className="col-span-2 min-w-0 md:col-span-1">
+          <StatCard title="Running for" value={v(formatDuration(s?.total_run_seconds))} icon={<Timer />} color="indigo" loading={loading} subtext="Since the campaign started" />
+        </div>
       </div>
 
       <DispatchPanel campaignId={campaignId} />
@@ -779,6 +1019,7 @@ function CallsCard({
   calls,
   callRecords,
   pools,
+  poolIds,
   loading,
   error,
   onRetry,
@@ -787,6 +1028,7 @@ function CallsCard({
   calls: CampaignCallSummary[] | undefined;
   callRecords: CampaignCallsResponse["calls"] | undefined;
   pools: PlivoPool[] | undefined;
+  poolIds: string[];
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -796,11 +1038,30 @@ function CallsCard({
   const [callerNumberFilter, setCallerNumberFilter] = useState("all");
   const [poolFilter, setPoolFilter] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [selectedCallback, setSelectedCallback] = useState<CampaignCallbacksResponse["callbacks"][number] | null>(null);
+  const callbacksQuery = useCampaignCallbacks(campaignId, filter === "callbacks");
+  const list = useMemo(() => calls ?? [], [calls]);
+  const callbackItems = (callbacksQuery.data?.callbacks ?? []).filter((callback) =>
+    !search.trim() || `${callback.lead_name ?? ""} ${callback.phone}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
   const router = useRouter();
 const pathname = usePathname();
 const searchParams = useSearchParams();
 const openId = searchParams.get("call"); // popup is open when this is set
 const [selectedCallId, setSelectedCallId] = useState<string | null>(null); // "Last opened" highlight
+
+useEffect(() => {
+  const media = window.matchMedia("(min-width: 768px)");
+  const updatePageSize = () => {
+    setPageSize(media.matches ? 10 : PAGE_SIZE);
+    setPage(1);
+  };
+  updatePageSize();
+  media.addEventListener("change", updatePageSize);
+  return () => media.removeEventListener("change", updatePageSize);
+}, []);
 
 const openCall = (callId: string) => {
   const params = new URLSearchParams(searchParams.toString()); // keeps tab=calls
@@ -818,7 +1079,45 @@ const closeCall = () => {
   router.push(`${pathname}?${params.toString()}`, { scroll: false });
 };
 
-  const list = useMemo(() => calls ?? [], [calls]);
+const showCallbackCall = (callback: CampaignCallbacksResponse["callbacks"][number]) => {
+  const callId = callbackCallId(callback);
+  if (callId) {
+    setSelectedCallback(null);
+    setSelectedCallId(callId);
+    openCall(callId);
+    return;
+  }
+  setSelectedCallback(callback);
+};
+
+const callbackCallId = (callback: CampaignCallbacksResponse["callbacks"][number]) =>
+  callRecords?.find((record) => record.id === callback.call_id)?.id ?? callback.call_id;
+
+const callbackCallOf = (callback: CampaignCallbacksResponse["callbacks"][number]) => {
+  const callId = callbackCallId(callback);
+  return callId ? list.find((call) => call.call_id === callId) ?? null : null;
+};
+
+const sortedCallbackItems = sort
+  ? [...callbackItems].sort((a, b) => {
+      const value = (callback: CampaignCallbacksResponse["callbacks"][number]) => {
+        const call = callbackCallOf(callback);
+        if (!call) return 0;
+        switch (sort.key) {
+          case "talk": return call.total_talk_seconds;
+          case "plivo": return call.plivo_cost;
+          case "ai": return call.sarvam_cost;
+          case "total": return call.plivo_cost + call.sarvam_cost;
+        }
+      };
+      const difference = value(a) - value(b);
+      return sort.dir === "asc" ? difference : -difference;
+    })
+  : callbackItems;
+const callbackPageCount = Math.max(1, Math.ceil(sortedCallbackItems.length / pageSize));
+const callbackPage = Math.min(page, callbackPageCount);
+const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSize, callbackPage * pageSize);
+
   const callRecordsByPhone = useMemo(() => {
     const records = new Map<string, string>();
     for (const record of callRecords ?? []) {
@@ -848,12 +1147,29 @@ const closeCall = () => {
   const initiationTimeOf = (call: CampaignCallSummary) =>
     initiationTimesByPhone.get(call.phone.replace(/\D/g, "")) ?? null;
   const statuses = [...new Set(list.map((c) => c.status))].sort();
+  const callRecordsById = useMemo(
+    () => new Map((callRecords ?? []).map((record) => [record.id, record])),
+    [callRecords],
+  );
+  const transferInfo = (call: CampaignCallSummary) => {
+    const record = callRecordsById.get(call.call_id);
+    const latestAttempt = [...(record?.attempt_history ?? [])]
+      .sort((a, b) => b.attempt_no - a.attempt_no)
+      .find((attempt) => attempt.transfer_status || attempt.transfer_reason);
+    const status = call.transfer_status ?? record?.transfer_status ?? latestAttempt?.transfer_status ?? null;
+    const reason = call.transfer_reason ?? record?.transfer_reason ?? latestAttempt?.transfer_reason ?? null;
+    const transferred = call.transferred ?? record?.transferred ??
+      (call.tag?.toLowerCase() === "call transfer" || record?.tag?.toLowerCase() === "call transfer" || Boolean(status));
+    const label = transferred ? "Call Transfer" : call.tag ?? record?.tag ?? (status ? humanize(status) : "-");
+    return { status, reason, transferred, label };
+  };
   const plivoNumbers = [...new Set(
     [...list.map(callerNumberOf), ...(callRecords ?? []).map((record) => record.caller_number)]
       .filter((number): number is string => Boolean(number?.trim()))
       .map((number) => number.trim()),
   )].sort();
-  const poolOptions = (pools ?? []).map((pool) => ({
+  const assignedPoolIds = new Set(poolIds);
+  const poolOptions = (pools ?? []).filter((pool) => assignedPoolIds.has(pool.id)).map((pool) => ({
     id: pool.id,
     name: pool.name,
     numbers: new Set(pool.phone_numbers.map((number) => number.replace(/\D/g, ""))),
@@ -864,6 +1180,7 @@ const closeCall = () => {
   const filtered = list.filter(
     (c) =>
       (!statusFilter || c.status === statusFilter) &&
+      (filter !== "transfer:yes" || transferInfo(c).transferred) &&
       (filter !== "messages:sent" || c.has_whatsapp_messages) &&
       (!selectedPool || selectedPool.numbers.has((callerNumberOf(c) ?? "").replace(/\D/g, ""))) &&
       (callerNumberFilter === "all" || callerNumberOf(c) === callerNumberFilter) &&
@@ -889,7 +1206,17 @@ const closeCall = () => {
         return activeSort.dir === "asc" ? difference : -difference;
       })
     : filtered;
-  const pagination = usePagination(sortedCalls, 25);
+  const pageCount = Math.max(1, Math.ceil(sortedCalls.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pagination = {
+    page: currentPage,
+    pageCount,
+    pageSize,
+    total: sortedCalls.length,
+    start: (currentPage - 1) * pageSize,
+    pageItems: sortedCalls.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    setPage,
+  };
   const toggleSort = (key: SortKey) => {
     pagination.setPage(1);
     setSort((current) =>
@@ -915,25 +1242,89 @@ const closeCall = () => {
       />
     )),
   ];
-  const open = list.find((c) => c.call_id === openId) ?? null;
-
+  const callbackHead = [
+    "Lead",
+    "Phone",
+    "Callback at",
+    "Caller number",
+    "Status",
+    ...(["talk", "plivo", "ai", "total"] as const).map((key) => {
+      const label = key === "talk" ? "Talk time" : key === "plivo" ? "Plivo cost" : key === "ai" ? "AI cost" : "Total cost";
+      return (
+        <SortHead
+          key={key}
+          label={label}
+          active={sort?.key === key}
+          dir={sort?.key === key ? sort.dir : null}
+          ariaSort={sort?.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+          onClick={() => toggleSort(key)}
+        />
+      );
+    }),
+  ];
+  const mobileCallItems = pagination.pageItems.map((call) => {
+    const totalCost = call.plivo_cost + call.sarvam_cost;
+    const avatarSource = call.lead_name?.trim() || call.phone;
+    return {
+      id: call.call_id,
+      avatar: avatarSource.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join(""),
+      title: call.lead_name || "Unnamed lead",
+      subtitle: call.phone,
+      badge: <StatusBadge status={call.status} />,
+      keyValue: { label: "Total cost", value: <span className="tnum">₹{formatMoney(totalCost, 2)}</span> },
+      details: [
+        { label: "Transfer", value: transferInfo(call).label },
+        ...(transferInfo(call).status ? [{ label: "Transfer status", value: humanize(transferInfo(call).status!) }] : []),
+        ...(transferInfo(call).reason ? [{ label: "Transfer reason", value: transferInfo(call).reason! }] : []),
+        { label: "Initiation time", value: formatInitiationTime(initiationTimeOf(call)) },
+        { label: "Talk time", value: formatDuration(call.total_talk_seconds) },
+        { label: "Plivo cost", value: <span className="tnum">₹{formatMoney(call.plivo_cost, 2)}</span> },
+        { label: "AI cost", value: <span className="tnum">₹{formatMoney(call.sarvam_cost, 2)}</span> },
+        { label: "Total cost", value: <span className="tnum">₹{formatMoney(totalCost, 2)}</span>, fullWidth: true },
+      ],
+      actions: [{
+        label: "View call",
+        onClick: () => {
+          setSelectedCallId(call.call_id);
+          openCall(call.call_id);
+        },
+      }],
+    };
+  });
   return (
     <>
       <Card
         flush
         className="blue-fields"
+        allowOverflow
         actionsClassName="w-full"
         title="Calls"
-        description={`One row per lead. ${filteredRowCount} rows shown (${list.length} total calls). Open a call to see every attempt, its recording and the transcript.`}
+        description={filter === "callbacks"
+          ? `${callbacksQuery.data?.total_callbacks ?? 0} leads asked for a manual callback. These numbers are not auto-redialled.`
+          : `One row per lead. ${filteredRowCount} rows shown (${list.length} total calls). Open a call to see every attempt, its recording and the transcript.`}
         actions={
           list.length > 0 && (
-            <>
-              <SearchInput value={search} onChange={setSearch} placeholder="Search name or phone" className="w-full sm:w-60" />
+            <div className="grid w-full min-w-0 grid-cols-1 gap-2 md:flex md:w-auto md:flex-wrap md:items-center">
+              <SearchInput value={search} onChange={(value) => { setSearch(value); pagination.setPage(1); }} placeholder="Search name or phone" className="w-full md:w-60 [&>input]:min-h-[44px] md:[&>input]:min-h-10" />
+              <SelectMenu
+                label="Filter campaign calls"
+                value={filter}
+                onChange={(value) => { setFilter(value); pagination.setPage(1); }}
+                options={[
+                  { value: "all", label: "All calls" },
+                  ...statuses.map((status) => ({ value: `status:${status}`, label: `${humanize(status)} calls` })),
+                  { value: "transfer:yes", label: "Call Transfer" },
+                  { value: "messages:sent", label: "Messages sent" },
+                  { value: "callbacks", label: "Callbacks" },
+                ]}
+                className="w-full md:hidden"
+                showNativeSelect={false}
+              />
               <Select
                 aria-label="Filter campaign calls"
                 value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="w-full sm:w-48"
+                onChange={(e) => { setFilter(e.target.value); pagination.setPage(1); }}
+                className="hidden w-full sm:w-48 md:block"
               >
                 <option value="all">All calls</option>
                 {statuses.map((s) => (
@@ -941,44 +1332,87 @@ const closeCall = () => {
                     {humanize(s)} calls
                   </option>
                 ))}
+                <option value="transfer:yes">Call Transfer</option>
                 <option value="messages:sent">Messages sent</option>
+                <option value="callbacks">Callbacks</option>
               </Select>
-              {poolOptions.length > 0 && (
+              {poolOptions.length > 0 && <>
+                <SelectMenu
+                  label="Filter calls by Plivo pool"
+                  value={poolFilter}
+                  onChange={(value) => { setPoolFilter(value); pagination.setPage(1); }}
+                  options={[{ value: "all", label: "All Number Pools" }, ...poolOptions.map((pool) => ({ value: pool.id, label: pool.name }))]}
+                  className="w-full md:hidden"
+                  showNativeSelect={false}
+                />
                 <Select
                   aria-label="Filter calls by Plivo pool"
                   value={poolFilter}
-                  onChange={(e) => {
-                    setPoolFilter(e.target.value);
-                    pagination.setPage(1);
-                  }}
-                  className="w-full sm:w-48"
+                  onChange={(e) => { setPoolFilter(e.target.value); pagination.setPage(1); }}
+                  className="hidden w-full sm:w-48 md:block"
                 >
                   <option value="all">All Number Pools</option>
                   {poolOptions.map((pool) => (
                     <option key={pool.id} value={pool.id}>{pool.name}</option>
                   ))}
                 </Select>
-              )}
-              {plivoNumbers.length > 0 && (
+              </>}
+              {plivoNumbers.length > 0 && <>
+                <SelectMenu
+                  label="Filter calls by Plivo number"
+                  value={callerNumberFilter}
+                  onChange={(value) => { setCallerNumberFilter(value); pagination.setPage(1); }}
+                  options={[{ value: "all", label: "All Plivo numbers" }, ...plivoNumbers.map((number) => ({ value: number, label: number }))]}
+                  className="w-full md:hidden"
+                  showNativeSelect={false}
+                />
                 <Select
                   aria-label="Filter calls by Plivo number"
                   value={callerNumberFilter}
-                  onChange={(e) => {
-                    setCallerNumberFilter(e.target.value);
-                    pagination.setPage(1);
-                  }}
-                  className="w-full sm:w-52"
+                  onChange={(e) => { setCallerNumberFilter(e.target.value); pagination.setPage(1); }}
+                  className="hidden w-full sm:w-52 md:block"
                 >
                   <option value="all">All Plivo numbers</option>
                   {plivoNumbers.map((number) => (
                     <option key={number} value={number}>{number}</option>
                   ))}
                 </Select>
-              )}
+              </>}
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:hidden">
+                <SelectMenu
+                  label="Sort calls by"
+                  value={sort?.key ?? "none"}
+                  onChange={(value) => {
+                    setSort(value === "none" ? null : { key: value as SortKey, dir: sort?.dir ?? "asc" });
+                    pagination.setPage(1);
+                  }}
+                  options={[
+                    { value: "none", label: "Normal" },
+                    { value: "talk", label: "Talk time" },
+                    { value: "plivo", label: "Plivo cost" },
+                    { value: "ai", label: "AI cost" },
+                    { value: "total", label: "Total cost" },
+                  ]}
+                  className="w-full"
+                  showNativeSelect={false}
+                />
+                <button
+                  type="button"
+                  aria-label={`Sort ${sort?.dir === "desc" ? "ascending" : "descending"}`}
+                  onClick={() => {
+                    setSort((current) => current ? { ...current, dir: current.dir === "asc" ? "desc" : "asc" } : { key: "total", dir: "asc" });
+                    pagination.setPage(1);
+                  }}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-md border border-hairline-strong bg-surface-input px-3 text-sm font-medium text-heading hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {sort?.dir === "desc" ? <ArrowDown size={16} /> : <ArrowUp size={16} />}
+                  {sort?.dir === "desc" ? "Desc" : "Asc"}
+                </button>
+              </div>
               <span className="ml-auto whitespace-nowrap text-right text-base font-semibold text-blue-600" aria-live="polite">
-                {filteredRowCount} {filteredRowCount === 1 ? "row" : "rows"}
+                {filter === "callbacks" ? callbackItems.length : filteredRowCount} {((filter === "callbacks" ? callbackItems.length : filteredRowCount) === 1) ? "row" : "rows"}
               </span>
-            </>
+            </div>
           )
         }
       >
@@ -986,7 +1420,13 @@ const closeCall = () => {
           <div className="p-5">
             <ErrorState message={error} onRetry={onRetry} />
           </div>
-        ) : !loading && list.length === 0 ? (
+        ) : filter === "callbacks" && callbacksQuery.isError ? (
+          <div className="p-5"><ErrorState message={(callbacksQuery.error as Error).message} onRetry={() => callbacksQuery.refetch()} /></div>
+        ) : filter === "callbacks" && callbacksQuery.isLoading ? (
+          <p className="px-4 py-6 text-center text-sm text-muted">Loading callbacks…</p>
+        ) : filter === "callbacks" && callbackItems.length === 0 ? (
+          <EmptyState title="No callbacks requested" text="Leads who ask for a manual follow-up will appear here." />
+        ) : filter !== "callbacks" && !loading && list.length === 0 ? (
           <div className="p-5">
             <EmptyState
               icon={<CalendarClock size={20} />}
@@ -995,33 +1435,126 @@ const closeCall = () => {
             />
           </div>
         ) : (
-          <div className="space-y-3 pb-3">
-            <Table bare className="blue-table" head={head} columns={CALL_COLUMNS} label="Campaign calls" loading={loading} skeleton={<TableSkeleton columns={CALL_COLUMNS} rows={6} />}>
-              {filtered.length === 0 ? (
-                <TableMessage cols={CALL_HEAD.length}>No calls match your filters.</TableMessage>
-              ) : (
-                pagination.pageItems.map((call) => (
-                  <CallRow
-                    key={call.call_id}
-                    call={call}
-                    initiationTime={initiationTimeOf(call)}
-                    selected={call.call_id === selectedCallId}
-                    onOpen={() => {
-                      setSelectedCallId(call.call_id);
-                      openCall(call.call_id);
+          <div className="space-y-3">
+            <Table
+              bare
+              className="blue-table"
+              head={filter === "callbacks" ? callbackHead : head}
+              columns={filter === "callbacks" ? [
+                { label: "Lead", width: "16%" }, { label: "Phone", width: "12%" }, { label: "Callback at", width: "17%" },
+                { label: "Caller number", width: "14%" }, { label: "Status", width: "10%" }, { label: "Talk time", width: "8%" },
+                { label: "Plivo cost", width: "8%" }, { label: "AI cost", width: "7%" }, { label: "Total cost", width: "8%" },
+              ] : CALL_COLUMNS}
+              label={filter === "callbacks" ? "Campaign callbacks" : "Campaign calls"}
+              loading={filter === "callbacks" ? false : loading}
+              skeleton={<TableSkeleton columns={CALL_COLUMNS} rows={6} />}
+              mobileItems={filter === "callbacks" ? callbackPageItems.map((callback, index) => {
+                const call = callbackCallOf(callback);
+                return {
+                  id: `${callback.phone}-${callback.callback_at ?? index}`,
+                  avatar: (callback.lead_name || callback.phone).split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join(""),
+                  title: callback.lead_name || "Unnamed lead",
+                  subtitle: callback.phone,
+                  badge: callback.last_outcome ? <StatusBadge status={callback.last_outcome} /> : undefined,
+                  keyValue: { label: "Callback at", value: formatCallbackAtIST(callback.callback_at) },
+                  details: [
+                    { label: "Caller number", value: callback.caller_number || "-" },
+                    { label: "Talk time", value: call ? formatDuration(call.total_talk_seconds) : "-" },
+                    { label: "Plivo cost", value: call ? `₹${formatMoney(call.plivo_cost, 2)}` : "-" },
+                    { label: "AI cost", value: call ? `₹${formatMoney(call.sarvam_cost, 2)}` : "-" },
+                    { label: "Total cost", value: call ? `₹${formatMoney(call.plivo_cost + call.sarvam_cost, 2)}` : "-" },
+                  ],
+                  actions: [{ label: "View details", onClick: () => showCallbackCall(callback) }],
+                };
+              }) : mobileCallItems}
+            >
+              {filter === "callbacks" ? callbackPageItems.map((callback, index) => {
+                const call = callbackCallOf(callback);
+                return (
+                  <tr
+                    key={`${callback.phone}-${callback.callback_at ?? index}`}
+                    tabIndex={0}
+                    aria-label={`View call details for ${callback.lead_name || callback.phone}`}
+                    onClick={() => showCallbackCall(callback)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        showCallbackCall(callback);
+                      }
                     }}
-                  />
-                ))
-              )}
+                    className="cursor-pointer outline-none hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--primary)]"
+                  >
+                    <td className="px-4 py-3 font-medium text-heading">{callback.lead_name || "Unnamed lead"}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-body">{callback.phone}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-body">{formatCallbackAtIST(callback.callback_at)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-body">{callback.caller_number || "-"}</td>
+                    <td className="px-4 py-3">{callback.last_outcome ? <StatusBadge status={callback.last_outcome} /> : <span className="text-muted">-</span>}</td>
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? formatDuration(call.total_talk_seconds) : "-"}</td>
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? `₹${formatMoney(call.plivo_cost, 2)}` : "-"}</td>
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? `₹${formatMoney(call.sarvam_cost, 2)}` : "-"}</td>
+                    <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{call ? `₹${formatMoney(call.plivo_cost + call.sarvam_cost, 2)}` : "-"}</td>
+                  </tr>
+                );
+              }) : filtered.length === 0 ? (
+                <TableMessage cols={CALL_HEAD.length}>No calls match your filters.</TableMessage>
+              ) : pagination.pageItems.map((call) => (
+                <CallRow
+                  key={call.call_id}
+                  call={call}
+                  transfer={transferInfo(call)}
+                  initiationTime={initiationTimeOf(call)}
+                  selected={call.call_id === selectedCallId}
+                  onOpen={() => {
+                    setSelectedCallId(call.call_id);
+                    openCall(call.call_id);
+                  }}
+                />
+              ))}
             </Table>
-            <div className="px-4">
-              <Pagination {...pagination} noun="calls" />
-            </div>
+            {filter === "callbacks" ? (
+              <div className="flex flex-col gap-2 px-1 pt-2 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-blue-600 dark:text-blue-400" aria-live="polite">
+                  Showing {(callbackPage - 1) * pageSize + 1}-{Math.min(callbackPage * pageSize, callbackItems.length)} of {callbackItems.length} callbacks
+                </p>
+                {callbackItems.length > pageSize && (
+                  <nav aria-label="Callbacks pagination" className="flex items-center gap-2 md:flex-none">
+                    <button type="button" disabled={callbackPage <= 1} onClick={() => setPage(callbackPage - 1)} className="btn-blue-filled inline-flex min-h-[44px] flex-1 items-center justify-center rounded-md px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[36px] md:min-w-[96px] md:flex-none">Previous</button>
+                    <span className="shrink-0 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400" aria-live="polite">Page {callbackPage} of {callbackPageCount}</span>
+                    <button type="button" disabled={callbackPage >= callbackPageCount} onClick={() => setPage(callbackPage + 1)} className="btn-blue-filled inline-flex min-h-[44px] flex-1 items-center justify-center rounded-md px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[36px] md:min-w-[96px] md:flex-none">Next</button>
+                  </nav>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 px-1 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-blue-600 dark:text-blue-400" aria-live="polite">
+                  Showing {pagination.total === 0 ? 0 : pagination.start + 1}-{Math.min(pagination.start + pagination.pageSize, pagination.total)} of {pagination.total} calls
+                </p>
+                {pagination.total > pagination.pageSize && (
+                  <nav aria-label="Calls pagination" className="flex items-center gap-2 md:flex-none">
+                    <button type="button" disabled={pagination.page <= 1} onClick={() => pagination.setPage(pagination.page - 1)} className="btn-blue-filled inline-flex min-h-[44px] flex-1 items-center justify-center rounded-md px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[36px] md:min-w-[96px] md:flex-none">Previous</button>
+                    <span className="shrink-0 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400" aria-live="polite">Page {pagination.page} of {pagination.pageCount}</span>
+                    <button type="button" disabled={pagination.page >= pagination.pageCount} onClick={() => pagination.setPage(pagination.page + 1)} className="btn-blue-filled inline-flex min-h-[44px] flex-1 items-center justify-center rounded-md px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[36px] md:min-w-[96px] md:flex-none">Next</button>
+                  </nav>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Card>
 
-      {open && <CallDrawer campaignId={campaignId} call={open} onClose={closeCall} />}
+      {selectedCallback && (
+        <Drawer title={selectedCallback.lead_name || "Callback details"} onClose={() => setSelectedCallback(null)}>
+          <DetailList items={[
+            { label: "Lead name", value: selectedCallback.lead_name || "-" },
+            { label: "Phone", value: selectedCallback.phone },
+            { label: "Callback at", value: formatCallbackAtIST(selectedCallback.callback_at) },
+            { label: "Caller number", value: selectedCallback.caller_number || "-" },
+            { label: "Status", value: selectedCallback.status || "-" },
+            { label: "Last outcome", value: selectedCallback.last_outcome || "-" },
+          ]} />
+        </Drawer>
+      )}
+      {openId && <CallDrawer campaignId={campaignId} callId={openId} onClose={closeCall} />}
     </>
   );
 }
@@ -1043,7 +1576,7 @@ function SortHead({
   return (
     <button
       type="button"
-      aria-label={`Sort by ${label}`}
+      aria-label={`Sort by ${label}: ${!active ? "normal" : dir === "asc" ? "low to high" : "high to low"}`}
       onClick={onClick}
       className={clsx(
         "inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
@@ -1051,18 +1584,20 @@ function SortHead({
       )}
     >
       <span>{label}</span>
-      <SortIcon size={13} aria-hidden />
+      <SortIcon size={16} aria-hidden className="text-blue-600 dark:text-blue-400" />
     </button>
   );
 }
 
 function CallRow({
   call,
+  transfer,
   initiationTime,
   selected,
   onOpen,
 }: {
   call: CampaignCallSummary;
+  transfer: { status: string | null; reason: string | null; transferred: boolean; label: string };
   initiationTime: string | null;
   selected: boolean;
   onOpen: () => void;
@@ -1096,6 +1631,11 @@ function CallRow({
       <td className="px-4 py-3">
         <StatusBadge status={call.status} />
       </td>
+      <td className="px-4 py-3 text-body">
+        <span>{transfer.label}</span>
+        {transfer.status && <span className="mt-0.5 block text-xs text-muted">{humanize(transfer.status)}</span>}
+        {transfer.reason && <span className="mt-0.5 block max-w-56 truncate text-xs text-muted" title={transfer.reason}>{transfer.reason}</span>}
+      </td>
       <td className="tnum whitespace-nowrap px-4 py-3 text-body">
         {formatInitiationTime(initiationTime)}
       </td>
@@ -1109,14 +1649,14 @@ function CallRow({
 
 function CallDrawer({
   campaignId,
-  call,
+  callId,
   onClose,
 }: {
   campaignId: string;
-  call: CampaignCallSummary;
+  callId: string;
   onClose: () => void;
 }) {
-  const details = useCampaignCallDetail(campaignId, call.call_id);
+  const details = useCampaignCallDetail(campaignId, callId);
   const postOutcome = usePostCampaignCallOutcome();
   const [outcome, setOutcome] = useState<CallOutcome | "">("");
   const callDetail = details.data?.call;
@@ -1126,7 +1666,7 @@ function CallDrawer({
   const save = () => {
     if (!outcome) return;
     postOutcome.mutate(
-      { campaignId, callId: call.call_id, outcome },
+      { campaignId, callId, outcome },
       {
         onSuccess: (r) => {
           showSuccessNotification(
@@ -1151,7 +1691,7 @@ function CallDrawer({
             items={[
               { label: "Attempts", value: <span className="tnum">{callDetail.attempt_count} of {callDetail.max_attempts}</span> },
               { label: "Scheduled_At", value: formatDateWithSeconds(callDetail.scheduled_at) },
-              { label: "Called from", value: <span className="tnum">{callDetail.caller_number ?? "—"}</span> },
+              { label: "Called from", value: <span className="tnum">{callDetail.caller_number ?? "-"}</span> },
               { label: "Created", value: formatDateWithSeconds(callDetail.created_at) },
               { label: "Updated", value: formatDateWithSeconds(callDetail.updated_at) },
             ]}
@@ -1194,8 +1734,8 @@ function CallDrawer({
 }
 
 function formatHangupCause(attempt: CampaignCallDetailAttempt): string {
-  const cause = attempt.plivo.hangup_cause_name?.trim();
-  if (!cause) return "—";
+  const cause = displayAttemptText(attempt.plivo.hangup_cause_name);
+  if (cause === "Not available") return cause;
 
   const readSource = (record: Record<string, unknown> | null | undefined) => {
     if (!record) return null;
@@ -1215,10 +1755,12 @@ function AttemptCard({
   attempt: a,
   showDuration = true,
   showRecordingUrl = true,
+  mobileTwoColumns = false,
 }: {
   attempt: CampaignCallDetailAttempt;
   showDuration?: boolean;
   showRecordingUrl?: boolean;
+  mobileTwoColumns?: boolean;
 }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const transcript = a.transcript ?? [];
@@ -1250,11 +1792,12 @@ function AttemptCard({
               <article key={message.id} className="rounded-lg border border-hairline bg-surface p-4">
                 <DetailList
                   columns={3}
+                  mobileTwoColumns={mobileTwoColumns}
                   items={[
-                    { label: "Message", value: message.message_name || "WhatsApp message" },
-                    { label: "Status", value: message.status ? <StatusBadge status={message.status} /> : "—" },
-                    { label: "Delivered at", value: formatDateWithSeconds(message.delivered_at) },
-                    { label: "Read at", value: formatDateWithSeconds(message.read_at) },
+                    { label: "Message", value: message.message_name || "WhatsApp message", wide: (message.message_name?.length ?? 0) > 24 },
+                    { label: "Status", value: message.status ? <StatusBadge status={message.status} /> : "Not available" },
+                    { label: "Delivered at", value: formatDateWithSeconds(message.delivered_at), wide: formatDateWithSeconds(message.delivered_at).length > 22 },
+                    { label: "Read at", value: formatDateWithSeconds(message.read_at), wide: formatDateWithSeconds(message.read_at).length > 22 },
                   ]}
                 />
               </article>
@@ -1264,6 +1807,7 @@ function AttemptCard({
 
         <DetailList
           columns={3}
+          mobileTwoColumns={mobileTwoColumns}
           items={[
             { label: "Plivo cost", value: <span className="tnum">₹{formatMoney(plivoCost, 2)}</span> },
             { label: "AI cost", value: <span className="tnum">₹{formatMoney(aiCost, 2)}</span> },
@@ -1272,16 +1816,17 @@ function AttemptCard({
         />
         <DetailList
           columns={3}
+          mobileTwoColumns={mobileTwoColumns}
           items={[
-            { label: "Caller number", value: <span className="tnum">{a.caller_number ?? "—"}</span> },
-            ...(showDuration ? [{ label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "—"}</span> }] : []),
-            { label: "Submitted", value: formatDateWithSeconds(a.submitted_at) },
-            { label: "Ended", value: formatDateWithSeconds(a.ended_at) },
-            { label: "Hang-up", value: hangupCause },
-            { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` — ${a.transfer_reason}` : ""}` : "None" },
-            { label: "Transfer reason", value: a.transfer_reason ?? "—" },
-            { label: "Plivo status", value: a.plivo.status ? humanize(a.plivo.status) : "—" },
-            { label: "Machine detected", value: a.plivo.machine_detected == null ? "—" : String(a.plivo.machine_detected) },
+            { label: "Caller number", value: <span className="tnum">{displayAttemptText(a.caller_number)}</span>, wide: (a.caller_number?.length ?? 0) > 18 },
+            ...(showDuration ? [{ label: "Duration", value: <span className="tnum">{a.duration_seconds ? formatDuration(a.duration_seconds) : "Not available"}</span> }] : []),
+            { label: "Submitted", value: formatDateWithSeconds(a.submitted_at), wide: formatDateWithSeconds(a.submitted_at).length > 22 },
+            { label: "Ended", value: formatDateWithSeconds(a.ended_at), wide: formatDateWithSeconds(a.ended_at).length > 22 },
+            { label: "Hang-up", value: hangupCause, wide: hangupCause.length > 22 },
+            { label: "Transfer", value: a.transfer_status ? `${humanize(a.transfer_status)}${a.transfer_reason ? ` - ${a.transfer_reason}` : ""}` : "None", wide: `${a.transfer_status ?? ""}${a.transfer_reason ?? ""}`.length > 22 },
+            { label: "Transfer reason", value: displayAttemptText(a.transfer_reason), wide: (a.transfer_reason?.length ?? 0) > 22 },
+            { label: "Plivo status", value: a.plivo.status ? humanize(displayAttemptText(a.plivo.status)) : "Not available" },
+            { label: "Machine detected", value: a.plivo.machine_detected == null ? "Not available" : String(a.plivo.machine_detected) },
           ]}
         />
 
@@ -1289,7 +1834,7 @@ function AttemptCard({
           <h4 className="eyebrow">Recording</h4>
           {a.recording_url ? (
             <>
-              {showRecordingUrl && <p className="break-all text-xs text-muted">{a.recording_url}</p>}
+              {showRecordingUrl && <RecordingUrl value={a.recording_url} />}
               <audio controls preload="none" src={a.recording_url} className="w-full">
                 <a href={a.recording_url}>Download recording</a>
               </audio>
@@ -1344,6 +1889,39 @@ function AttemptCard({
   );
 }
 
+function RecordingUrl({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="flex items-start gap-1">
+      <a href={value} target="_blank" rel="noreferrer" className="break-all text-xs text-black underline-offset-2 hover:underline">{value}</a>
+      <span className="relative inline-flex shrink-0">
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1800);
+            } catch {
+              setCopied(false);
+            }
+          }}
+          aria-label="Copy recording URL"
+          className="rounded-full border border-blue-200 bg-blue-50 p-1.5 text-blue-700 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+        >
+          <Copy size={15} aria-hidden />
+        </button>
+        {copied && (
+          <span role="status" className="absolute bottom-full right-0 mb-1 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[11px] text-white shadow">
+            Copied
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /* -------------------------------- Settings -------------------------------- */
 
 function SettingsTab({ campaign }: { campaign: Campaign }) {
@@ -1383,16 +1961,18 @@ function SettingsTab({ campaign }: { campaign: Campaign }) {
       <Card title="Timing & limits">
         <DetailList
           columns={2}
+          mobileTwoColumns
           items={[
             {
               label: "Start",
               value: campaign.start_at
                 ? new Date(campaign.start_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
-                : "—",
+                : "-",
+              wide: true,
             },
             { label: "Calling hours", value: <span className="tnum">{formatWindow(campaign.window_start, campaign.window_end)}</span> },
-            { label: "Call days", value: formatDays(campaign.call_days) },
-            { label: "Timezone", value: campaign.timezone },
+            { label: "Call days", value: formatDays(campaign.call_days), wide: formatDays(campaign.call_days).length > 22 },
+            { label: "Timezone", value: campaign.timezone, wide: campaign.timezone.length > 22 },
             { label: "Parallel calls", value: <span className="tnum">{campaign.concurrency_limit}</span> },
             ...(campaign.max_live_calls !== undefined ? [{ label: "Max live calls", value: <span className="tnum">{campaign.max_live_calls}</span> }] : []),
             ...(campaign.calls_per_second !== undefined ? [{ label: "New calls / second", value: <span className="tnum">{campaign.calls_per_second}</span> }] : []),

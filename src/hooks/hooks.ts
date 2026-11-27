@@ -8,6 +8,8 @@
 */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { getUserIdFromToken } from "@/lib/auth";
 import {
   getPlivoNumbers,
   getPlivoNumberCallStats,
@@ -22,6 +24,7 @@ import {
   getCampaignIds,
   getCampaign,
   getCampaignCalls,
+  getCampaignCallbacks,
   getCampaignReport,
   getCampaignCallDetail,
   scheduleCampaign,
@@ -53,12 +56,13 @@ import {
 } from "@/lib/callingAgentApi";
 import type { CallOutcome, Campaign, CampaignCallDetail, CampaignReport, CampaignScheduleResult, CallOutcomeResult, CreatePlivoPoolBody, PatchPlivoPoolBody, PlivoPool,
      CampaignCallsResponse,
+  CampaignCallbacksResponse,
    } from "@/types/types";
 
 // Cache key for the numbers list; invalidating it refetches the table.
 const KEY = ["plivo-numbers"];
 
-const POOLS_KEY = ["plivo-pools"];
+const poolsKey = () => ["plivo-pools", getUserIdFromToken()];
 const CAMPAIGNS_KEY = ["campaigns"];
 const CAMPAIGN_IDS_KEY = ["campaign-ids"];
 const CAMPAIGN_CALLS_KEY = ["campaign-calls"];
@@ -92,6 +96,14 @@ export const useCampaignCalls = (id: string, enabled = true) =>
   useQuery<CampaignCallsResponse>({
     queryKey: [...CAMPAIGN_CALLS_KEY, id],
     queryFn: () => getCampaignCalls(id),
+    enabled: Boolean(id) && enabled,
+    retry: false,
+  });
+
+export const useCampaignCallbacks = (id: string, enabled = true) =>
+  useQuery<CampaignCallbacksResponse>({
+    queryKey: ["campaign-callbacks", id],
+    queryFn: () => getCampaignCallbacks(id),
     enabled: Boolean(id) && enabled,
     retry: false,
   });
@@ -147,7 +159,7 @@ export const useSyncPlivoNumbers = () => {
 };
 
 export const usePlivoPool = (id: string) =>
-  useQuery<PlivoPool>({ queryKey: [...POOLS_KEY, id], queryFn: () => getPlivoPool(id), enabled: Boolean(id), retry: false });
+  useQuery<PlivoPool>({ queryKey: [...poolsKey(), id], queryFn: () => getPlivoPool(id), enabled: Boolean(id), retry: false });
 
 // Shared with the campaign form, which uses the same keys
 export const useAgents = () => useQuery({ queryKey: ["agents"], queryFn: listAgents, retry: false });
@@ -158,14 +170,14 @@ export const useWhatsAppMessages = () =>
 
 // GET list of pools
 export const usePlivoPools = () =>
-  useQuery({ queryKey: POOLS_KEY, queryFn: getPlivoPools, retry: false });
+  useQuery({ queryKey: poolsKey(), queryFn: getPlivoPools, retry: false });
 
 export const useCreatePlivoPool = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreatePlivoPoolBody) => createPlivoPool(body),
     onSuccess: (created) => {
-      qc.setQueryData<PlivoPool[]>(POOLS_KEY, (pools) => pools ? [...pools, created] : pools);
+      qc.setQueryData<PlivoPool[]>(poolsKey(), (pools) => pools ? [...pools, created] : pools);
       void qc.invalidateQueries({ queryKey: KEY, refetchType: "none" });
     },
   });
@@ -176,10 +188,10 @@ export const useUpdatePlivoPool = () => {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: PatchPlivoPoolBody }) => patchPlivoPool(id, body),
     onSuccess: (updated) => {
-      qc.setQueryData<PlivoPool[]>(POOLS_KEY, (pools) =>
+      qc.setQueryData<PlivoPool[]>(poolsKey(), (pools) =>
         pools?.map((pool) => pool.id === updated.id ? updated : pool),
       );
-      qc.setQueryData([...POOLS_KEY, updated.id], updated);
+      qc.setQueryData([...poolsKey(), updated.id], updated);
       void qc.invalidateQueries({ queryKey: KEY, refetchType: "none" });
     },
   });
@@ -190,7 +202,7 @@ export const useDeletePlivoPool = () => {
   return useMutation({
     mutationFn: (id: string) => deletePlivoPool(id),
     onSuccess: (_result, id) => {
-      qc.setQueryData<PlivoPool[]>(POOLS_KEY, (pools) => pools?.filter((pool) => pool.id !== id));
+      qc.setQueryData<PlivoPool[]>(poolsKey(), (pools) => pools?.filter((pool) => pool.id !== id));
       void qc.invalidateQueries({ queryKey: KEY, refetchType: "none" });
     },
   });
@@ -199,7 +211,7 @@ export const useDeletePlivoPool = () => {
 // Numbers that can be added to a given pool (only runs when poolId is set)
 export const useAvailablePlivoNumbers = (poolId?: string) =>
   useQuery({
-    queryKey: ["plivo-pools", poolId, "available"],
+    queryKey: [...poolsKey(), poolId, "available"],
     queryFn: () => getAvailablePlivoNumbers(poolId!),
     enabled: !!poolId,
     retry: false,
@@ -293,24 +305,60 @@ export const useCampaignClassificationCalls = (
   campaignId: string,
   classificationId: string,
   params?: { page?: number; page_size?: number },
-) =>
-  useQuery<ClassificationCallsResponse>({
+) => {
+  const queryClient = useQueryClient();
+  const page = params?.page ?? 1;
+  const pageSize = params?.page_size ?? 10;
+  const query = useQuery<ClassificationCallsResponse>({
     queryKey: ["campaign-classification-calls", campaignId, classificationId, params],
     queryFn: () => getCampaignClassificationCalls(campaignId, classificationId, params),
     enabled: Boolean(campaignId && classificationId),
+    placeholderData: (previousData) => previousData,
+    staleTime: 60_000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (!query.data || query.isPlaceholderData || query.data.total <= page * pageSize || !campaignId || !classificationId) return;
+    const nextParams = { page: page + 1, page_size: pageSize };
+    void queryClient.prefetchQuery({
+      queryKey: ["campaign-classification-calls", campaignId, classificationId, nextParams],
+      queryFn: () => getCampaignClassificationCalls(campaignId, classificationId, nextParams),
+      staleTime: 60_000,
+    });
+  }, [campaignId, classificationId, page, pageSize, query.data, query.isPlaceholderData, queryClient]);
+
+  return query;
+};
 
 export const useCampaignUnclassifiedCalls = (
   campaignId: string,
   params?: { page?: number; page_size?: number },
-) =>
-  useQuery<ClassificationCallsResponse>({
+) => {
+  const queryClient = useQueryClient();
+  const page = params?.page ?? 1;
+  const pageSize = params?.page_size ?? 10;
+  const query = useQuery<ClassificationCallsResponse>({
     queryKey: ["campaign-unclassified-calls", campaignId, params],
     queryFn: () => getCampaignUnclassifiedCalls(campaignId, params),
     enabled: Boolean(campaignId),
+    placeholderData: (previousData) => previousData,
+    staleTime: 60_000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (!query.data || query.isPlaceholderData || query.data.total <= page * pageSize || !campaignId) return;
+    const nextParams = { page: page + 1, page_size: pageSize };
+    void queryClient.prefetchQuery({
+      queryKey: ["campaign-unclassified-calls", campaignId, nextParams],
+      queryFn: () => getCampaignUnclassifiedCalls(campaignId, nextParams),
+      staleTime: 60_000,
+    });
+  }, [campaignId, page, pageSize, query.data, query.isPlaceholderData, queryClient]);
+
+  return query;
+};
 
 
   function useRefreshWhatsAppMessages() {

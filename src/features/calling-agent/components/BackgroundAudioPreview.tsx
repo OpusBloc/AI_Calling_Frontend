@@ -223,9 +223,16 @@ export function BackgroundVoiceCard({
             )}
           </div>
           <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{formatTime(track.durationSec)} · <span className={track.isSelected ? "font-medium text-indigo-600 dark:text-[#AFA9EC]" : "text-slate-500 dark:text-slate-400"}>{track.isSelected ? "In use" : "Background voice"}</span></p>
-          <button type="button" onClick={() => onPreview(volume)} aria-pressed={isPreviewPlaying} disabled={isPreviewLoading} className={`mt-3 inline-flex h-8 max-w-full items-center gap-2 rounded-full border px-3 text-xs font-semibold disabled:opacity-50 ${isPreviewPlaying ? "border-indigo-700 bg-indigo-700 text-white hover:bg-indigo-800 dark:border-[#AFA9EC] dark:bg-[#AFA9EC] dark:text-[#26215C] dark:hover:bg-[#9b95d9]" : "border-indigo-600 bg-white text-indigo-700 hover:bg-indigo-50 dark:border-[#AFA9EC] dark:bg-[#26215C] dark:text-[#AFA9EC] dark:hover:bg-[#26215C]"} ${buttonFocus}`}>
-            {isPreviewLoading ? <Loader2 size={14} className="shrink-0 animate-spin" /> : isPreviewPlaying ? <X size={14} className="shrink-0" /> : <Mic size={14} className="shrink-0" />}
-            <span className="truncate">{isPreviewPlaying ? "Stop preview" : "Play with voice"}</span>
+          <button
+            type="button"
+            onClick={() => onPreview(volume)}
+            aria-pressed={isPreviewPlaying}
+            aria-label={isPreviewPlaying ? `Stop preview for ${track.name}` : `Play with ${track.name}`}
+            title={isPreviewPlaying ? "Stop preview" : "Play with voice"}
+            disabled={isPreviewLoading}
+            className={`mt-3 inline-flex size-11 shrink-0 items-center justify-center rounded-full border text-[var(--input-glow)] shadow-md transition-[background-color,box-shadow] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${isPreviewPlaying ? "border-[var(--primary)] bg-[var(--primary-tint)] hover:bg-[var(--primary-tint)] dark:bg-primary-soft dark:hover:bg-primary-soft" : "border-[var(--input-glow)] bg-white hover:bg-[var(--primary-tint)] dark:bg-surface dark:hover:bg-primary-soft"} ${buttonFocus}`}
+          >
+            {isPreviewLoading ? <Loader2 size={18} className="animate-spin" /> : isPreviewPlaying ? <X size={18} /> : <Mic size={18} />}
           </button>
           {isPreviewPlaying && <div className="mt-1 min-w-0">
             <div className="h-1 overflow-hidden rounded-full bg-[#EEEDFE] dark:bg-[#26215C]"><div className="h-full bg-[#534AB7] transition-[width] dark:bg-[#AFA9EC]" style={{ width: `${progress}%` }} /></div>
@@ -566,7 +573,7 @@ export default function BackgroundAudioPreview({ agentId, speaker, language, tex
       </section>
       <DeleteVoiceDialog voice={deletingTrack?.name ?? null} loading={deleteTrack.isPending} onCancel={() => setDeletingTrack(null)} onConfirm={confirmRemoveTrack} />
 
-      <section className="order-1 rounded-lg border border-hairline bg-surface p-5 shadow-sm">
+      <section className="order-1 rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
           <h2 className="text-base font-semibold text-heading">Add a new background voice</h2>
           <p className="mt-1 text-sm leading-5 text-muted">Upload a sound, name it, and set how loud it plays. You can change both later.</p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -601,23 +608,23 @@ export default function BackgroundAudioPreview({ agentId, speaker, language, tex
                 onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
                 onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}
                 onDrop={(event) => { event.preventDefault(); setDragging(false); chooseFile(event.dataTransfer.files?.[0]); }}
-                className={`flex min-h-24 min-w-0 cursor-pointer items-center gap-3 rounded-md border-2 border-dashed px-4 py-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${dragging ? "border-primary bg-primary-soft" : "border-info-border bg-info-surface hover:bg-primary-soft"}`}
+                className={`flex min-h-40 min-w-0 w-full cursor-pointer flex-col items-stretch gap-3 rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-24 sm:flex-row sm:items-center sm:rounded-lg sm:text-left ${dragging ? "border-primary bg-primary-soft" : "border-info-border bg-info-surface hover:bg-primary-soft"}`}
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-info"><Music size={20} aria-hidden /></span>
+                <span className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-info sm:mx-0 sm:h-11 sm:w-11 sm:rounded-lg"><Music size={22} aria-hidden /></span>
                 <span className="min-w-0 flex-1">
                   {newFile ? (
                     <>
-                      <span className="block truncate text-sm font-semibold text-heading">{newFile.name}</span>
+                      <span className="block break-all text-sm font-semibold text-heading">{newFile.name}</span>
                       <span className="mt-1 block text-xs text-muted">{newFile.name.split(".").pop()?.toUpperCase()} · ready to add</span>
                     </>
                   ) : (
                     <>
-                      <span className="block text-sm font-semibold text-heading">Drag and drop an audio file here</span>
-                      <span className="mt-1 block text-xs text-muted">Or click anywhere in this area to choose a file.</span>
+                      <span className="block text-sm font-semibold text-heading"><span className="md:hidden">Tap to choose an audio file</span><span className="hidden md:inline">Drag and drop an audio file here</span></span>
+                      <span className="mt-1 block text-xs text-muted">MP3, WAV, or another supported audio file</span>
                     </>
                   )}
                 </span>
-                <span className="inline-flex h-9 shrink-0 items-center rounded-md border border-hairline-strong bg-surface px-3 text-xs font-semibold text-info">{newFile ? "Change file" : "Browse files"}</span>
+                <span className="btn-blue-filled inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-md px-4 text-sm font-semibold sm:w-auto">{newFile ? "Change file" : "Browse files"}</span>
               </label>
             </div>
           </div>

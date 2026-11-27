@@ -87,10 +87,10 @@ export default function CustomVoiceDrawer({
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={onClose} disabled={create.isPending}>
+            <Button variant="secondary" className="btn-blue" onClick={onClose} disabled={create.isPending}>
               Cancel
             </Button>
-            <Button onClick={submit} loading={create.isPending}>
+            <Button className="btn-blue-filled" onClick={submit} loading={create.isPending}>
               {create.isPending ? "Creating voice…" : "Create voice"}
             </Button>
           </>

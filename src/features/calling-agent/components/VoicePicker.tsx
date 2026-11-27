@@ -6,6 +6,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import clsx from "clsx";
 import { Check, Eye, Loader2, Pause, Play, Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { ActionProgressSkeleton } from "@/components/skeletons";
+import SelectMenu from "@/components/SelectMenu";
 
 import {
   deleteVoiceCatalog,
@@ -20,7 +21,7 @@ import {
 import { deleteVoice, getVoice, listVoices } from "@/lib/api/voices";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { showSuccessNotification } from "@/hooks/useNotification";
-import { Button, ErrorBanner, ErrorState, Field, SearchInput, Select, TextInput } from "@/components/ui";
+import { Button, ErrorBanner, ErrorState, Field, SearchInput, TextInput } from "@/components/ui";
 import { DeleteIconButton } from "@/components/ui/ActionIconButtons";
 import { SkeletonBoundary, StockVoicesSkeleton, VoiceCardsSkeleton } from "@/components/skeletons";
 import { customVoicePreviewUrl } from "./VoiceDetailsDrawer";
@@ -159,7 +160,7 @@ export default function VoicePicker({
   const selectedSample = allSamples.find((sample) => sample.id === selectedSampleId) ?? null;
   const sampleStyle = (sample: VoiceSample) =>
     voices.find((voice) => voice.voice_id === sample.speaker)?.style?.trim() ||
-    (customVoices.some((voice) => voice.id === sample.speaker) ? "Custom voice" : "—");
+    (customVoices.some((voice) => voice.id === sample.speaker) ? "Custom voice" : "-");
   const shownSamples = allSamples.filter((sample) => {
     const stockVoice = voices.find((voice) => voice.voice_id === sample.speaker);
     return matches(
@@ -274,10 +275,10 @@ export default function VoicePicker({
             The voice this agent speaks with on every call. Stock voices can be previewed; saved voices can be selected here.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
           <label
             className={clsx(
-              "relative inline-flex h-9 w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-hairline-strong bg-surface px-3 text-sm font-medium text-heading transition-colors hover:bg-surface-hover focus-within:ring-2 focus-within:ring-[var(--input-glow)] sm:w-auto shadow-xl",
+              "voice-import-action relative inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1 rounded-md border border-hairline-strong bg-surface px-2 text-xs font-medium text-heading transition-colors hover:bg-surface-hover focus-within:ring-2 focus-within:ring-[var(--input-glow)] sm:w-auto sm:gap-2 sm:px-3 sm:text-sm",
               upload.isPending && "pointer-events-none opacity-60",
             )}
           >
@@ -297,7 +298,7 @@ export default function VoicePicker({
           </label>
           <Button 
           size="sm"
-           className="blue-fields h-9 w-full sm:w-auto btn-blue"
+           className="blue-fields h-9 w-full px-2 text-xs sm:w-auto sm:px-3 sm:text-sm btn-blue"
             onClick={() => setAdding(true)}>
             <Plus size={15} aria-hidden /> Add custom voice
           </Button>
@@ -308,37 +309,39 @@ export default function VoicePicker({
         <p className="min-w-0 text-body">
           <span className="text-blue-500 dark:text-primary-soft-text">Preview says: </span>“{previewText}”
         </p>
-        <button type="button" onClick={onEditGreeting} className="shrink-0 font-medium text-[var(--input-glow)] hover:underline ">
+        <button
+          type="button"
+          onClick={onEditGreeting}
+          className={clsx(
+            "inline-flex min-h-9 shrink-0 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors",
+            greeting.trim() ? "text-[var(--input-glow)] hover:underline" : "btn-blue-filled",
+          )}
+        >
           {greeting.trim() ? "Edit greeting" : "Add a greeting"}
         </button>
       </div>
       {deleteError && <ErrorBanner message={deleteError instanceof Error ? deleteError.message : "The voice could not be deleted."} />}
       <>
           <div 
-          className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_10rem_10rem_auto] blue-fields">
-            <div 
-            className="sm:col-span-3 xl:col-span-1">
+          className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_10rem_10rem] blue-fields">
+            <div className="min-w-0 md:col-span-1">
               <SearchInput value={search} onChange={(next) => { setSearch(next); resetSamplePages(); }} placeholder="Search voices…" label="Search voices" />
             </div>
-            <Select value={language} onChange={(e) => { setLanguage(e.target.value); resetSamplePages(); }} aria-label="Language">
-              <option value="">All languages</option>
-              {languages.map((code) => (
-                <option key={code} value={code}>
-                  {languageName(code)}
-                </option>
-              ))}
-            </Select>
-            <Select value={activeStyle} onChange={(e) => { setStyle(e.target.value); resetSamplePages(); }} aria-label="Style">
-              <option value="">All styles</option>
-              {styles.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </Select>
+            <SelectMenu
+              value={language}
+              onChange={(value) => { setLanguage(value); resetSamplePages(); }}
+              label="Language"
+              options={[{ value: "", label: "All languages" }, ...languages.map((code) => ({ value: code, label: languageName(code) }))]}
+            />
+            <SelectMenu
+              value={activeStyle}
+              onChange={(value) => { setStyle(value); resetSamplePages(); }}
+              label="Style"
+              options={[{ value: "", label: "All styles" }, ...styles.map((style) => ({ value: style, label: style.charAt(0).toUpperCase() + style.slice(1) }))]}
+            />
           </div>
 
-          <div role="tablist" aria-label="Voice sources" className="flex gap-1 overflow-x-auto border-b border-hairline">
+          <div role="tablist" aria-label="Voice sources" className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline">
             <button type="button" role="tab" id="voice-tab-imported" aria-controls="voice-panel-imported" aria-selected={voiceSection === "imported"} onClick={() => switchVoiceSection("imported")}
               className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "imported" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
               Imported voices ({voices.length})
@@ -355,8 +358,8 @@ export default function VoicePicker({
 
          <div className="space-y-3 rounded-lg bg-surface p-3">
             {voiceSection !== "background" && (
-            <div className="grid min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_5rem_10rem]">
-              <div className="min-w-0 sm:col-span-2 lg:col-span-1">
+            <div className="grid min-w-0 grid-cols-2 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_5rem_10rem]">
+              <div className="col-span-2 min-w-0 lg:col-span-1">
                 <VoiceCard
                 playable={
                   selectedCatalogVoice
@@ -393,17 +396,12 @@ export default function VoicePicker({
                 />
               </Field>
               <Field label="Sample rate" className="w-full lg:w-40">
-                <Select
-                  value={previewSampleRate}
-                  onChange={(event) => setPreviewSampleRate(Number(event.target.value) as SpeechSampleRate)}
-                  aria-label="Stock voice preview sample rate"
-                >
-                  {SPEECH_SAMPLE_RATES.map((rate) => (
-                    <option key={rate} value={rate}>
-                      {rate.toLocaleString()} Hz
-                    </option>
-                  ))}
-                </Select>
+                <SelectMenu
+                  value={String(previewSampleRate)}
+                  onChange={(value) => setPreviewSampleRate(Number(value) as SpeechSampleRate)}
+                  label="Stock voice preview sample rate"
+                  options={SPEECH_SAMPLE_RATES.map((rate) => ({ value: String(rate), label: `${rate.toLocaleString()} Hz` }))}
+                />
               </Field>
             </div>
             )}
@@ -526,9 +524,9 @@ export default function VoicePicker({
                 <div
                   ref={stockListRef}
                   onScroll={handleStockScroll}
-                  className="h-80 overflow-y-auto overscroll-contain rounded-md border border-hairline p-2"
+                  className="h-96 w-full overflow-y-auto overscroll-contain rounded-xl border border-hairline bg-raised p-3"
                 >
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {shownPage.map((v) => (
                       <div key={v.voice_id} className="relative min-w-0">
                         <VoiceCard
@@ -538,7 +536,7 @@ export default function VoicePicker({
                           selected={value === v.voice_id}
                           onSelect={() => onChange(v.voice_id)}
                           preview={preview}
-                          className="pr-12"
+                          className="min-h-[72px] pr-12"
                         />
                         <DeleteIconButton
                           disabled={removeCustomVoice.isPending || removeStockVoice.isPending || removeWholeCatalog.isPending}

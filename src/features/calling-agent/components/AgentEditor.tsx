@@ -103,6 +103,9 @@ const withDefaultModels = (
     (options.stt_provider.includes("sarvam")
       ? "sarvam"
       : options.stt_provider[0] ?? "");
+  const ttsProviders = options.tts_provider ?? [];
+  const ttsProvider = draft.ttsProvider ||
+    (ttsProviders.includes("sarvam") ? "sarvam" : ttsProviders[0] ?? "");
 
   return {
     ...draft,
@@ -110,6 +113,8 @@ const withDefaultModels = (
     llmModel: draft.llmModel || options.llm_model[llmProvider]?.[0] || "",
     sttProvider,
     sttModel: draft.sttModel || options.stt_model[sttProvider]?.[0] || "",
+    ttsProvider,
+    ttsModel: draft.ttsModel || options.tts_model?.[ttsProvider]?.[0] || "",
   };
 };
 
@@ -124,6 +129,8 @@ const comparable = (d: AgentDraft) =>
     llmModel: d.llmModel,
     sttProvider: d.sttProvider,
     sttModel: d.sttModel,
+    ttsProvider: d.ttsProvider,
+    ttsModel: d.ttsModel,
     silenceCheck: d.silenceCheckSeconds,
     silencePrompt: d.silencePrompt,
     silenceHangup: d.silenceHangupSeconds,
@@ -283,7 +290,7 @@ export default function AgentEditor({
     } catch (err) {
       const message = errorMessage(err);
       setError(message);
-      // Backend errors are prefixed with the part name ("rules: …") — jump there
+      // Backend errors are prefixed with the part name ("rules: …") - jump there
       const part = AGENT_PARTS.find((p) => message.startsWith(p));
       if (part) goTo(part);
     } finally {
@@ -316,26 +323,38 @@ export default function AgentEditor({
   };
 
   const activeTab = TABS[tabIndex];
+  const newAgentReview = isNew && activeTab.id === "review";
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl">
 
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
-            {isNew ? "New agent" : agent!.name}
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            {isNew
-              ? "Fill in each section. Your progress is saved in this browser until you create the agent."
-              : `Created ${formatDate(agent!.created_at)} · Updated ${formatDate(agent!.updated_at)}`}
-          </p>
+        <div className="flex min-w-0 items-start gap-3">
+          <button
+            type="button"
+            aria-label="Back to agents"
+            title="Back to agents"
+            onClick={() => router.push("/?tab=calling-agent&callingTab=agents")}
+            className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
+              {isNew ? "New agent" : agent!.name}
+            </h1>
+            <p className="mt-1 text-sm text-muted">
+              {isNew
+                ? "Fill in each section. Your progress is saved in this browser until you create the agent."
+                : `Created ${formatDate(agent!.created_at)} · Updated ${formatDate(agent!.updated_at)}`}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
           <DraftStatus dirty={dirty} storageOk={storageOk} />
 {dirty && (
-  <Button className="btn-blue" onClick={handleDiscard} disabled={saving}>
+  <Button className="btn-blue w-full sm:w-auto" onClick={handleDiscard} disabled={saving}>
     {isNew ? "Discard draft" : "Discard changes"}
   </Button>
 )}
@@ -399,7 +418,7 @@ export default function AgentEditor({
       <div
         role="tablist"
         aria-label="Agent setup steps"
-        className="flex w-full gap-1 overflow-x-auto border-b border-hairline"
+        className="no-scrollbar flex w-full gap-1 overflow-x-auto border-b border-hairline"
       >
         {TABS.map((tab, i) => {
           const done = tabDone(tab.id);
@@ -439,7 +458,7 @@ export default function AgentEditor({
       </div>
 
       {/* Panel */}
-      <div className="blue-fields mt-6 rounded-lg border border-hairline bg-surface p-5 sm:p-6">
+      <div className="blue-fields mt-6 rounded-lg border border-hairline bg-surface p-3 sm:p-6">
         <div className="mb-4">
           <ErrorBanner message={error} />
         </div>
@@ -510,16 +529,16 @@ export default function AgentEditor({
           <AgentReview draft={draft} missing={missing} onEdit={goTo} />
         )}
 
-        <div className="-mx-5 -mb-5 mt-6 flex flex-col gap-3 rounded-b-lg border-t border-[#dfe4ef] bg-white px-5 py-4 sm:-mx-6 sm:-mb-6 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="-mx-5 -mb-5 mt-6 grid grid-cols-2 gap-3 rounded-b-lg border-t border-[#dfe4ef] bg-white px-5 py-4 sm:-mx-6 sm:-mb-6 sm:flex sm:items-center sm:justify-between sm:px-6">
           <button
             type="button"
             onClick={() => goTo(TABS[Math.max(0, tabIndex - 1)].id)}
             disabled={tabIndex === 0}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#cfd6e6] bg-white px-4 text-sm font-semibold text-[#141b2d] transition-colors hover:bg-[#f8f9fc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className={clsx("btn-blue-filled inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto", newAgentReview && "order-2 sm:order-none")}
           >
             <ArrowLeft size={16} strokeWidth={2.2} /> Back
           </button>
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="contents sm:flex sm:w-auto sm:flex-row sm:items-center sm:gap-3">
             {!isNew && activeTab.id !== "review" && (
               <button
                 type="button"
@@ -536,7 +555,7 @@ export default function AgentEditor({
                 type="button"
                 onClick={handleSubmit}
                 disabled={saving || missing.length > 0 || (!isNew && !dirty)}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#cfd6e6] bg-white px-4 text-sm font-semibold text-[#141b2d] transition-colors hover:bg-[#f8f9fc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className={clsx("btn-blue-filled inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto", newAgentReview && "order-1 col-span-2 sm:order-none sm:col-span-1")}
               >
                 <Save size={16} strokeWidth={2.2} />
                 {saving ? "Saving…" : isNew ? "Create agent" : "Save changes"}
@@ -546,7 +565,7 @@ export default function AgentEditor({
               type="button"
               onClick={() => goTo(TABS[Math.min(TABS.length - 1, tabIndex + 1)].id)}
               disabled={tabIndex === TABS.length - 1}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-[#2f5bea] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2449c8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              className={clsx("btn-blue-filled inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto", newAgentReview && "order-3 sm:order-none")}
             >
               Next <ArrowRight size={16} strokeWidth={2.2} />
             </button>

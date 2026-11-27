@@ -2,12 +2,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Pencil, Plus, X } from "lucide-react";
+import { Check, Eye, Pencil, PhoneCall, Plus, X } from "lucide-react";
 
 import { Button, Drawer, ErrorState } from "@/components/ui";
+import { AccordionList } from "@/components/AccordionList";
 import { ClassificationDetailsSkeleton, ClassificationTableSkeleton, SkeletonBoundary } from "@/components/skeletons";
 import { CLASSIFICATION_COLUMNS } from "@/components/skeletons/table-columns";
-import { DeleteIconButton, ViewIconButton } from "@/components/ui/ActionIconButtons";
+import { DeleteIconButton } from "@/components/ui/ActionIconButtons";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { setApiRequestInUrl } from "@/lib/apiUrlState";
@@ -80,9 +81,8 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
   const [formError, setFormError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const pageSize = 6;
 
-  // Calls drawer state
   const [viewingCalls, setViewingCalls] = useState<{
     classificationId?: string | null;
     title: string;
@@ -329,7 +329,25 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
 
       {/* Table card */}
       <div className="overflow-hidden rounded-2xl border border-[var(--classification-border)] bg-[var(--classification-surface)]">
-        <table className="w-full table-fixed border-collapse">
+        <AccordionList loading={!isNew && summary.isLoading} items={visible.map((c) => ({
+          id: c.id,
+          avatar: c.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join(""),
+          title: c.name,
+          subtitle: c.updated_at ? formatDate(c.updated_at) : "In draft",
+          badge: <span className="rounded-full bg-raised px-2 py-1 text-xs text-muted">{isNew ? "In draft" : `${c.calls ?? 0} calls`}</span>,
+          keyValue: { label: "Calls", value: c.calls ?? 0 },
+          details: [
+            { label: "Description", value: c.description, fullWidth: true },
+            { label: "Calls", value: c.calls ?? 0 },
+            { label: isNew ? "Status" : "Updated", value: isNew ? "In draft" : c.updated_at ? formatDate(c.updated_at) : "-" },
+          ],
+          actions: [
+            ...(!isNew ? [{ label: "View details", onClick: () => openDetails(c.id) }] : []),
+            { label: "Edit", onClick: () => openEdit(c) },
+            { label: "Delete", onClick: () => handleDelete(c), danger: true, disabled: pending },
+          ],
+        }))} empty={!isNew && summary.isError ? summary.error.message : "No classifications yet. Use ‘New classification’ to add one, or continue without them."} />
+        <table className="hidden w-full table-fixed border-collapse md:table">
           <colgroup>{CLASSIFICATION_COLUMNS.map((column, index) => <col key={column.label || index} style={{ width: column.width }} />)}</colgroup>
           <thead>
             <tr className="border-b border-[var(--classification-divider)]">
@@ -369,19 +387,23 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
                   {c.calls ?? 0}
                 </td>
                 <td className="px-5 py-4 align-top text-sm text-[var(--classification-link)]">
-                  {isNew ? "In draft" : c.updated_at ? formatDate(c.updated_at) : "—"}
+                  {isNew ? "In draft" : c.updated_at ? formatDate(c.updated_at) : "-"}
                 </td>
                 <td className="px-5 py-4 align-top">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {!isNew && (
-                      <ViewIconButton
+                      <button
+                        type="button"
                         onClick={() => openDetails(c.id)}
-                      />
-                    )}
-                    {!isNew && (c.calls ?? 0) > 0 && (
-                      <ViewIconButton
-                        onClick={() => openCalls(c.id, `Calls: ${c.name}`)}
-                      />
+                        aria-label={`View details and calls for ${c.name}`}
+                        title="View details and calls"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md p-1 text-[var(--icon-primary)] transition-colors hover:text-[var(--icon-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-1"
+                      >
+                        <span className="relative inline-flex">
+                          <Eye size={18} aria-hidden="true" />
+                          <PhoneCall size={11} aria-hidden="true" className="absolute -bottom-1 -right-1 rounded-full bg-[var(--classification-surface)]" />
+                        </span>
+                      </button>
                     )}
                     <button
                       type="button"
@@ -406,36 +428,19 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
 
       {/* Footer / pagination */}
       {total > 0 && (
-        <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--classification-muted)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--classification-muted)]">
           <span className="font-mono text-xs">
             {total === 0 ? 0 : start + 1}–{Math.min(start + pageSize, total)} of {total} classifications
           </span>
-          <label className="flex items-center gap-2">
-            Rows
-            <select
-              className="rounded-lg border border-[var(--classification-border)] bg-surface px-2 py-1 text-sm text-[var(--classification-heading)]"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-            >
-              {[10, 25, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          {pageCount > 1 && (
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="secondary" className="btn-blue" onClick={() => setPage(safePage - 1)} disabled={safePage <= 1}>
-                Prev
+          {total > 6 && (
+            <div className="flex items-center gap-2">
+              <Button className="btn-blue-filled" onClick={() => setPage(safePage - 1)} disabled={safePage <= 1}>
+                Previous
               </Button>
-              <span className="text-xs">
+              <span className="min-w-14 text-center text-xs" aria-live="polite">
                 {safePage} / {pageCount}
               </span>
-              <Button variant="secondary" className="btn-blue" onClick={() => setPage(safePage + 1)} disabled={safePage >= pageCount}>
+              <Button className="btn-blue-filled" onClick={() => setPage(safePage + 1)} disabled={safePage >= pageCount}>
                 Next
               </Button>
             </div>
@@ -443,7 +448,6 @@ export default function ClassificationsStep({ agentId, items, onChange }: Classi
         </div>
       )}
 
-      {/* Calls Drawer */}
       {viewingCalls && agentId && (
         <ClassificationCallsDrawer
           agentId={agentId}
@@ -503,6 +507,15 @@ function ClassificationDetailsDrawer({
             <ClassificationDate label="Created" value={classification.data.created_at} />
             <ClassificationDate label="Last updated" value={classification.data.updated_at} />
           </dl>
+          {classification.data.calls > 0 && (
+            <ClassificationCallsDrawer
+              agentId={agentId}
+              classificationId={classificationId}
+              title={`Calls: ${classification.data.name}`}
+              onClose={() => {}}
+              embedded
+            />
+          )}
         </div>
       ) : null}
       </SkeletonBoundary>
@@ -514,7 +527,7 @@ function ClassificationDate({ label, value }: { label: string; value: string }) 
   return (
     <div className="rounded-xl border border-hairline p-4">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-heading">{value ? formatDate(value) : "—"}</dd>
+      <dd className="mt-1 text-sm font-medium text-heading">{value ? formatDate(value) : "-"}</dd>
     </div>
   );
 }

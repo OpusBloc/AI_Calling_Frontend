@@ -7,12 +7,12 @@ export const formatDate = (value: string | null | undefined) =>
         dateStyle: "medium",
         timeStyle: "short",
       })
-    : "—";
+    : "-";
 
 export const formatDay = (value: string | null | undefined) =>
   value
     ? new Date(value).toLocaleDateString(undefined, { dateStyle: "medium" })
-    : "—";
+    : "-";
 
 /** 125 → "2m 5s", 3725 → "1h 2m" */
 export const formatDuration = (seconds: number | null | undefined) => {
@@ -34,7 +34,7 @@ export const formatMoney = (
         minimumFractionDigits: digits,
         maximumFractionDigits: digits,
       })
-    : "—";
+    : "-";
 };
 
 /** "in_progress" → "In progress" */

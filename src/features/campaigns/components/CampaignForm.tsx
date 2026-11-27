@@ -2,19 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AccordionList } from "@/components/AccordionList";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, CloudUpload, Download, FileSpreadsheet, Loader2, X } from "lucide-react";
+import { ArrowLeft, Check, CloudUpload, Download, FileSpreadsheet, Loader2, X } from "lucide-react";
 
 import { createCampaign, updateCampaign } from "@/lib/api";
 import type { Campaign, CampaignCreate, CampaignUpdate, Weekday } from "@/types/types";
 import { useAgents, usePlivoPools, useRepresentatives } from "@/hooks/hooks";
 import { showSuccessNotification } from "@/hooks/useNotification";
 import MultiSelect from "@/components/MultiSelect";
+import SelectMenu from "@/components/SelectMenu";
+import DateTimeSplit from "@/components/DateTimeSplit";
+import TimeSelect from "@/components/TimeSelect";
 import { WEEKDAYS, formatDays } from "@/features/campaigns/components/CampaignsTab";
 import { Button, Card, Field, FormPage, Select, TextInput, humanize } from "@/components/ui";
 
 export const CAMPAIGN_STATUSES: Campaign["status"][] = ["draft", "scheduled", "running", "paused", "completed", "cancelled"];
 const RETRY_CONDITIONS = ["no_answer", "not_connected", "busy", "failed"] as const;
+const MAX_CALL_SECOND_OPTIONS = Array.from({ length: 20 }, (_, index) => (index + 1) * 30);
 const CAMPAIGN_STEPS = [
   { id: "details", label: "Details & Leads" },
   { id: "calling", label: "Calling & Retries" },
@@ -34,6 +39,21 @@ const toDateTimeInput = (value?: string | null) => {
     : new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 const toIsoDateTime = (value: string) => (value ? new Date(value).toISOString() : null);
+
+const toImportableLeadsUrl = (value: string) => {
+  const url = new URL(value);
+  const sheetMatch = url.hostname === "docs.google.com"
+    ? url.pathname.match(/^\/spreadsheets\/d\/([^/]+)/)
+    : null;
+  if (!sheetMatch) return url.toString();
+
+  const gid = url.searchParams.get("gid");
+  url.pathname = `/spreadsheets/d/${sheetMatch[1]}/export`;
+  url.search = "";
+  url.searchParams.set("format", "csv");
+  if (gid) url.searchParams.set("gid", gid);
+  return url.toString();
+};
 
 const intBetween = (
   value: string | number | null | undefined,
@@ -136,16 +156,6 @@ async function checkSheet(file: File): Promise<SheetCheck> {
   if (file.size > 10 * 1024 * 1024) return { error: "Choose a file smaller than 10 MB." };
   const ext = file.name.toLowerCase().split(".").pop();
   if (ext === "csv") return inspectLeadRows(parseCsvRows((await file.text()).replace(/^\uFEFF/, "")));
-  if (ext === "xml") {
-    const document = new DOMParser().parseFromString(await file.text(), "application/xml");
-    if (document.querySelector("parsererror")) return { error: "This XML file could not be read." };
-    const records = [...document.querySelectorAll("lead, row, record")];
-    const rows = records.map((record) => [
-      record.querySelector("phone, phone_number, phone_e164, mobile, mobile_number, number")?.textContent?.trim() ?? "",
-      record.querySelector("name, full_name, lead_name")?.textContent?.trim() ?? "",
-    ]);
-    return inspectLeadRows([["phone", "name"], ...rows]);
-  }
   if (ext === "xlsx") {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const xml = await unzipText(bytes, "xl/worksheets/sheet1.xml");
@@ -167,12 +177,12 @@ async function checkSheet(file: File): Promise<SheetCheck> {
     });
     return inspectLeadRows(rows);
   }
-  return { error: "Upload a CSV, Excel, or XML file." };
+  return { error: "Upload a .csv or .xlsx file." };
 }
 
 function Panel({ title, description, children }: { title: string; description: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Card title={title} description={description}>
+    <Card title={title} description={description} allowOverflow>
       <div className="space-y-5">{children}</div>
     </Card>
   );
@@ -181,10 +191,20 @@ function Panel({ title, description, children }: { title: string; description: R
 function LeadPreviewTable({ rows }: { rows: LeadPreview[] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-hairline">
-      <table className="w-full table-fixed text-left text-sm">
+      <AccordionList items={rows.slice(0, 5).map((row, index) => ({
+        id: `${index}-${row.phone}`,
+        avatar: (row.name || row.phone || "?").trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join(""),
+        title: row.name || "Unnamed lead",
+        subtitle: row.phone || "-",
+        details: [
+          { label: "Phone", value: row.phone || "-" },
+          { label: "Name", value: row.name || "-" },
+        ],
+      }))} />
+      <table className="hidden w-full table-fixed text-left text-sm md:table">
         <thead className="bg-raised text-xs uppercase tracking-wide text-muted"><tr><th className="w-1/2 px-3 py-2 font-medium">Phone</th><th className="px-3 py-2 font-medium">Name</th></tr></thead>
         <tbody className="divide-y divide-hairline">
-          {rows.slice(0, 5).map((row, index) => <tr key={`${index}-${row.phone}`}><td className="truncate px-3 py-2 text-body">{row.phone || "—"}</td><td className="truncate px-3 py-2 text-body">{row.name || "—"}</td></tr>)}
+          {rows.slice(0, 5).map((row, index) => <tr key={`${index}-${row.phone}`}><td className="truncate px-3 py-2 text-body">{row.phone || "-"}</td><td className="truncate px-3 py-2 text-body">{row.name || "-"}</td></tr>)}
         </tbody>
       </table>
     </div>
@@ -210,7 +230,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [linkSheet, setLinkSheet] = useState<SheetCheck>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isDraggingLeads, setIsDraggingLeads] = useState(false);
-  const [linkImportError, setLinkImportError] = useState<string | null>(null);
+  const [linkImportMessage, setLinkImportMessage] = useState<string | null>(null);
   const [isImportingLink, setIsImportingLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const parseRequest = useRef(0);
@@ -219,6 +239,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   const [representativeIds, setRepresentativeIds] = useState<string[]>(campaign?.representative_ids ?? []);
   const [plivoPoolIds, setPlivoPoolIds] = useState<string[]>(campaign?.plivo_pool_ids ?? []);
   const [transferTimeout, setTransferTimeout] = useState(String(campaign?.transfer_timeout_seconds ?? 30));
+  const [maxCallSeconds, setMaxCallSeconds] = useState(String(campaign?.max_call_seconds ?? 300));
   const [startAt, setStartAt] = useState(() => toDateTimeInput(campaign?.start_at));
   const [windowStart, setWindowStart] = useState(campaign?.window_start?.slice(0, 5) ?? "");
   const [windowEnd, setWindowEnd] = useState(campaign?.window_end?.slice(0, 5) ?? "");
@@ -240,11 +261,16 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
     parseRequest.current += 1;
     const request = parseRequest.current;
     setLeadsFile(file);
-    setLinkSheet(null);
-    setLinkImportError(null);
-    if (!file) { setSheet(null); setIsParsing(false); return; }
     setLeadsSource("file");
+    setLinkSheet(null);
+    setLinkImportMessage(null);
+    if (!file) { setSheet(null); setIsParsing(false); return; }
     setSheet(null);
+    if (!/\.(csv|xlsx)$/i.test(file.name)) {
+      setSheet({ error: "Choose a .csv or .xlsx file." });
+      setIsParsing(false);
+      return;
+    }
     setIsParsing(true);
     try {
       const result = await checkSheet(file);
@@ -258,22 +284,35 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
 
   const importLeadsLink = async () => {
     const url = leadsUrl.trim();
-    if (!/^https?:\/\//i.test(url)) { setLinkImportError("Enter a valid link that starts with http:// or https://."); return; }
+    if (!/^https?:\/\//i.test(url)) {
+      setLinkImportMessage("Enter a valid link starting with http:// or https://.");
+      return;
+    }
+    let importUrl: string;
+    try {
+      importUrl = toImportableLeadsUrl(url);
+    } catch {
+      setLinkImportMessage("Enter a valid file link.");
+      return;
+    }
     setIsImportingLink(true);
-    setLinkImportError(null);
+    setLinkImportMessage(null);
     setLinkSheet(null);
     try {
-      const response = await fetch(url);
+      const response = await fetch(importUrl);
       if (!response.ok) throw new Error(`The link returned ${response.status}.`);
       const blob = await response.blob();
-      const filename = decodeURIComponent(new URL(url).pathname.split("/").pop() || "leads.csv");
-      const file = new File([blob], filename, { type: blob.type });
+      const pathname = new URL(importUrl).pathname;
+      const filename = decodeURIComponent(pathname.split("/").pop() || "leads.csv");
+      const inferredName = /\.(csv|xlsx)$/i.test(filename) ? filename : "leads.csv";
+      const file = new File([blob], inferredName, { type: blob.type });
       const result = await checkSheet(file);
-      if (!result || "error" in result) throw new Error(result && "error" in result ? result.error : "The link did not contain a readable leads file.");
+      if (!result || "error" in result) throw new Error(result && "error" in result ? result.error : "The file could not be previewed.");
       if (result.valid < 1) throw new Error("The file has no valid phone numbers.");
       setLinkSheet(result);
-    } catch (error) {
-      setLinkImportError(error instanceof Error ? error.message : "The link could not be imported.");
+      setLinkImportMessage("File preview ready. The server will import this link when you create the campaign.");
+    } catch {
+      setLinkImportMessage("Preview unavailable. The link will still be sent to the server when you create the campaign.");
     } finally {
       setIsImportingLink(false);
     }
@@ -281,10 +320,11 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
 
   const sheetError = sheet && "error" in sheet ? sheet.error : null;
   const leadsUrlError = leadsUrl.trim() && !/^https?:\/\//i.test(leadsUrl.trim())
-  ? "Enter a link that starts with http:// or https://."
-  : null;
-  const activeSheet = leadsSource === "file" ? sheet : linkSheet;
-  const hasValidLeads = Boolean(activeSheet && !("error" in activeSheet) && activeSheet.valid > 0 && !isParsing && !isImportingLink);
+    ? "Enter a link starting with http:// or https://."
+    : null;
+  const hasValidLeads = leadsSource === "file"
+    ? Boolean(sheet && !("error" in sheet) && sheet.valid > 0 && !isParsing)
+    : Boolean(leadsUrl.trim() && !leadsUrlError);
   const hasPlivo = (plivoPoolIds ?? []).length > 0 || (campaign?.plivo_numbers.length ?? 0) > 0;
   const errors = {
     name: !name.trim() ? "Give the campaign a name." : null,
@@ -292,12 +332,12 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
     leads: campaign
     ? null
     : leadsSource === "file"
-    ? !leadsFile || !hasValidLeads
-    ? sheetError ?? "Upload a leads file with at least one valid phone number."
-    : null
-    : !leadsUrl.trim()
-    ? "Paste a link to the leads file."
-    : leadsUrlError ?? (!hasValidLeads ? linkImportError ?? "Import a link with at least one valid phone number." : null),
+      ? !leadsFile || !hasValidLeads
+        ? sheetError ?? "Upload a .csv or .xlsx file with at least one valid phone number."
+        : null
+      : !leadsUrl.trim() || !hasValidLeads
+        ? leadsUrlError ?? "Paste a link to a .csv or .xlsx file."
+        : null,
     plivo: !hasPlivo ? "Pick at least one Plivo pool to call from." : null,
     transferTimeout: !intBetween(transferTimeout, 5, 120) ? "Between 5 and 120 seconds." : null,
     retryInterval: !intBetween(retryInterval, 0) ? "Whole number of minutes, 0 or more." : null,
@@ -345,6 +385,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         concurrency_limit: Number(concurrencyLimit),
         max_live_calls: Number(maxLiveCalls),
         calls_per_second: Number(callsPerSecond),
+        max_call_seconds: Number(maxCallSeconds),
       };
       if (campaign) {
         const body: CampaignUpdate = {
@@ -360,10 +401,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
         timezone: "Asia/Kolkata",
         retry_on: retryOn as CampaignCreate["retry_on"],
       };
-      return createCampaign(
-        body,
-        leadsSource === "link" ? { fileUrl: leadsUrl.trim() } : { file: leadsFile! },
-      );
+      return createCampaign(body, leadsSource === "link" ? { fileUrl: toImportableLeadsUrl(leadsUrl.trim()) } : { file: leadsFile! });
     },
     onSuccess: async (saved) => {
   // Clear draft only after successfully creating a new campaign
@@ -395,28 +433,28 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   };
 
   const actions = (
-    <>
-      <Button variant="secondary" className="btn-blue" onClick={() => router.replace(backHref)}>
+    <div className="mx-auto grid w-full min-w-0 max-w-xs grid-cols-2 gap-3 sm:mx-0 sm:flex sm:w-auto sm:max-w-none sm:items-center">
+      <Button variant="secondary" className="h-11 w-full min-w-0 whitespace-normal border border-hairline-strong bg-surface text-heading shadow-sm hover:bg-surface-hover px-2 text-sm leading-tight sm:w-auto sm:whitespace-nowrap sm:px-4" onClick={() => router.replace(backHref)}>
         Cancel
       </Button>
       {activeStepIndex > 0 && (
-        <Button variant="secondary" className="btn-blue" onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex - 1].id)}>
+      <Button className="btn-blue-filled h-11 w-full min-w-0 whitespace-normal px-2 text-sm leading-tight sm:w-auto sm:whitespace-nowrap sm:px-4" onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex - 1].id)}>
           Back
         </Button>
       )}
       {activeStepIndex < CAMPAIGN_STEPS.length - 1 ? (
-        <div className="flex flex-col-reverse items-end gap-2 sm:flex-row sm:items-center">
-          {!campaign && activeStep === "details" && !hasValidLeads && <span className="max-w-64 text-right text-xs text-muted">Add a file or import a link with at least one valid lead to continue.</span>}
-          <Button className="btn-blue-filled" disabled={!campaign && activeStep === "details" && !hasValidLeads} onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex + 1].id)}>
+        <div className={`${activeStepIndex > 0 ? "col-span-2" : "col-span-1"} flex min-w-0 flex-col-reverse items-stretch gap-2 sm:col-span-1 sm:flex-row sm:items-center sm:justify-end`}>
+          {!campaign && activeStep === "details" && !hasValidLeads && <span className="hidden max-w-64 text-right text-xs text-muted sm:inline">Add a file or import a link with at least one valid lead to continue.</span>}
+          <Button className="btn-blue-filled h-11 w-full min-w-0 whitespace-normal px-2 text-sm leading-tight disabled:opacity-70 sm:w-auto sm:whitespace-nowrap sm:px-4" disabled={!campaign && activeStep === "details" && !hasValidLeads} onClick={() => setActiveStep(CAMPAIGN_STEPS[activeStepIndex + 1].id)}>
             Continue
           </Button>
         </div>
       ) : (
-        <Button className="btn-blue-filled" onClick={submit} loading={mutation.isPending}>
+        <Button className="btn-blue-filled col-span-2 h-11 w-full min-w-0 whitespace-normal px-2 text-sm leading-tight sm:col-span-1 sm:w-auto sm:whitespace-nowrap sm:px-4" onClick={submit} loading={mutation.isPending}>
           {campaign ? "Save changes" : "Create campaign"}
         </Button>
       )}
-    </>
+    </div>
   );
 
     // Default a new campaign to the first agent once they load
@@ -425,7 +463,8 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   }, [agentId, agents.data, campaign]);
   
 useEffect(()=>{
-  if(campaign &&!draftLoaded){
+  // Drafts belong to the create flow; editing must use the selected campaign data.
+  if (campaign) {
     setDraftLoaded(true);
     return;
   }
@@ -463,6 +502,12 @@ useEffect(()=>{
     if (restoredRepresentativeIds) setRepresentativeIds(restoredRepresentativeIds);
     const restoredTransferTimeout = text("transferTimeout", "transfer_ring_time");
     if (restoredTransferTimeout !== undefined) setTransferTimeout(restoredTransferTimeout);
+    const restoredMaxCallSeconds = text("maxCallSeconds", "max_call_seconds");
+    if (restoredMaxCallSeconds !== undefined && MAX_CALL_SECOND_OPTIONS.includes(Number(restoredMaxCallSeconds))) setMaxCallSeconds(restoredMaxCallSeconds);
+    const restoredLeadsSource = value("leadsSource", "leads_source");
+    if (restoredLeadsSource === "file" || restoredLeadsSource === "link") setLeadsSource(restoredLeadsSource);
+    const restoredLeadsUrl = text("leadsUrl", "leads_url");
+    if (restoredLeadsUrl !== undefined) setLeadsUrl(restoredLeadsUrl);
     const restoredStartAt = text("startAt", "start_at");
     if (restoredStartAt !== undefined) setStartAt(restoredStartAt);
     const restoredWindowStart = text("windowStart", "calling_houe_start");
@@ -502,7 +547,7 @@ useEffect(()=>{
 // UseEFfect to immediately after the restore effect:
 
 useEffect(()=>{
-  if(!draftLoaded) return;
+  if(!draftLoaded || campaign) return;
 
   const draft = {
     name,
@@ -511,6 +556,9 @@ useEffect(()=>{
     plivoPoolIds,
     representativeIds,
     transferTimeout,
+    maxCallSeconds,
+    leadsSource,
+    leadsUrl,
     startAt,
     windowStart,
     windowEnd,
@@ -534,6 +582,9 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
   plivoPoolIds,
   representativeIds,
   transferTimeout,
+  maxCallSeconds,
+  leadsSource,
+  leadsUrl,
   startAt,
   windowStart,
   windowEnd,
@@ -543,18 +594,30 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
   callsPerSecond,
   retryCount,
   retryInterval,
-  retryOn
+  retryOn,
+  campaign,
 ]);
 
   return (
     <FormPage
-    title={campaign ? `Edit campaign: ${campaign.name}` : "New campaign"}
+      title={campaign ? `Edit campaign: ${campaign.name}` : "New campaign"}
+      headerLeading={
+        <button
+          type="button"
+          aria-label="Back to campaigns"
+          title="Back to campaigns"
+          onClick={() => router.replace(backHref)}
+          className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+        </button>
+      }
       footer={actions}
       showHeaderActions={false}
       flushFooterToBottom
-      error={submitted && !valid ? "Some fields need attention — they're marked below." : null}
+      error={submitted && !valid ? "Some fields need attention - they're marked below." : null}
     >
-      <div className=" mt-5">
+      <div className="blue-fields mt-5 pb-24">
         <div
           role="tablist"
           aria-label="Campaign setup"
@@ -625,18 +688,31 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Calling agent" required error={show(errors.agent)}>
-                <Select value={agentId} onChange={(e) => setAgentId(e.target.value)} aria-invalid={!!show(errors.agent)}>
+                <SelectMenu
+                  label="Calling agent"
+                  placeholder="Select an agent"
+                  value={agentId}
+                  onChange={setAgentId}
+                  options={(agents.data ?? []).map((agent) => ({ value: agent.id, label: agent.name }))}
+                  className="md:hidden"
+                  showNativeSelect={false}
+                />
+                <Select className="hidden w-full md:block" value={agentId} onChange={(e) => setAgentId(e.target.value)} aria-invalid={!!show(errors.agent)}>
                   <option value="">Select an agent</option>
-                  {agents.data?.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
+                  {agents.data?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </Select>
               </Field>
               <Field label="Status" hint="Scheduled starts calling straight away (or at the start time). A draft waits until you schedule it.">
-                <Select value={status} onChange={(e) => setStatus(e.target.value as Campaign["status"])}>
-                  {CAMPAIGN_STATUSES.map((s) => (
-                    <option key={s} value={s}>{humanize(s)}</option>
-                  ))}
+                <SelectMenu
+                  label="Status"
+                  value={status}
+                  onChange={(value) => setStatus(value as Campaign["status"])}
+                  options={CAMPAIGN_STATUSES.map((s) => ({ value: s, label: humanize(s) }))}
+                  className="md:hidden"
+                  showNativeSelect={false}
+                />
+                <Select className="hidden w-full md:block" value={status} onChange={(e) => setStatus(e.target.value as Campaign["status"])}>
+                  {CAMPAIGN_STATUSES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
                 </Select>
               </Field>
             </div>
@@ -647,7 +723,7 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
             description={
               campaign
                 ? "The leads were imported when this campaign was created."
-                : "Upload a CSV, Excel, or XML file, or import from a file link. Leads need a phone value; names are optional."
+                : "Upload a .csv or .xlsx file. Leads need a phone value; names are optional."
             }
           >
             {campaign ? (
@@ -657,20 +733,26 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
             ) : (
               <div className="space-y-4">
                 <div role="tablist" aria-label="Leads source" className="grid w-full grid-cols-2 border-b border-hairline sm:inline-flex sm:w-auto">
-                  {([ ["file", "Upload file"], ["link", "Import from link"] ] as const).map(([source, label]) => (
-                    <button key={source} type="button" role="tab" aria-selected={leadsSource === source} onClick={() => setLeadsSource(source)} className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${leadsSource === source ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading"}`}>
+                  {([["file", "Upload file"], ["link", "Import from link"]] as const).map(([source, label]) => (
+                    <button
+                      key={source}
+                      type="button"
+                      role="tab"
+                      aria-selected={leadsSource === source}
+                      onClick={() => setLeadsSource(source)}
+                      className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${leadsSource === source ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading"}`}
+                    >
                       {label}
                     </button>
                   ))}
                 </div>
-                {leadsSource === "file" ? (
-                  <div className="space-y-4">
-                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xml" className="sr-only" onChange={(event) => { void chooseFile(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }} />
+                {leadsSource === "file" && <>
+                    <input ref={fileInputRef} type="file" accept=".csv,.xlsx" className="sr-only" onChange={(event) => { void chooseFile(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }} />
                     {!leadsFile ? (
                       <div role="button" tabIndex={0} onClick={() => fileInputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fileInputRef.current?.click(); } }} onDragOver={(event) => { event.preventDefault(); setIsDraggingLeads(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsDraggingLeads(false); }} onDrop={(event) => { event.preventDefault(); setIsDraggingLeads(false); void chooseFile(event.dataTransfer.files?.[0] ?? null); }} className={`flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-5 py-8 text-center transition-colors ${isDraggingLeads ? "border-accent bg-accent-bg" : "border-hairline-strong bg-surface-input hover:border-accent-strong hover:bg-accent-bg/40"}`}>
                         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent-bg text-accent-text"><CloudUpload size={23} aria-hidden /></span>
                         <span className="text-sm font-medium text-heading">Drag &amp; drop your file here</span>
-                        <span className="text-xs text-muted">CSV, Excel or XML · max 10 MB</span>
+                        <span className="text-xs text-muted">.csv or .xlsx · max 10 MB</span>
                         <Button type="button" variant="secondary" className="btn-blue mt-1" onClick={(event) => { event.stopPropagation(); fileInputRef.current?.click(); }}>Browse files</Button>
                       </div>
                     ) : (
@@ -695,19 +777,30 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
                       <a href="data:text/csv;charset=utf-8,phone%2Cname%0A9876543210%2CExample%20Lead" download="sample-leads.csv" className="inline-flex shrink-0 items-center gap-1 font-medium text-[var(--input-glow)] hover:underline"><Download size={14} aria-hidden />Download sample CSV</a>
                     </div>
                     {show(errors.leads) && <p role="alert" className="text-xs text-loss">{show(errors.leads)}</p>}
-                  </div>
-                ) : (
+                </>}
+                {leadsSource === "link" && (
                   <div className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row">
-                      <TextInput type="url" value={leadsUrl} onChange={(event) => { setLeadsUrl(event.target.value); setLinkSheet(null); setLinkImportError(null); }} placeholder="https://…/leads.csv" aria-label="Leads file URL" aria-invalid={!!(leadsUrlError || linkImportError)} className="min-w-0 flex-1" />
+                      <TextInput
+                        type="url"
+                        value={leadsUrl}
+                        onChange={(event) => { setLeadsUrl(event.target.value); setLinkSheet(null); setLinkImportMessage(null); }}
+                        placeholder="https://…/leads.csv"
+                        aria-label="Leads file URL"
+                        aria-invalid={!!leadsUrlError}
+                        className="min-w-0 flex-1"
+                      />
                       <Button type="button" className="btn-blue-filled shrink-0" onClick={() => void importLeadsLink()} loading={isImportingLink}>Import</Button>
                     </div>
-                    {(linkImportError || leadsUrlError) && <p role="alert" className="text-xs text-loss">{linkImportError ?? leadsUrlError}</p>}
-                    {linkSheet && !("error" in linkSheet) && <div className="space-y-3"><p className="text-xs text-muted"><strong className="font-semibold text-heading">{linkSheet.valid} valid</strong> · {linkSheet.duplicates} duplicates skipped · {linkSheet.invalid} invalid</p><LeadPreviewTable rows={linkSheet.preview} /></div>}
-                    <div className="flex flex-col gap-2 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-                      <p>Required: phone. Optional: name. 10-digit numbers get +91 added. Duplicates are skipped.</p>
-                      <a href="data:text/csv;charset=utf-8,phone%2Cname%0A9876543210%2CExample%20Lead" download="sample-leads.csv" className="inline-flex shrink-0 items-center gap-1 font-medium text-[var(--input-glow)] hover:underline"><Download size={14} aria-hidden />Download sample CSV</a>
-                    </div>
+                    <p className="text-xs text-muted">Paste a Google Sheets link or a direct .csv/.xlsx link. Google Sheets links are imported as CSV; set General access to “Anyone with the link” so the server can read it.</p>
+                    {linkImportMessage && <p role="status" className={`text-xs ${leadsUrlError ? "text-loss" : "text-muted"}`}>{linkImportMessage}</p>}
+                    {linkSheet && !("error" in linkSheet) && (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted"><strong className="font-semibold text-heading">{linkSheet.valid} valid</strong> · {linkSheet.duplicates} duplicates skipped · {linkSheet.invalid} invalid</p>
+                        <LeadPreviewTable rows={linkSheet.preview} />
+                      </div>
+                    )}
+                    {show(errors.leads) && <p role="alert" className="text-xs text-loss">{show(errors.leads)}</p>}
                   </div>
                 )}
               </div>
@@ -742,6 +835,18 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
       <Field label="Transfer ring time (seconds)" error={show(errors.transferTimeout)} hint="How long each representative's phone rings, 5–120.">
         <TextInput type="number" inputMode="numeric" min={5} max={120} step={1} value={transferTimeout} onChange={(e) => setTransferTimeout(e.target.value)} aria-invalid={!!show(errors.transferTimeout)} className="sm:max-w-[12rem]" />
       </Field>
+      <Field label="Maximum call duration" hint="Default: 300s. Calls end when they reach this limit.">
+          <Select
+            aria-label="Maximum call duration"
+            value={maxCallSeconds}
+            onChange={(event) => setMaxCallSeconds(event.target.value)}
+            className="sm:max-w-[12rem]"
+          >
+            {MAX_CALL_SECOND_OPTIONS.map((seconds) => (
+              <option key={seconds} value={seconds}>{seconds}s</option>
+            ))}
+          </Select>
+      </Field>
     </Panel>
 
     <Panel title="Retries" description="Choose what happens when a lead doesn't pick up.">
@@ -767,15 +872,18 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
             <Panel title="Timing" description="Set when calls may go out. Times are India Standard Time.">
             {status === "scheduled" && (
               <Field label="Start at" hint="Leave empty to start as soon as the campaign is saved.">
-                <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="sm:max-w-xs" />
+                <DateTimeSplit label="Start at" value={startAt} onChange={setStartAt} className="md:hidden" />
+                <TextInput type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className="hidden sm:max-w-xs md:block" />
               </Field>
             )}
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Calling hours start" hint="Leave both empty to call any time.">
-                <TextInput type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} aria-invalid={!!show(errors.window)} />
+                <TimeSelect label="Calling hours start" value={windowStart} onChange={setWindowStart} className="md:hidden" />
+                <TextInput type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} aria-invalid={!!show(errors.window)} className="hidden md:block" />
               </Field>
               <Field label="Calling hours end" error={show(errors.window)}>
-                <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} />
+                <TimeSelect label="Calling hours end" value={windowEnd} onChange={setWindowEnd} className="md:hidden" />
+                <TextInput type="time" value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} aria-invalid={!!show(errors.window)} className="hidden md:block" />
               </Field>
             </div>
             <fieldset>

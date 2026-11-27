@@ -1,6 +1,6 @@
 // src/lib/api.ts
 import { showErrorNotification } from "@/hooks/useNotification";
-import { clearToken, getToken } from "@/lib/auth";
+import { clearToken, getToken, getUserIdFromToken } from "@/lib/auth";
 import type {
   Campaign,
   CampaignCreate,
@@ -9,6 +9,7 @@ import type {
   CallOutcomeResult,
   CampaignCallDetail,
   CampaignCallsResponse,
+  CampaignCallbacksResponse,
   // ScheduledCampaignCall,
   CampaignUpdate,
   CallCost,
@@ -107,7 +108,7 @@ export async function api<T>(
     throw new ApiError("Couldn't reach the server.", 0);
   }
 
-  // Session no longer valid — AuthGuard sends the user to login
+  // Session no longer valid - AuthGuard sends the user to login
   if (res.status === 401 && token) {
     clearToken();
     showErrorNotification("Please sign in again.", { title: "Session expired" });
@@ -130,6 +131,13 @@ export async function api<T>(
 }
 
 // Number Pool endpoints
+const withPoolUserId = (path: string) => {
+  const userId = getUserIdFromToken();
+  if (!userId) return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}user_id=${encodeURIComponent(userId)}`;
+};
+
 export const getPlivoNumbers = () => api<PlivoNumber[]>("/plivo-numbers");
 export const getPlivoNumberCallStats = () => api<PlivoNumberCallStat[]>("/plivo-numbers/call-stats");
 
@@ -139,21 +147,21 @@ export const syncPlivoNumbers = () =>
 export const patchPlivoNumber = (phoneE164: string, body: PlivoNumberUpdate) =>
   api<PlivoNumber>(`/plivo-numbers/${encodeURIComponent(phoneE164)}`, { method: "PATCH", body });
 
-export const getPlivoPools = () => api<PlivoPool[]>("/plivo-pools");
+export const getPlivoPools = () => api<PlivoPool[]>(withPoolUserId("/plivo-pools"));
 
-export const getPlivoPool = (id: string) => api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`);
+export const getPlivoPool = (id: string) => api<PlivoPool>(withPoolUserId(`/plivo-pools/${encodeURIComponent(id)}`));
 
 export const createPlivoPool = (body: CreatePlivoPoolBody) =>
-  api<PlivoPool>("/plivo-pools", { method: "POST", body });
+  api<PlivoPool>(withPoolUserId("/plivo-pools"), { method: "POST", body });
 
 export const patchPlivoPool = (id: string, body: PatchPlivoPoolBody) =>
-  api<PlivoPool>(`/plivo-pools/${encodeURIComponent(id)}`, { method: "PATCH", body });
+  api<PlivoPool>(withPoolUserId(`/plivo-pools/${encodeURIComponent(id)}`), { method: "PATCH", body });
 
 export const deletePlivoPool = (id: string) =>
-  api<void>(`/plivo-pools/${encodeURIComponent(id)}`, { method: "DELETE" });
+  api<void>(withPoolUserId(`/plivo-pools/${encodeURIComponent(id)}`), { method: "DELETE" });
 
 export const getAvailablePlivoNumbers = (id: string) =>
-  api<PlivoNumberCandidate[]>(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`);
+  api<PlivoNumberCandidate[]>(withPoolUserId(`/plivo-pools/${encodeURIComponent(id)}/available-numbers`));
 
 // Campaign endpoints
 export const getCampaigns = async (): Promise<Campaign[]> => {
@@ -182,6 +190,9 @@ export const scheduleCampaign = (id: string) =>
 
 export const getCampaignCalls = (id: string) =>
   api<CampaignCallsResponse>(`/campaigns/${encodeURIComponent(id)}/calls`);
+
+export const getCampaignCallbacks = (id: string) =>
+  api<CampaignCallbacksResponse>(`/campaigns/${encodeURIComponent(id)}/callbacks`);
 
 export const postCampaignCallOutcome = (campaignId: string, callId: string, outcome: CallOutcome) =>
   api<CallOutcomeResult>(`/campaigns/${encodeURIComponent(campaignId)}/calls/${encodeURIComponent(callId)}/outcome`, {

@@ -83,13 +83,13 @@ export default function AgentReview({
     },
     {
       tab: "details",
-      label: "Second Line — Yes",
+      label: "Second Line - Yes",
       value: draft.secondLineYes.trim() || "Not set",
       required: false,
     },
     {
       tab: "details",
-      label: "Second Line — No",
+      label: "Second Line - No",
       value: draft.secondLineNo.trim() || "Not set",
       required: false,
     },

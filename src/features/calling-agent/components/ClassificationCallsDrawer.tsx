@@ -15,6 +15,7 @@ interface ClassificationCallsDrawerProps {
   classificationId?: string | null;
   title: string;
   onClose: () => void;
+  embedded?: boolean;
 }
 
 export default function ClassificationCallsDrawer({
@@ -22,6 +23,7 @@ export default function ClassificationCallsDrawer({
   classificationId,
   title,
   onClose,
+  embedded = false,
 }: ClassificationCallsDrawerProps) {
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -73,13 +75,7 @@ export default function ClassificationCallsDrawer({
     });
   };
 
-  return (
-    <Drawer
-      title={title}
-      description={`${total} total call${total === 1 ? "" : "s"} classified here.`}
-      onClose={onClose}
-      wide
-    >
+  const content = (
       <div className="space-y-4">
         <SkeletonBoundary loading={query.isLoading} skeleton={<ClassificationCallsSkeleton />}>
 
@@ -117,7 +113,7 @@ export default function ClassificationCallsDrawer({
                     <Clock size={12} /> {formatDuration(call.duration_seconds)}
                   </span>
                 )}
-                <span>{call.classified_at ? formatDate(call.classified_at) : call.ended_at ? formatDate(call.ended_at) : "—"}</span>
+                <span>{call.classified_at ? formatDate(call.classified_at) : call.ended_at ? formatDate(call.ended_at) : "-"}</span>
               </div>
             </div>
 
@@ -178,7 +174,7 @@ export default function ClassificationCallsDrawer({
             </span>
             <div className="flex gap-2">
               <Button
-                variant="secondary"
+                className="btn-blue-filled"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
@@ -186,7 +182,7 @@ export default function ClassificationCallsDrawer({
                 Previous
               </Button>
               <Button
-                variant="secondary"
+                className="btn-blue-filled"
                 size="sm"
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={page >= pageCount}
@@ -198,6 +194,28 @@ export default function ClassificationCallsDrawer({
         )}
         </SkeletonBoundary>
       </div>
+  );
+
+  if (embedded) {
+    return (
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold text-heading">Calls</h3>
+          <p className="text-xs text-muted">{total} total call{total === 1 ? "" : "s"} classified here.</p>
+        </div>
+        {content}
+      </section>
+    );
+  }
+
+  return (
+    <Drawer
+      title={title}
+      description={`${total} total call${total === 1 ? "" : "s"} classified here.`}
+      onClose={onClose}
+      wide
+    >
+      {content}
     </Drawer>
   );
 }

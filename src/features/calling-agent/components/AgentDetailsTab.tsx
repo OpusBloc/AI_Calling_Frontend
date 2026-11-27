@@ -134,14 +134,14 @@ import { Info } from "lucide-react";
       <div>
         <h3 className="text-md font-semibold text-heading">AI Model Settings</h3>
         <p className="mt-0.5 text-xs text-muted">
-          Choose the language model and speech-to-text provider and model. Sarvam is selected by default.
+          Choose the language model, speech-to-text provider and model, and text-to-speech provider and model. Sarvam is selected by default.
         </p>
       </div>
       {modelOptions.isError ? (
         <ErrorBanner message={errorMessage(modelOptions.error)} />
       ) : (
 
-  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 ">
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 
     {/* LLM Settings */}
     <div className=" space-y-4">
@@ -206,6 +206,39 @@ import { Info } from "lucide-react";
           disabled={!draft.sttProvider || !modelOptions.data}
         >
           {(modelOptions.data?.stt_model[draft.sttProvider] ?? []).map((model) => (
+            <option key={model} value={model}>{model}</option>
+          ))}
+        </Select>
+      </Field>
+    </div>
+
+    {/* Text-to-speech Settings */}
+    <div className="space-y-4">
+      <Field label="Text-to-speech provider">
+        <Select
+          value={draft.ttsProvider}
+          onChange={(e) => {
+            const provider = e.target.value;
+            setDraft((d) => ({
+              ...d,
+              ttsProvider: provider,
+              ttsModel: modelOptions.data?.tts_model?.[provider]?.[0] ?? "",
+            }));
+          }}
+          disabled={!modelOptions.data?.tts_provider?.length}
+        >
+          {(modelOptions.data?.tts_provider ?? [draft.ttsProvider || "sarvam"]).map((provider) => (
+            <option key={provider} value={provider}>{provider}</option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Text-to-speech model" hint="Select an available model.">
+        <Select
+          value={draft.ttsModel}
+          onChange={(e) => setDraft((d) => ({ ...d, ttsModel: e.target.value }))}
+          disabled={!modelOptions.data?.tts_model?.[draft.ttsProvider]?.length}
+        >
+          {(modelOptions.data?.tts_model?.[draft.ttsProvider] ?? (draft.ttsModel ? [draft.ttsModel] : [])).map((model) => (
             <option key={model} value={model}>{model}</option>
           ))}
         </Select>
@@ -327,7 +360,7 @@ import { Info } from "lucide-react";
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          label="Second Line — Yes"
+          label="Second Line - Yes"
           hint="Optional follow-up line when the caller answers yes."
         >
           <TextArea
@@ -338,7 +371,7 @@ import { Info } from "lucide-react";
           />
         </Field>
         <Field
-          label="Second Line — No"
+          label="Second Line - No"
           hint="Optional follow-up line when the caller answers no."
         >
           <TextArea

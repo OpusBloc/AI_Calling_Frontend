@@ -55,6 +55,7 @@ export const CALL_COLUMNS: TableColumnConfig[] = [
   { label: "Lead", width: "16%", kind: "subtitle" },
   { label: "Phone", width: "13%", kind: "text" },
   { label: "Status", width: "10%", kind: "status" },
+  { label: "Transfer", width: "14%", kind: "text" },
   { label: "Initiation time", width: "16%", kind: "date" },
   { label: "Talk time", width: "10%", kind: "number" },
   { label: "Plivo cost", width: "11%", kind: "number" },

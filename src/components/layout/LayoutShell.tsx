@@ -45,7 +45,7 @@ export default function LayoutShell({
           {topbar}
         </Suspense>
         <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-hidden bg-surface shadow-sm outline-none">
-          <div className="content-scroll ob-main-content no-scrollbar">
+          <div className={`content-scroll ob-main-content ${pathname === "/" ? "no-scrollbar" : ""}`}>
             {children}
           </div>
         </main>

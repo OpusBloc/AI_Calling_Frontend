@@ -23,7 +23,7 @@ export const getUserIdFromToken = (): string | null => {
 /**
  * Read the user's role straight from the JWT (the backend signs `role` into the
  * token). This is synchronous and reliable even before/without the
- * `/auth/profile` fetch — use it for role gating so support users never
+ * `/auth/profile` fetch - use it for role gating so support users never
  * transiently fall into admin-only branches.
  */
 export const getRoleFromToken = (): string | null => {

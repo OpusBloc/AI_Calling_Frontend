@@ -119,10 +119,12 @@ export function ErrorState({
   title = "Couldn't load this",
   message,
   onRetry,
+  showRetryIcon = true,
 }: {
   title?: string;
   message: string;
   onRetry?: () => void;
+  showRetryIcon?: boolean;
 }) {
   return (
     <div
@@ -139,7 +141,7 @@ export function ErrorState({
           className="mt-4"
           onClick={onRetry}
         >
-          <RotateCw size={14} aria-hidden /> Try again
+          {showRetryIcon && <RotateCw size={14} aria-hidden />} Try again
         </Button>
       )}
     </div>
@@ -177,16 +179,21 @@ export function SectionHeader({
   title,
   description,
   action,
+  leading,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  leading?: ReactNode;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold text-heading">{title}</h2>
-        <p className="mt-0.5 max-w-2xl text-sm text-muted">{description}</p>
+      <div className="flex min-w-0 items-start gap-3">
+        {leading}
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-heading">{title}</h2>
+          <p className="mt-0.5 max-w-2xl text-sm text-muted">{description}</p>
+        </div>
       </div>
       {action && (
         <div className="flex flex-wrap items-center gap-2">{action}</div>
@@ -206,6 +213,7 @@ export function Card({
   children,
   className,
   flush,
+  allowOverflow = false,
 }: {
   title?: ReactNode;
   description?: ReactNode;
@@ -213,13 +221,16 @@ export function Card({
   actionsClassName?: string;
   children: ReactNode;
   className?: string;
-  /** No body padding — for tables that run edge to edge */
+  /** No body padding - for tables that run edge to edge */
   flush?: boolean;
+  /** Allow menus and popovers inside the card to extend beyond its edges. */
+  allowOverflow?: boolean;
 }) {
   return (
     <section
       className={clsx(
-        "overflow-hidden rounded-lg border border-hairline bg-surface shadow-sm",
+        !allowOverflow && "overflow-hidden",
+        "rounded-lg border border-hairline bg-surface shadow-sm",
         className,
       )}
     >
@@ -300,21 +311,23 @@ export function StatTile({
 export function DetailList({
   items,
   columns = 2,
+  mobileTwoColumns = false,
 }: {
   items: Array<{ label: string; value: ReactNode; wide?: boolean }>;
   columns?: 2 | 3;
+  mobileTwoColumns?: boolean;
 }) {
   return (
     <dl
       className={clsx(
-        "grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2",
+        clsx("grid gap-x-6 gap-y-5", mobileTwoColumns ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2"),
         columns === 3 && "lg:grid-cols-3",
       )}
     >
       {items.map(({ label, value, wide }) => (
         <div
           key={label}
-          className={clsx("min-w-0", wide && "sm:col-span-full")}
+          className={clsx("min-w-0", wide && "col-span-full")}
         >
           <dt className="text-xs font-medium uppercase tracking-[0.06em] text-muted">
             {label}

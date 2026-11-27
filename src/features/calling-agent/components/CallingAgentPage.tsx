@@ -2,7 +2,8 @@
 
 import { Suspense, useState } from "react";
 import dynamic from "next/dynamic";
-import { Bot, PhoneForwarded } from "lucide-react";
+import { ArrowLeft, Bot, PhoneForwarded } from "lucide-react";
+import Link from "next/link";
 
 import AgentsTab from "@/features/calling-agent/components/AgentsTab";
 import RepresentativesTab from "@/features/calling-agent/components/RepresentativesTab";
@@ -46,6 +47,14 @@ export default function CallingAgentPage() {
   return (
     <div className="space-y-6">
       {testing && <TestCallDrawer onClose={() => setTesting(false)} />}
+      <Link
+        href="/"
+        aria-label="Back to dashboard"
+        title="Back to dashboard"
+        className="btn-blue-filled inline-flex size-10 items-center justify-center rounded-md transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <ArrowLeft size={18} aria-hidden="true" />
+      </Link>
       <div>
         <Suspense fallback={<CallingAgentSkeleton />}>
           <CallingAgentTabs />
