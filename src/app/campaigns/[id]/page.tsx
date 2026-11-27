@@ -90,6 +90,7 @@ import { CALL_COLUMNS } from "@/components/skeletons/table-columns";
 
 const OUTCOMES: CallOutcome[] = ["completed", "no_answer", "not_connected", "busy", "failed", "hung_up", "cancelled"];
 const CALL_HEAD = CALL_COLUMNS.map((column) => column.label);
+const formatCallCost = (amount: number) => `₹${formatMoney(amount, 2)}`;
 const formatCallbackAtIST = (value: string | null | undefined) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -1055,7 +1056,7 @@ const [selectedCallId, setSelectedCallId] = useState<string | null>(null); // "L
 useEffect(() => {
   const media = window.matchMedia("(min-width: 768px)");
   const updatePageSize = () => {
-    setPageSize(media.matches ? 10 : PAGE_SIZE);
+    setPageSize(media.matches ? 20 : PAGE_SIZE);
     setPage(1);
   };
   updatePageSize();
@@ -1223,25 +1224,21 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
       current?.key !== key ? { key, dir: "asc" } : current.dir === "asc" ? { key, dir: "desc" } : null,
     );
   };
-  const head = [
-    ...CALL_HEAD.slice(0, 3),
-    CALL_HEAD[3],
-    ...([
-      ["talk", "Talk time"],
-      ["plivo", "Plivo cost"],
-      ["ai", "AI cost"],
-      ["total", "Total cost"],
-    ] as const).map(([key, label]) => (
+  const head = CALL_COLUMNS.map((column) => {
+    if (!column.sortKey) return column.label;
+    const key = column.sortKey as SortKey;
+    return (
       <SortHead
-        key={key}
-        label={label}
+        key={column.key}
+        label={column.label}
+        align={column.align ?? "left"}
         active={sort?.key === key}
         dir={sort?.key === key ? sort.dir : null}
         ariaSort={sort?.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
         onClick={() => toggleSort(key)}
       />
-    )),
-  ];
+    );
+  });
   const callbackHead = [
     "Lead",
     "Phone",
@@ -1254,6 +1251,7 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
         <SortHead
           key={key}
           label={label}
+          align="right"
           active={sort?.key === key}
           dir={sort?.key === key ? sort.dir : null}
           ariaSort={sort?.key === key ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
@@ -1438,7 +1436,10 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
           <div className="space-y-3">
             <Table
               bare
-              className="blue-table"
+              className="blue-table campaign-calls-table"
+              headClassNames={filter === "callbacks"
+                ? Array(callbackHead.length).fill("px-4 py-2")
+                : CALL_COLUMNS.map((column) => clsx("px-4 py-2", column.align === "right" ? "text-right" : "text-left"))}
               head={filter === "callbacks" ? callbackHead : head}
               columns={filter === "callbacks" ? [
                 { label: "Lead", width: "16%" }, { label: "Phone", width: "12%" }, { label: "Callback at", width: "17%" },
@@ -1489,10 +1490,10 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
                     <td className="whitespace-nowrap px-4 py-3 text-body">{formatCallbackAtIST(callback.callback_at)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-body">{callback.caller_number || "-"}</td>
                     <td className="px-4 py-3">{callback.last_outcome ? <StatusBadge status={callback.last_outcome} /> : <span className="text-muted">-</span>}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? formatDuration(call.total_talk_seconds) : "-"}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? `₹${formatMoney(call.plivo_cost, 2)}` : "-"}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call ? `₹${formatMoney(call.sarvam_cost, 2)}` : "-"}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{call ? `₹${formatMoney(call.plivo_cost + call.sarvam_cost, 2)}` : "-"}</td>
+                    <td className="tnum whitespace-nowrap px-4 py-3 text-right text-body">{call ? formatDuration(call.total_talk_seconds) : "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums text-body">{call ? formatCallCost(call.plivo_cost) : "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums text-body">{call ? formatCallCost(call.sarvam_cost) : "-"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-sm font-semibold tabular-nums text-heading">{call ? formatCallCost(call.plivo_cost + call.sarvam_cost) : "-"}</td>
                   </tr>
                 );
               }) : filtered.length === 0 ? (
@@ -1501,7 +1502,6 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
                 <CallRow
                   key={call.call_id}
                   call={call}
-                  transfer={transferInfo(call)}
                   initiationTime={initiationTimeOf(call)}
                   selected={call.call_id === selectedCallId}
                   onOpen={() => {
@@ -1512,7 +1512,7 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
               ))}
             </Table>
             {filter === "callbacks" ? (
-              <div className="flex flex-col gap-2 px-1 pt-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-2 px-1 pb-3 pt-2 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-blue-600 dark:text-blue-400" aria-live="polite">
                   Showing {(callbackPage - 1) * pageSize + 1}-{Math.min(callbackPage * pageSize, callbackItems.length)} of {callbackItems.length} callbacks
                 </p>
@@ -1525,7 +1525,7 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
                 )}
               </div>
             ) : (
-              <div className="flex flex-col gap-2 px-1 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-2 px-1 pb-3 pt-2 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-blue-600 dark:text-blue-400" aria-live="polite">
                   Showing {pagination.total === 0 ? 0 : pagination.start + 1}-{Math.min(pagination.start + pagination.pageSize, pagination.total)} of {pagination.total} calls
                 </p>
@@ -1561,17 +1561,20 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
 
 function SortHead({
   label,
+  align,
   active,
   dir,
   onClick,
 }: {
   label: string;
+  align?: "left" | "right";
   active: boolean;
   dir: "asc" | "desc" | null;
   ariaSort: "ascending" | "descending" | "none";
   onClick: () => void;
 }) {
   const SortIcon = !active ? ArrowDownUp : dir === "asc" ? ArrowUp : ArrowDown;
+  const textAlign = align ?? "left";
 
   return (
     <button
@@ -1579,7 +1582,8 @@ function SortHead({
       aria-label={`Sort by ${label}: ${!active ? "normal" : dir === "asc" ? "low to high" : "high to low"}`}
       onClick={onClick}
       className={clsx(
-        "inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "flex w-full cursor-pointer items-center gap-1 rounded py-0.5 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        textAlign === "right" ? "justify-end text-right" : "justify-start text-left",
         active ? "text-heading" : "text-muted hover:text-heading",
       )}
     >
@@ -1591,58 +1595,68 @@ function SortHead({
 
 function CallRow({
   call,
-  transfer,
   initiationTime,
   selected,
   onOpen,
 }: {
   call: CampaignCallSummary;
-  transfer: { status: string | null; reason: string | null; transferred: boolean; label: string };
   initiationTime: string | null;
   selected: boolean;
   onOpen: () => void;
 }) {
   const live = ACTIVE.has(call.status.toLowerCase());
+  const cells: Record<string, ReactNode> = {
+    lead: (
+      <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+        <span className="min-w-0 flex-1 truncate" title={call.lead_name || "Unnamed"}>
+          {call.lead_name || <span className="text-faint">Unnamed</span>}
+        </span>
+        {selected && (
+          <span className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10px] font-medium text-link">
+            Last opened
+          </span>
+        )}
+        {live && (
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gain">
+            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gain" /> Live
+          </span>
+        )}
+      </div>
+    ),
+    phone: call.phone,
+    status: <StatusBadge status={call.status} />,
+    calledAt: formatInitiationTime(initiationTime),
+    talkTime: formatDuration(call.total_talk_seconds),
+    plivoCost: formatCallCost(call.plivo_cost),
+    aiCost: formatCallCost(call.sarvam_cost),
+    totalCost: formatCallCost(call.plivo_cost + call.sarvam_cost),
+  };
   return (
     <tr
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className={`cursor-pointer align-middle outline-none transition-colors ${
-        selected
-          ? "bg-[var(--primary-tint)] shadow-[inset_3px_0_0_var(--primary-marker)] "
-          : "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:shadow-[inset_3px_0_0_var(--primary)] "
-      }`}
+      className={`campaign-call-row h-16 cursor-pointer align-middle outline-none transition-colors ${selected ? "call-row-selected" : "hover:bg-surface-hover focus-visible:bg-surface-hover"}`}
     >
-      <td className="px-4 py-3 font-medium text-heading">
-        {call.lead_name || <span className="text-faint">Unnamed</span>}
-        {selected && (
-          <span className="ml-2 inline-flex rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10px] font-medium text-link">
-            Last opened
-          </span>
-        )}
-        {live && (
-          <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-gain">
-            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gain" /> Live
-          </span>
-        )}
-      </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{call.phone}</td>
-      <td className="px-4 py-3">
-        <StatusBadge status={call.status} />
-      </td>
-      <td className="px-4 py-3 text-body">
-        <span>{transfer.label}</span>
-        {transfer.status && <span className="mt-0.5 block text-xs text-muted">{humanize(transfer.status)}</span>}
-        {transfer.reason && <span className="mt-0.5 block max-w-56 truncate text-xs text-muted" title={transfer.reason}>{transfer.reason}</span>}
-      </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">
-        {formatInitiationTime(initiationTime)}
-      </td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatDuration(call.total_talk_seconds)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">{formatMoney(call.plivo_cost, 2)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 text-body">₹{formatMoney(call.sarvam_cost, 2)}</td>
-      <td className="tnum whitespace-nowrap px-4 py-3 font-semibold text-heading">{formatMoney(call.plivo_cost + call.sarvam_cost, 2)}</td>
+      {CALL_COLUMNS.map((column) => {
+        const key = column.key ?? column.label;
+        return (
+          <td
+            key={key}
+            className={clsx(
+              "overflow-hidden whitespace-nowrap px-4 py-2 text-sm",
+              column.align === "right" ? "text-right tabular-nums" : "text-left",
+              key === "phone" && "font-mono text-xs text-body",
+              key === "lead" && "font-medium text-heading",
+              key === "totalCost" && "font-semibold text-heading",
+              key !== "lead" && key !== "phone" && key !== "totalCost" && "text-body",
+            )}
+            title={key === "calledAt" ? String(cells[key]) : undefined}
+          >
+            {cells[key]}
+          </td>
+        );
+      })}
     </tr>
   );
 }

@@ -559,6 +559,43 @@
   box-shadow: inset 3px 0 0 var(--blue-table-marker);
 }
 
+.campaign-calls-table table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.mobile-table-list.campaign-calls-table {
+  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .mobile-table-list.campaign-calls-table {
+    overflow-x: visible;
+  }
+}
+
+.campaign-calls-table th,
+.campaign-calls-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-calls-table.blue-table tbody tr:not(.call-row-selected):hover td:first-child {
+  box-shadow: none;
+}
+
+.campaign-calls-table.blue-table tbody tr.call-row-selected,
+.campaign-calls-table.blue-table tbody tr.call-row-selected:hover {
+  background: var(--primary-tint);
+}
+
+.campaign-calls-table.blue-table tbody tr.call-row-selected td:first-child,
+.campaign-calls-table.blue-table tbody tr.call-row-selected:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary-marker);
+}
+
 .blue-fields nav[aria-label="Pagination"] [aria-current="page"] {
   background: var(--primary);
   color: var(--primary-foreground);
@@ -1184,6 +1221,29 @@ input[type="search"]::-webkit-search-decoration {
 .recent-table {
   --raised: var(--rt-header-bg);
   --surface-hover: var(--rt-hover-bg);
+}
+
+@media (max-width: 639px) {
+  .mobile-table-list {
+    background: transparent;
+  }
+
+  .mobile-table-list ~ * {
+    padding-inline: 0 !important;
+  }
+
+  .ui-table-card:has(.mobile-table-list) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ui-table-card:has(.mobile-table-list) > div:first-child,
+  .ui-table-card:has(.mobile-table-list) > div:has(.mobile-table-list) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
 }
 
 /* direct rules, in case the table uses a token other than --raised */

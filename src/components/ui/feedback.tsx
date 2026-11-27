@@ -230,7 +230,7 @@ export function Card({
     <section
       className={clsx(
         !allowOverflow && "overflow-hidden",
-        "rounded-lg border border-hairline bg-surface shadow-sm",
+        "ui-table-card rounded-lg border border-hairline bg-surface shadow-sm",
         className,
       )}
     >
