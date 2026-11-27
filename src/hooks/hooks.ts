@@ -304,7 +304,7 @@ export const useCampaignClassifications = (campaignId: string) =>
 export const useCampaignClassificationCalls = (
   campaignId: string,
   classificationId: string,
-  params?: { page?: number; page_size?: number },
+  params?: { page?: number; page_size?: number; search?: string },
 ) => {
   const queryClient = useQueryClient();
   const page = params?.page ?? 1;
@@ -320,13 +320,13 @@ export const useCampaignClassificationCalls = (
 
   useEffect(() => {
     if (!query.data || query.isPlaceholderData || query.data.total <= page * pageSize || !campaignId || !classificationId) return;
-    const nextParams = { page: page + 1, page_size: pageSize };
+    const nextParams = { page: page + 1, page_size: pageSize, search: params?.search };
     void queryClient.prefetchQuery({
       queryKey: ["campaign-classification-calls", campaignId, classificationId, nextParams],
       queryFn: () => getCampaignClassificationCalls(campaignId, classificationId, nextParams),
       staleTime: 60_000,
     });
-  }, [campaignId, classificationId, page, pageSize, query.data, query.isPlaceholderData, queryClient]);
+  }, [campaignId, classificationId, page, pageSize, params?.search, query.data, query.isPlaceholderData, queryClient]);
 
   return query;
 };

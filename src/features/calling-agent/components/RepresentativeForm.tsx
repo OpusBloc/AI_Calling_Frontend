@@ -63,7 +63,7 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
           aria-label="Back to Call Transfer"
           title="Back to Call Transfer"
           onClick={() => router.replace(backHref)}
-          className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <ArrowLeft size={18} aria-hidden="true" />
         </button>

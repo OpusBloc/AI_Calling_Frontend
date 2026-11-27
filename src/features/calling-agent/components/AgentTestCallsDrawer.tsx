@@ -175,8 +175,8 @@ export default function AgentTestCallsDrawer({ agentId, onClose }: { agentId: st
         <ErrorState title="Couldn't load test calls" message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
       ) : selectedRecord ? (
         <div className="space-y-4">
-          <button type="button" onClick={() => setSelectedIndex(null)} className="btn-blue-filled inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            <ArrowLeft size={16} aria-hidden /> Back to test calls
+          <button type="button" aria-label="Back to test calls" title="Back to test calls" onClick={() => setSelectedIndex(null)} className="inline-flex size-10 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <ArrowLeft size={18} aria-hidden="true" />
           </button>
           <TestCallRecordDetails record={selectedRecord} index={selectedIndex!} />
         </div>

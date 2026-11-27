@@ -4,6 +4,7 @@
 
   import { useEffect, useId, useRef, useState } from "react";
   import { formatMoney } from "@/components/ui";
+  import { ChartSkeleton, DonutChartSkeleton } from "@/components/skeletons/chart-skeleton";
   import type { CallCostSummary } from "@/types/types";
 
   export type CostTrendPoint = { date: string; cost: number };
@@ -537,7 +538,9 @@ if (
         )}
 
         {loading ? (
-          <p className="mt-4 flex min-h-[280px] items-center justify-center text-sm text-muted">Loading cost details…</p>
+          <div className="mt-4 flex min-h-[280px] items-center justify-center">
+            <DonutChartSkeleton />
+          </div>
         ) : grandTotal === 0 ? (
             <p className="py-4 text-center text-sm text-muted">No AI or Plivo spend yet.</p>
           ) : (
@@ -550,7 +553,10 @@ if (
       {/* Cost trend card */}
       <section className="relative z-0 h-full min-w-0 rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
         {trendLoading ? (
-          <div className="flex min-h-[280px] items-center justify-center text-sm text-muted">Loading cost trend…</div>
+          <>
+            <h3 className="mb-3 text-sm font-semibold text-heading">Cost trend</h3>
+            <ChartSkeleton height="h-[240px]" bare />
+          </>
         ) : trend && trend.length > 0 ? (
             <TrendChart data={trend} />
           ) : (

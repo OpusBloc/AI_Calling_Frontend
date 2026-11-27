@@ -124,12 +124,50 @@ export interface CatalogVoice {
   language_code: string;
   lang_tag?: string | null;
   style?: string | null;
+  gender?: string | null;
 }
 
 export interface VoiceCatalogResponse {
   total: number;
   voices: CatalogVoice[];
 }
+
+export interface PlivoVoice {
+  voice_id: string;
+  name: string;
+  gender: string | null;
+  languages: string[];
+}
+
+/** List Plivo voices available for a language such as `en-IN`. */
+export const listPlivoVoices = async (language?: string): Promise<PlivoVoice[]> => {
+  const query = new URLSearchParams();
+  if (language) query.set("language", language);
+  const queryString = query.toString();
+  const result = await api<unknown>(`/voices/plivo${queryString ? `?${queryString}` : ""}`);
+  const root = typeof result === "object" && result !== null ? result as Record<string, unknown> : {};
+  const data = root.data ?? result;
+  const payload = typeof data === "object" && data !== null ? data as Record<string, unknown> : {};
+  const rows = Array.isArray(data) ? data : payload.voices ?? payload.items ?? [];
+
+  return (Array.isArray(rows) ? rows : []).flatMap((item): PlivoVoice[] => {
+    if (typeof item !== "object" || item === null) return [];
+    const row = item as Record<string, unknown>;
+    const voiceId = typeof row.voice_id === "string" ? row.voice_id : "";
+    if (!voiceId) return [];
+    const rawLanguages = Array.isArray(row.languages) ? row.languages : [];
+    return [{
+      voice_id: voiceId,
+      name: typeof row.name === "string" && row.name ? row.name : voiceId,
+      gender: typeof row.gender === "string" ? row.gender : null,
+      languages: rawLanguages.filter((value): value is string => typeof value === "string"),
+    }];
+  });
+};
+
+/** Generate a WAV preview with a Plivo stock voice. */
+export const speakPlivoVoice = (body: { voice_id: string; text: string }) =>
+  api<Blob>("/voices/plivo/speak", { method: "POST", body, responseType: "blob" });
 
 export interface VoiceSample {
   id: string;
@@ -461,11 +499,12 @@ export const getCampaignClassifications = (campaignId: string) =>
 export const getCampaignClassificationCalls = (
   campaignId: string,
   classificationId: string,
-  params?: { page?: number; page_size?: number },
+  params?: { page?: number; page_size?: number; search?: string },
 ) => {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", String(params.page));
   if (params?.page_size) query.set("page_size", String(params.page_size));
+  if (params?.search?.trim()) query.set("search", params.search.trim());
   const qs = query.toString();
   return api<ClassificationCallsResponse>(
     `/campaigns/${campaignId}/classifications/${classificationId}/calls${qs ? `?${qs}` : ""}`,

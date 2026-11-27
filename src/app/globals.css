@@ -559,27 +559,67 @@
   box-shadow: inset 3px 0 0 var(--blue-table-marker);
 }
 
-.campaign-calls-table table {
+.campaign-call-summary-table {
+  --campaign-call-grid: minmax(160px, 2fr) minmax(130px, 1.4fr) minmax(110px, 1.2fr) minmax(120px, 1.3fr) repeat(4, minmax(110px, 1fr));
+  overflow-x: auto;
+}
+
+.campaign-call-summary-table table {
+  display: none;
   width: 100%;
   min-width: 0;
   table-layout: fixed;
 }
 
-.mobile-table-list.campaign-calls-table {
-  overflow-x: auto;
-}
-
 @media (min-width: 768px) {
-  .mobile-table-list.campaign-calls-table {
-    overflow-x: visible;
+  .campaign-call-summary-table table {
+    display: block;
   }
 }
 
-.campaign-calls-table th,
-.campaign-calls-table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@media (min-width: 768px) and (max-width: 1199px) {
+  .campaign-call-summary-table table {
+    min-width: 1016px;
+  }
+}
+
+.campaign-call-summary-table colgroup {
+  display: none;
+}
+
+.campaign-call-summary-table thead,
+.campaign-call-summary-table tbody {
+  display: block;
+  width: 100%;
+}
+
+.campaign-call-summary-table thead tr,
+.campaign-call-summary-table tbody tr {
+  display: grid;
+  grid-template-columns: var(--campaign-call-grid);
+  column-gap: 0.5rem;
+  align-items: center;
+}
+
+.campaign-call-summary-table thead th,
+.campaign-call-summary-table tbody td {
+  min-width: 0;
+}
+
+.campaign-call-summary-table thead th:nth-child(n + 5) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.campaign-call-summary-table tbody tr:has(> td[colspan]) > td {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1200px) {
+  .campaign-call-summary-table {
+    overflow-x: visible;
+    --campaign-call-grid: minmax(0, 2.2fr) minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 1.3fr) repeat(4, minmax(0, 1.2fr));
+  }
 }
 
 .campaign-calls-table.blue-table tbody tr:not(.call-row-selected):hover td:first-child {

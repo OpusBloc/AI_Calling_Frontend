@@ -101,7 +101,7 @@ export default function WhatsAppMessagesTab() {
             aria-label="Back to Calling Agent"
             title="Back to Calling Agent"
             onClick={() => router.push("/?tab=calling-agent")}
-            className="btn-blue-filled inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ArrowLeft size={18} aria-hidden="true" />
           </button>
@@ -161,9 +161,9 @@ export default function WhatsAppMessagesTab() {
         >
           <div className="space-y-3">
             {deliveryId && (
-              <Button size="sm" variant="secondary" className="btn-blue" onClick={backToDeliveries}>
-                Back to deliveries
-              </Button>
+              <button type="button" aria-label="Back to deliveries" title="Back to deliveries" className="inline-flex size-10 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" onClick={backToDeliveries}>
+                <ArrowLeft size={18} aria-hidden="true" />
+              </button>
             )}
             <SkeletonBoundary
               loading={deliveryId ? delivery.isLoading : deliveries.isLoading}

@@ -336,7 +336,7 @@ export default function AgentEditor({
             aria-label="Back to agents"
             title="Back to agents"
             onClick={() => router.push("/?tab=calling-agent&callingTab=agents")}
-            className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ArrowLeft size={18} aria-hidden="true" />
           </button>
@@ -478,6 +478,7 @@ export default function AgentEditor({
             agentId={initialAgent?.id}
             greeting={draft.greeting}
             language={draft.primaryLanguage}
+            ttsProvider={draft.ttsProvider}
             onEditGreeting={() => goTo("details")}
           />
         )}
@@ -534,9 +535,11 @@ export default function AgentEditor({
             type="button"
             onClick={() => goTo(TABS[Math.max(0, tabIndex - 1)].id)}
             disabled={tabIndex === 0}
+            aria-label="Back"
+            title="Back"
             className={clsx("btn-blue-filled inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto", newAgentReview && "order-2 sm:order-none")}
           >
-            <ArrowLeft size={16} strokeWidth={2.2} /> Back
+            <ArrowLeft size={16} strokeWidth={2.2} aria-hidden="true" /> Back
           </button>
           <div className="contents sm:flex sm:w-auto sm:flex-row sm:items-center sm:gap-3">
             {!isNew && activeTab.id !== "review" && (

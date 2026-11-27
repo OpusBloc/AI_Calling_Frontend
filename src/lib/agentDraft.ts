@@ -303,7 +303,8 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   if (draft.name.trim() !== agent.name) form.append("name", draft.name.trim());
   if (draft.greeting.trim() !== (agent.greeting ?? ""))
     form.append("greeting", draft.greeting.trim());
-  if (draft.voice !== (agent.voice ?? "")) form.append("voice", draft.voice);
+  const voiceChanged = draft.voice !== (agent.voice ?? "");
+  if (voiceChanged) form.append("voice", draft.voice);
   // Sent as a pair: the backend checks them together (secondary needs a primary)
   if (
     draft.primaryLanguage !== (agent.primary_language ?? "") ||
@@ -324,10 +325,14 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
   } else if (draft.sttModel !== (agent.stt_model ?? "")) {
     form.append("stt_model", draft.sttModel);
   }
-  if (draft.ttsProvider !== (agent.tts_provider ?? "")) {
+  const ttsProviderChanged = draft.ttsProvider !== (agent.tts_provider ?? "");
+  const ttsModelChanged = draft.ttsModel !== (agent.tts_model ?? "");
+  if (
+    ttsProviderChanged ||
+    ttsModelChanged ||
+    (voiceChanged && draft.ttsProvider.trim().toLowerCase() === "plivo")
+  ) {
     form.append("tts_provider", draft.ttsProvider);
-    form.append("tts_model", draft.ttsModel);
-  } else if (draft.ttsModel !== (agent.tts_model ?? "")) {
     form.append("tts_model", draft.ttsModel);
   }
 
