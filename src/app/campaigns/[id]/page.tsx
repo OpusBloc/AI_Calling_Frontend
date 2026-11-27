@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Copy,
   Clock,
+  Download,
+  Loader2,
   ArrowDownUp,
   ArrowDown,
   ArrowUp,
@@ -52,7 +54,7 @@ import {
   useRepresentatives,
   useScheduleCampaign,
 } from "@/hooks/hooks";
-import { showSuccessNotification } from "@/hooks/useNotification";
+import { showErrorNotification, showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import PageHeader from "@/components/PageHeader";
 import { formatDays, formatWindow } from "@/features/campaigns/components/CampaignsTab";
@@ -61,7 +63,7 @@ import CampaignCosts from "@/features/campaigns/components/CampaignCosts";
 import SelectMenu from "@/components/SelectMenu";
 import { PAGE_SIZE } from "@/lib/constants";
 import StatCard from "@/features/dashboard/components/StatCard";
-import type { ClassificationCall, ClassificationCallsResponse } from "@/lib/callingAgentApi";
+import { exportCampaignClassificationSheet, type ClassificationCall, type ClassificationCallsResponse } from "@/lib/callingAgentApi";
 
 
 import {
@@ -416,6 +418,8 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
         </>
       )}
       flush
+      actions={<ClassificationExportButton campaignId={campaignId} categories={bars} />}
+      actionsClassName="w-full sm:w-auto"
       className="[&>div:first-child]:px-3.5 md:[&>div:first-child]:px-5"
     >
       <div className="p-3.5 md:p-5">
@@ -601,10 +605,11 @@ function CampaignClassificationChart({ campaignId, agentId }: { campaignId: stri
             classificationId={selected.id}
             classificationName={selected.name}
             totalCalls={bars.find((bar) => bar.id === selected.id)?.calls ?? 0}
+            exportCategoryId={selected.id}
             onBack={() => setDetailsOpen(false)}
           />
         ) : (
-          <CampaignUnclassifiedCalls campaignId={campaignId} totalCalls={bars.find((bar) => bar.id === null)?.calls ?? 0} onBack={() => setDetailsOpen(false)} />
+          <CampaignUnclassifiedCalls campaignId={campaignId} totalCalls={bars.find((bar) => bar.id === null)?.calls ?? 0} exportCategory="unclassified" onBack={() => setDetailsOpen(false)} />
         )}
       </Drawer>
     )}
@@ -617,12 +622,14 @@ function CampaignClassificationCalls({
   classificationId,
   classificationName,
   totalCalls,
+  exportCategoryId,
   onBack,
 }: {
   campaignId: string;
   classificationId: string;
   classificationName: string;
   totalCalls: number;
+  exportCategoryId: string;
   onBack: () => void;
 }) {
   const [page, setPage] = useState(1);
@@ -647,13 +654,14 @@ function CampaignClassificationCalls({
       onPageChange={setPage}
       search={search}
       onSearchChange={(value) => { setSearch(value); setPage(1); }}
+      exportCategoryId={exportCategoryId}
       onBack={onBack}
       onRetry={() => calls.refetch()}
     />
   );
 }
 
-function CampaignUnclassifiedCalls({ campaignId, totalCalls, onBack }: { campaignId: string; totalCalls: number; onBack: () => void }) {
+function CampaignUnclassifiedCalls({ campaignId, totalCalls, exportCategory, onBack }: { campaignId: string; totalCalls: number; exportCategory: string; onBack: () => void }) {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const calls = useCampaignUnclassifiedCalls(campaignId, { page, page_size: pageSize });
@@ -669,6 +677,7 @@ function CampaignUnclassifiedCalls({ campaignId, totalCalls, onBack }: { campaig
       page={page}
       pageSize={pageSize}
       onPageChange={setPage}
+      exportCategory={exportCategory}
       onBack={onBack}
       onRetry={() => calls.refetch()}
     />
@@ -687,6 +696,8 @@ function ClassificationCallsPanel({
   onPageChange,
   search: controlledSearch,
   onSearchChange,
+  exportCategoryId,
+  exportCategory,
   onBack,
   onRetry,
 }: {
@@ -701,6 +712,8 @@ function ClassificationCallsPanel({
   onPageChange: (page: number) => void;
   search?: string;
   onSearchChange?: (search: string) => void;
+  exportCategoryId?: string;
+  exportCategory?: string;
   onBack: () => void;
   onRetry: () => void;
 }) {
@@ -771,6 +784,7 @@ function ClassificationCallsPanel({
             <h2 className="truncate text-base font-semibold text-heading">{title}</h2>
             <p className="text-xs text-muted">{total} calls in this classification.</p>
           </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <div className="blue-fields w-full sm:max-w-64">
             <SearchInput
               value={search}
@@ -784,6 +798,13 @@ function ClassificationCallsPanel({
               placeholder={serverSearchEnabled ? "Search name or number" : "Search name, number or status"}
               className="w-full"
             />
+          </div>
+          <ClassificationExportButton
+            campaignId={campaignId}
+            categoryId={exportCategoryId}
+            category={exportCategory}
+            search={search}
+          />
           </div>
         </div>
         {error ? (
@@ -877,6 +898,77 @@ function ClassificationCallsPanel({
       {selectedCall && (
         <ClassificationCallDrawer campaignId={campaignId} call={selectedCall} classificationName={title} onClose={() => setSelectedCall(null)} />
       )}
+    </div>
+  );
+}
+
+function ClassificationExportButton({
+  campaignId,
+  categoryId,
+  category,
+  search,
+  categories,
+}: {
+  campaignId: string;
+  categoryId?: string;
+  category?: string;
+  search?: string;
+  categories?: Array<{ id: string | null; name: string }>;
+}) {
+  const [exporting, setExporting] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const selectedOption = categories?.find((option) => (option.id ?? "unclassified") === selectedCategory);
+      const file = await exportCampaignClassificationSheet(campaignId, {
+        category_id: categoryId ?? selectedOption?.id ?? undefined,
+        category: category ?? (selectedOption?.id === null ? "unclassified" : undefined),
+        search,
+      });
+      const objectUrl = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      const categoryLabel = category ?? selectedOption?.name;
+      const categorySlug = categoryLabel?.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      link.href = objectUrl;
+      link.download = `campaign-${campaignId}-classifications${categorySlug ? `-${categorySlug}` : categoryId ? "-selected" : ""}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      showSuccessNotification("The classification sheet has been downloaded.", { title: "Export complete" });
+    } catch (error) {
+      showErrorNotification(error instanceof Error ? error.message : "The classification sheet could not be exported.", {
+        title: "Export failed",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:w-auto sm:items-center">
+      {categories && (
+        <Select
+          aria-label="Export classification category"
+          value={selectedCategory}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+          className="h-10 w-full min-w-0 sm:min-w-40 sm:w-auto"
+          disabled={exporting}
+        >
+          <option value="">All categories</option>
+          {categories.map((option) => (
+            <option key={option.id ?? "unclassified"} value={option.id ?? "unclassified"}>
+              {option.name.replaceAll("_", " ")}
+            </option>
+          ))}
+        </Select>
+      )}
+      <Button size="md" className="btn-blue-filled w-full justify-center whitespace-nowrap sm:w-auto" onClick={() => void handleExport()} disabled={exporting}>
+        {exporting ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
+        {exporting ? "Exporting…" : "Export Excel"}
+      </Button>
     </div>
   );
 }

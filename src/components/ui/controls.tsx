@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { CircleAlert, Search, X } from "lucide-react";
+import { ChevronDown, CircleAlert, Search, X } from "lucide-react";
 import { ActionProgressSkeleton } from "../skeletons";
 
 /* -------------------------------- Controls -------------------------------- */
@@ -167,9 +167,17 @@ export function Select({
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <GlowField className={className}>
-      <select {...props} className={clsx(inputClass, "h-10 cursor-pointer")} />
-    </GlowField>
+    <span className={clsx("relative block", className)}>
+      <select
+        {...props}
+        className="h-10 w-full min-w-0 appearance-none rounded-md border border-hairline-strong bg-surface-input py-2 pl-3 pr-9 text-sm text-heading outline-none transition-[border-color,box-shadow] hover:border-[var(--input-glow)] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-loss dark:[color-scheme:dark]"
+      />
+      <ChevronDown
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+      />
+    </span>
   );
 }
 

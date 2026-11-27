@@ -511,6 +511,22 @@ export const getCampaignClassificationCalls = (
   );
 };
 
+/** Download campaign leads with their classification and call details as an XLSX. */
+export const exportCampaignClassificationSheet = (
+  campaignId: string,
+  params?: { category_id?: string; category?: string; search?: string },
+) => {
+  const query = new URLSearchParams();
+  if (params?.category_id) query.set("category_id", params.category_id);
+  if (params?.category) query.set("category", params.category);
+  if (params?.search?.trim()) query.set("search", params.search.trim());
+  const qs = query.toString();
+  return api<Blob>(
+    `/campaigns/${campaignId}/classifications/export${qs ? `?${qs}` : ""}`,
+    { responseType: "blob" },
+  );
+};
+
 export const getCampaignUnclassifiedCalls = (
   campaignId: string,
   params?: { page?: number; page_size?: number },
