@@ -2,6 +2,9 @@ export type TableColumnConfig = {
   label: string;
   width: string;
   kind?: "text" | "subtitle" | "status" | "avatar" | "number" | "date" | "actions" | "content";
+  align?: "left" | "right";
+  key?: string;
+  sortKey?: string;
 };
 
 export const CAMPAIGN_COLUMNS: TableColumnConfig[] = [
@@ -52,15 +55,14 @@ export const TEMPLATE_COLUMNS: TableColumnConfig[] = [
 ];
 
 export const CALL_COLUMNS: TableColumnConfig[] = [
-  { label: "Lead", width: "16%", kind: "subtitle" },
-  { label: "Phone", width: "13%", kind: "text" },
-  { label: "Status", width: "10%", kind: "status" },
-  { label: "Transfer", width: "14%", kind: "text" },
-  { label: "Initiation time", width: "16%", kind: "date" },
-  { label: "Talk time", width: "10%", kind: "number" },
-  { label: "Plivo cost", width: "11%", kind: "number" },
-  { label: "AI cost", width: "11%", kind: "number" },
-  { label: "Total cost", width: "13%", kind: "number" },
+  { key: "lead", label: "Lead", width: "22%", align: "left", kind: "subtitle" },
+  { key: "phone", label: "Phone", width: "15%", align: "left", kind: "text" },
+  { key: "status", label: "Status", width: "13%", align: "left", kind: "status" },
+  { key: "calledAt", label: "Called at", width: "13%", align: "left", kind: "date" },
+  { key: "talkTime", label: "Talk time", width: "9%", align: "right", kind: "number", sortKey: "talk" },
+  { key: "plivoCost", label: "Plivo cost", width: "9%", align: "right", kind: "number", sortKey: "plivo" },
+  { key: "aiCost", label: "AI cost", width: "9%", align: "right", kind: "number", sortKey: "ai" },
+  { key: "totalCost", label: "Total cost", width: "10%", align: "right", kind: "number", sortKey: "total" },
 ];
 
 export const COST_CALL_COLUMNS: TableColumnConfig[] = [

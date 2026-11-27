@@ -433,7 +433,7 @@ export default function CampaignForm({ campaign }: { campaign: Campaign | null }
   };
 
   const actions = (
-    <div className="mx-auto grid w-full min-w-0 max-w-xs grid-cols-2 gap-3 sm:mx-0 sm:flex sm:w-auto sm:max-w-none sm:items-center">
+    <div className="grid w-full min-w-0 grid-cols-2 gap-3 sm:ml-auto sm:flex sm:w-auto sm:items-center">
       <Button variant="secondary" className="h-11 w-full min-w-0 whitespace-normal border border-hairline-strong bg-surface text-heading shadow-sm hover:bg-surface-hover px-2 text-sm leading-tight sm:w-auto sm:whitespace-nowrap sm:px-4" onClick={() => router.replace(backHref)}>
         Cancel
       </Button>
@@ -615,6 +615,7 @@ localStorage.setItem(CAMPAIGN_DRAFT_KEY,JSON.stringify(draft));
       footer={actions}
       showHeaderActions={false}
       flushFooterToBottom
+      fullWidthFooter
       error={submitted && !valid ? "Some fields need attention - they're marked below." : null}
     >
       <div className="blue-fields mt-5 pb-24">

@@ -140,7 +140,7 @@ export function Table({
   return (
     <div
       className={clsx(
-        "no-scrollbar bg-surface md:overflow-x-auto",
+        "mobile-table-list no-scrollbar bg-surface md:overflow-x-auto",
         !bare && "md:rounded-lg md:border md:border-hairline md:shadow-sm",
         className,
       )}

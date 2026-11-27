@@ -68,6 +68,7 @@ export function FormPage({
   showHeaderActions = true,
   flushFooterToBottom = false,
   fullWidth = false,
+  fullWidthFooter = false,
   error,
 }: {
   title: string;
@@ -78,42 +79,46 @@ export function FormPage({
   showHeaderActions?: boolean;
   flushFooterToBottom?: boolean;
   fullWidth?: boolean;
+  /** Let the sticky footer span the content area while keeping the form itself constrained. */
+  fullWidthFooter?: boolean;
   /** Form-level message shown above the sections, e.g. "fix the highlighted fields" */
   error?: string | null;
 }) {
   return (
-    <div className={clsx("mx-auto", fullWidth ? "w-full" : "max-w-5xl", flushFooterToBottom && "-mb-10")}>
-      <div
-        className={clsx(
-          "flex flex-wrap items-end gap-4  pb-6",
-          showHeaderActions && "justify-between",
-        )}
-      >
-        <div className="flex min-w-0 items-start gap-3">
-          {headerLeading}
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
-              {title}
-            </h1>
-            {description && (
-              <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
-            )}
+    <div className={clsx("mx-auto", fullWidthFooter || fullWidth ? "w-full" : "max-w-5xl", flushFooterToBottom && "-mb-10")}>
+      <div className={fullWidthFooter ? "mx-auto w-full max-w-5xl" : undefined}>
+        <div
+          className={clsx(
+            "flex flex-wrap items-end gap-4 pb-6",
+            showHeaderActions && "justify-between",
+          )}
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            {headerLeading}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
+                {title}
+              </h1>
+              {description && (
+                <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
+              )}
+            </div>
           </div>
+          {showHeaderActions && (
+            <div className="hidden items-center gap-2 md:flex">{footer}</div>
+          )}
         </div>
-        {showHeaderActions && (
-          <div className="hidden items-center gap-2 md:flex ">{footer}</div>
+        {error && (
+          <div className="mt-6">
+            <ErrorBanner message={error} />
+          </div>
         )}
+        <div className="divide-y divide-hairline">{children}</div>
       </div>
-      {error && (
-        <div className="mt-6">
-          <ErrorBanner message={error} />
-        </div>
-      )}
-      <div className="divide-y divide-hairline">{children}</div>
       <div
         data-sticky-form-footer
         className={clsx(
-          "sticky z-10 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-3 backdrop-blur-md -mx-4 sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-0 lg:pl-10 lg:pr-10",
+          "sticky z-10 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-3 backdrop-blur-md -mx-4 sm:-mx-4 lg:-mx-8",
           flushFooterToBottom ? "bottom-[-20px]" : "bottom-0",
         )}
       >
