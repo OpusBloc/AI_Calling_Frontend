@@ -25,6 +25,7 @@ import {
   formatMoney,
 } from "@/components/ui";
 import { DASHBOARD_CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
+import { TableSkeleton } from "@/components/skeletons";
 
 
 const RECENT_HEAD = DASHBOARD_CAMPAIGN_COLUMNS.map((column) => column.label);
@@ -138,7 +139,7 @@ function DashboardPageContent() {
             <div className="p-5">
               <ErrorState message={(campaigns.error as Error).message} onRetry={() => campaigns.refetch()} />
             </div>
-          ) : campaigns.isSuccess && recent.length === 0 ? (
+          ) : campaigns.isSuccess && !campaigns.isFetching && recent.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-muted">
               No campaigns yet.{" "}
               <Link href="/campaigns/new" className="font-medium text-accent-text underline underline-offset-2">
@@ -147,8 +148,15 @@ function DashboardPageContent() {
             </p>
           ) : (
             <>
-              <Table bare head={RECENT_HEAD} columns={DASHBOARD_CAMPAIGN_COLUMNS} label="Recent campaigns" loading={campaigns.isLoading}>
-                {campaigns.isLoading && <tr><td colSpan={RECENT_HEAD.length} className="px-4 py-8 text-center text-sm text-muted">Loading campaigns…</td></tr>}
+              <Table
+                bare
+                head={RECENT_HEAD}
+                columns={DASHBOARD_CAMPAIGN_COLUMNS}
+                label="Recent campaigns"
+                loading={campaigns.isFetching}
+                mobileChevronLast
+                skeleton={<TableSkeleton columns={DASHBOARD_CAMPAIGN_COLUMNS} rows={4} />}
+              >
                 {recentPagination.pageItems.map((c) => (
                   <LinkRow key={c.id} href={`/campaigns/${c.id}`}>
                     <td className="px-4 py-3 font-medium text-heading">{c.name}</td>
@@ -161,7 +169,7 @@ function DashboardPageContent() {
                 ))}
               </Table>
               {recent.length > 6 && (
-                <div className="flex items-center justify-between gap-3 px-4 pb-4 pt-3 text-sm text-muted">
+                <div className="flex items-center justify-end gap-3 px-4 pb-4 pt-3 text-sm text-muted">
                   <button
                     type="button"
                     onClick={() => recentPagination.setPage(recentPagination.page - 1)}
@@ -347,11 +355,11 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
           </div>
 
           <CostSplit
-            loading={summary.isLoading}
+            loading={summary.isFetching}
             summaryData={s}
             totalLabel="Total Campaigns cost"
             trend={trend}
-            trendLoading={summary.isLoading}
+            trendLoading={summary.isFetching}
             stackUntil2xl
           />
           <p className="text-xs text-muted">Per-call costs are on each campaign&apos;s Costs tab.</p>

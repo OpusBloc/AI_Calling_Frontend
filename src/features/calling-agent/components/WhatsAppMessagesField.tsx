@@ -74,7 +74,7 @@ export default function WhatsAppMessagesField({ value, onChange }: WhatsAppMessa
       </div>
 
       <div className="relative">
-        <div className="glow-field flex h-10 items-center gap-2 rounded-md border border-hairline-strong bg-surface-input px-3 transition-colors hover:border-[var(--input-glow)] focus-within:border-[var(--input-glow)]">
+        <div className="flex h-10 items-center gap-2 rounded-md bg-surface-input px-3">
           <Search size={15} aria-hidden className="shrink-0 text-muted" />
           <input
             value={inputVal}

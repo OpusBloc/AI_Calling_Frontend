@@ -43,7 +43,7 @@ export function VoiceCardsSkeleton({ count = 6 }: { count?: number }) {
 }
 
 export function StockVoicesSkeleton() {
-  return <div aria-hidden="true" className="h-80 overflow-hidden rounded-md border border-hairline p-2"><VoiceCardsSkeleton count={6} /></div>;
+  return <div aria-hidden="true" className="max-h-80 overflow-hidden rounded-md border border-hairline p-2"><VoiceCardsSkeleton count={6} /></div>;
 }
 
 export function VoiceSamplesSkeleton() {

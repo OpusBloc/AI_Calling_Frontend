@@ -626,8 +626,13 @@ function CampaignClassificationCalls({
   onBack: () => void;
 }) {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const pageSize = 10;
-  const calls = useCampaignClassificationCalls(campaignId, classificationId, { page, page_size: pageSize });
+  const calls = useCampaignClassificationCalls(campaignId, classificationId, {
+    page,
+    page_size: pageSize,
+    search: search.trim() || undefined,
+  });
 
   return (
     <ClassificationCallsPanel
@@ -640,6 +645,8 @@ function CampaignClassificationCalls({
       page={page}
       pageSize={pageSize}
       onPageChange={setPage}
+      search={search}
+      onSearchChange={(value) => { setSearch(value); setPage(1); }}
       onBack={onBack}
       onRetry={() => calls.refetch()}
     />
@@ -678,6 +685,8 @@ function ClassificationCallsPanel({
   page,
   pageSize,
   onPageChange,
+  search: controlledSearch,
+  onSearchChange,
   onBack,
   onRetry,
 }: {
@@ -690,22 +699,29 @@ function ClassificationCallsPanel({
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  search?: string;
+  onSearchChange?: (search: string) => void;
   onBack: () => void;
   onRetry: () => void;
 }) {
   const calls = useMemo(() => data?.calls ?? [], [data?.calls]);
-  const total = Math.max(data?.total ?? 0, fallbackTotal);
+  const [localSearch, setLocalSearch] = useState("");
+  const search = controlledSearch ?? localSearch;
+  const serverSearchEnabled = controlledSearch !== undefined && onSearchChange !== undefined;
+  const total = serverSearchEnabled && search.trim()
+    ? data?.total ?? 0
+    : Math.max(data?.total ?? 0, fallbackTotal);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const [search, setSearch] = useState("");
   const [durationOrder, setDurationOrder] = useState<"normal" | "desc" | "asc">("normal");
   const [selectedCall, setSelectedCall] = useState<ClassificationCall | null>(null);
   const showCallsSkeleton = useSkeletonVisibility(loading);
   const [lastOpenedCallId, setLastOpenedCallId] = useState<string | null>(null);
   const visibleCalls = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const filtered = calls
-      .filter((call) => !term || [call.name, call.phone, call.status, call.classification]
-        .some((value) => value?.toLowerCase().includes(term)));
+    const filtered = serverSearchEnabled
+      ? calls
+      : calls.filter((call) => !term || [call.name, call.phone, call.status, call.classification]
+          .some((value) => value?.toLowerCase().includes(term)));
     if (durationOrder === "normal") return filtered;
     return filtered.sort((a, b) => {
         const aDuration = a.duration_seconds ?? -1;
@@ -714,7 +730,7 @@ function ClassificationCallsPanel({
         if (bDuration < 0) return -1;
         return durationOrder === "desc" ? bDuration - aDuration : aDuration - bDuration;
       });
-  }, [calls, durationOrder, search]);
+  }, [calls, durationOrder, search, serverSearchEnabled]);
   const mobileCallItems = visibleCalls.map((call, index) => {
     const rowId = call.call_uuid ?? call.attempt_id ?? `${page}-${index}`;
     return {
@@ -756,7 +772,18 @@ function ClassificationCallsPanel({
             <p className="text-xs text-muted">{total} calls in this classification.</p>
           </div>
           <div className="blue-fields w-full sm:max-w-64">
-            <SearchInput value={search} onChange={(value) => { setSearch(value); onPageChange(1); }} placeholder="Search name, number or status" className="w-full" />
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                if (onSearchChange) onSearchChange(value);
+                else {
+                  setLocalSearch(value);
+                  onPageChange(1);
+                }
+              }}
+              placeholder={serverSearchEnabled ? "Search name or number" : "Search name, number or status"}
+              className="w-full"
+            />
           </div>
         </div>
         {error ? (
@@ -764,7 +791,10 @@ function ClassificationCallsPanel({
         ) : loading || showCallsSkeleton ? (
           showCallsSkeleton ? <CampaignClassificationSkeleton /> : null
         ) : calls.length === 0 ? (
-          <EmptyState title="No calls in this classification" text="No call records are available yet." />
+          <EmptyState
+            title={search.trim() ? "No matching calls" : "No calls in this classification"}
+            text={search.trim() ? "Try another name or phone number." : "No call records are available yet."}
+          />
         ) : (
             <div className="blue-fields space-y-4">
             <Table className="blue-table" head={[
@@ -1436,10 +1466,10 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
           <div className="space-y-3">
             <Table
               bare
-              className="blue-table campaign-calls-table"
+              className={clsx("blue-table campaign-calls-table", filter !== "callbacks" && "campaign-call-summary-table")}
               headClassNames={filter === "callbacks"
-                ? Array(callbackHead.length).fill("px-4 py-2")
-                : CALL_COLUMNS.map((column) => clsx("px-4 py-2", column.align === "right" ? "text-right" : "text-left"))}
+                ? callbackHead.map((_, index) => clsx(index >= 5 ? "p-0 text-right" : "px-3 py-2 text-left"))
+                : CALL_COLUMNS.map((column) => clsx(column.sortKey ? "p-0" : "px-3 py-2", column.align === "right" ? "text-right" : "text-left"))}
               head={filter === "callbacks" ? callbackHead : head}
               columns={filter === "callbacks" ? [
                 { label: "Lead", width: "16%" }, { label: "Phone", width: "12%" }, { label: "Callback at", width: "17%" },
@@ -1490,7 +1520,7 @@ const callbackPageItems = sortedCallbackItems.slice((callbackPage - 1) * pageSiz
                     <td className="whitespace-nowrap px-4 py-3 text-body">{formatCallbackAtIST(callback.callback_at)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-body">{callback.caller_number || "-"}</td>
                     <td className="px-4 py-3">{callback.last_outcome ? <StatusBadge status={callback.last_outcome} /> : <span className="text-muted">-</span>}</td>
-                    <td className="tnum whitespace-nowrap px-4 py-3 text-right text-body">{call ? formatDuration(call.total_talk_seconds) : "-"}</td>
+                    <td className="tnum whitespace-nowrap px-3 py-2 text-right text-body">{call ? formatDuration(call.total_talk_seconds) : "-"}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums text-body">{call ? formatCallCost(call.plivo_cost) : "-"}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right text-sm tabular-nums text-body">{call ? formatCallCost(call.sarvam_cost) : "-"}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right text-sm font-semibold tabular-nums text-heading">{call ? formatCallCost(call.plivo_cost + call.sarvam_cost) : "-"}</td>
@@ -1582,13 +1612,15 @@ function SortHead({
       aria-label={`Sort by ${label}: ${!active ? "normal" : dir === "asc" ? "low to high" : "high to low"}`}
       onClick={onClick}
       className={clsx(
-        "flex w-full cursor-pointer items-center gap-1 rounded py-0.5 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+        "inline-flex w-full items-center gap-1 whitespace-nowrap rounded px-3 py-2 text-[11px] font-medium tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         textAlign === "right" ? "justify-end text-right" : "justify-start text-left",
         active ? "text-heading" : "text-muted hover:text-heading",
       )}
     >
       <span>{label}</span>
-      <SortIcon size={16} aria-hidden className="text-blue-600 dark:text-blue-400" />
+      <span className={clsx("inline-flex h-4 w-4 shrink-0 items-center justify-center", active ? "text-link" : "text-muted")} aria-hidden>
+        <SortIcon size={16} className="h-4 w-4" />
+      </span>
     </button>
   );
 }
@@ -1604,23 +1636,12 @@ function CallRow({
   selected: boolean;
   onOpen: () => void;
 }) {
-  const live = ACTIVE.has(call.status.toLowerCase());
   const cells: Record<string, ReactNode> = {
     lead: (
-      <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-        <span className="min-w-0 flex-1 truncate" title={call.lead_name || "Unnamed"}>
+      <div className="min-w-0">
+        <span className="line-clamp-2 whitespace-normal break-words leading-snug" title={call.lead_name || "Unnamed"}>
           {call.lead_name || <span className="text-faint">Unnamed</span>}
         </span>
-        {selected && (
-          <span className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint)] px-2 py-0.5 text-[10px] font-medium text-link">
-            Last opened
-          </span>
-        )}
-        {live && (
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gain">
-            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gain" /> Live
-          </span>
-        )}
       </div>
     ),
     phone: call.phone,
@@ -1636,7 +1657,7 @@ function CallRow({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className={`campaign-call-row h-16 cursor-pointer align-middle outline-none transition-colors ${selected ? "call-row-selected" : "hover:bg-surface-hover focus-visible:bg-surface-hover"}`}
+      className={`campaign-call-row h-16 cursor-pointer items-center outline-none transition-colors ${selected ? "call-row-selected" : "hover:bg-surface-hover focus-visible:bg-surface-hover"}`}
     >
       {CALL_COLUMNS.map((column) => {
         const key = column.key ?? column.label;
@@ -1644,8 +1665,9 @@ function CallRow({
           <td
             key={key}
             className={clsx(
-              "overflow-hidden whitespace-nowrap px-4 py-2 text-sm",
+              "min-w-0 px-3 py-2 text-sm",
               column.align === "right" ? "text-right tabular-nums" : "text-left",
+              key !== "lead" && "whitespace-nowrap",
               key === "phone" && "font-mono text-xs text-body",
               key === "lead" && "font-medium text-heading",
               key === "totalCost" && "font-semibold text-heading",

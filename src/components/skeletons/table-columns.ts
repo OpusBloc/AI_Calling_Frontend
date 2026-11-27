@@ -58,10 +58,10 @@ export const CALL_COLUMNS: TableColumnConfig[] = [
   { key: "lead", label: "Lead", width: "22%", align: "left", kind: "subtitle" },
   { key: "phone", label: "Phone", width: "15%", align: "left", kind: "text" },
   { key: "status", label: "Status", width: "13%", align: "left", kind: "status" },
-  { key: "calledAt", label: "Called at", width: "13%", align: "left", kind: "date" },
-  { key: "talkTime", label: "Talk time", width: "9%", align: "right", kind: "number", sortKey: "talk" },
-  { key: "plivoCost", label: "Plivo cost", width: "9%", align: "right", kind: "number", sortKey: "plivo" },
-  { key: "aiCost", label: "AI cost", width: "9%", align: "right", kind: "number", sortKey: "ai" },
+  { key: "calledAt", label: "Called at", width: "10%", align: "left", kind: "date" },
+  { key: "talkTime", label: "Talk time", width: "10%", align: "right", kind: "number", sortKey: "talk" },
+  { key: "plivoCost", label: "Plivo cost", width: "10%", align: "right", kind: "number", sortKey: "plivo" },
+  { key: "aiCost", label: "AI cost", width: "10%", align: "right", kind: "number", sortKey: "ai" },
   { key: "totalCost", label: "Total cost", width: "10%", align: "right", kind: "number", sortKey: "total" },
 ];
 

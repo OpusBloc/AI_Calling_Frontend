@@ -13,6 +13,7 @@ export type AccordionItemConfig = {
   id: string;
   avatar: string;
   hideAvatar?: boolean;
+  chevronLast?: boolean;
   title: string;
   subtitle?: ReactNode;
   badge?: ReactNode;
@@ -48,9 +49,10 @@ export function AccordionItem({ item, open, onToggle }: { item: AccordionItemCon
               {item.keyValue.subValue != null && <span className="block truncate text-[10px] text-muted">{item.keyValue.subValue}</span>}
             </span>
           )}
+          {item.badge && item.chevronLast && <span className="ml-auto shrink-0">{item.badge}</span>}
           <ChevronDown size={18} aria-hidden="true" className={clsx("shrink-0 text-muted transition-transform duration-200", open && "rotate-180")} />
         </button>
-        {item.badge && <div className="shrink-0">{item.badge}</div>}
+        {item.badge && !item.chevronLast && <div className="shrink-0">{item.badge}</div>}
       </div>
       <div className={clsx("grid grid-rows-[0fr] transition-[grid-template-rows] duration-200", open && "grid-rows-[1fr]")}>
         <div className="min-h-0 overflow-hidden">

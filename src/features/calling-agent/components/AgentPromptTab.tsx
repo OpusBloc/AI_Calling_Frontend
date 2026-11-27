@@ -63,11 +63,13 @@ export default function AgentPromptTab({
 
           <button
             type="button"
+            aria-label="Previous section"
+            title="Previous section"
             onClick={() => goToPromptIndex(promptIndex - 1)}
             disabled={promptIndex === 0}
             className="btn-blue-filled order-2 inline-flex h-9 w-fit max-w-full items-center justify-self-start gap-1.5 rounded-lg px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:order-none sm:col-start-1 sm:row-start-1 sm:px-3"
           >
-            <ArrowLeft size={14} strokeWidth={2.2} /> Previous section
+            <ArrowLeft size={14} strokeWidth={2.2} aria-hidden="true" /> Previous section
           </button>
 
           <button

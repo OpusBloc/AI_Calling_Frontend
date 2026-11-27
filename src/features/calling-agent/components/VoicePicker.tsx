@@ -11,9 +11,12 @@ import SelectMenu from "@/components/SelectMenu";
 import {
   deleteVoiceCatalog,
   deleteVoiceCatalogEntry,
+  AGENT_LANGUAGES,
   getSpeakAudio,
   listSpeakSamples,
   listVoiceCatalog,
+  listPlivoVoices,
+  speakPlivoVoice,
   speakSample,
   uploadVoiceCatalog,
   type VoiceSample,
@@ -45,6 +48,25 @@ const CustomVoiceDrawer = dynamic(() => import("./CustomVoiceDrawer"), {
 
 const VOICE_PAGE_SIZE = 24;
 const SAMPLE_PAGE_SIZE = 20;
+const PLIVO_LANGUAGES = [
+  ...Object.entries(AGENT_LANGUAGES).map(([code, label]) => [code, code === "en-IN" ? "English (India)" : label] as const),
+  ["en-GB", "English (UK)"],
+  ["en-US", "English (US)"],
+  ["en-AU", "English (Australia)"],
+] as const;
+
+const normalizePlivoLanguage = (code: string) => {
+  const normalized = code.trim().replaceAll("_", "-").toLowerCase();
+  if (!normalized) return "";
+  const option = PLIVO_LANGUAGES.find(([language, label]) =>
+    language.toLowerCase() === normalized || label.toLowerCase() === normalized,
+  );
+  if (option) return option[0];
+  const indianLanguage = `${normalized.split("-")[0]}-IN`;
+  return PLIVO_LANGUAGES.some(([language]) => language.toLowerCase() === indianLanguage)
+    ? indianLanguage
+    : normalized;
+};
 
 /**
  * Choose the voice an agent speaks with: a stock Sarvam voice (previewed saying its
@@ -57,6 +79,7 @@ export default function VoicePicker({
   agentId,
   greeting,
   language: agentLanguage,
+  ttsProvider,
   onEditGreeting,
 }: {
   value: string;
@@ -65,14 +88,23 @@ export default function VoicePicker({
   greeting: string;
   /** The agent's main language; used when a voice has no language of its own */
   language: string;
+  ttsProvider: string;
   onEditGreeting: () => void;
 }) {
   const queryClient = useQueryClient();
   const [voiceSection, setVoiceSection] = useState<"imported" | "custom" | "samples" | "background">("imported");
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("");
+  const [plivoLanguage, setPlivoLanguage] = useState("");
   const [style, setStyle] = useState("");
-  const catalog = useQuery({ queryKey: voiceCatalogKey, queryFn: listVoiceCatalog, retry: false });
+  const isPlivoProvider = ttsProvider.trim().toLowerCase() === "plivo";
+  const catalog = useQuery({ queryKey: voiceCatalogKey, queryFn: listVoiceCatalog, retry: false, enabled: !isPlivoProvider });
+  const plivoCatalog = useQuery({
+    queryKey: ["plivo-voices", plivoLanguage || "all"],
+    queryFn: () => listPlivoVoices(plivoLanguage || undefined),
+    retry: false,
+    enabled: isPlivoProvider,
+  });
   const custom = useQuery({ queryKey: customVoicesKey, queryFn: () => listVoices({ limit: 200 }), retry: false });
   const samples = useInfiniteQuery({
     queryKey: [...samplesKey, search.trim(), language, style],
@@ -105,7 +137,26 @@ export default function VoicePicker({
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [voiceSection, hasNextPage, isFetchingNextPage, fetchNextPage]);
-  const voices = useMemo(() => catalog.data?.voices ?? [], [catalog.data]);
+  const voices = useMemo(
+    () => isPlivoProvider
+      ? (plivoCatalog.data ?? [])
+          .map((voice) => ({
+            voice_id: voice.voice_id,
+            speaker: voice.name,
+            language_code: normalizePlivoLanguage(
+              voice.languages.find((item) => normalizePlivoLanguage(item) === plivoLanguage) ?? voice.languages[0] ?? "",
+            ),
+            gender: voice.gender,
+            style: undefined,
+          }))
+      : catalog.data?.voices ?? [],
+    [isPlivoProvider, plivoCatalog.data, catalog.data, plivoLanguage],
+  );
+  const stockLoading = isPlivoProvider ? plivoCatalog.isLoading : catalog.isLoading;
+  const stockError = isPlivoProvider ? plivoCatalog.error : catalog.error;
+  const stockIsError = isPlivoProvider ? plivoCatalog.isError : catalog.isError;
+  const stockIsSuccess = isPlivoProvider ? plivoCatalog.isSuccess : catalog.isSuccess;
+  const refetchStock = isPlivoProvider ? plivoCatalog.refetch : catalog.refetch;
   const customVoices = useMemo(() => custom.data ?? [], [custom.data]);
   const defaultVoice = useMemo(
     () => customVoices.find((voice) => voice.isDefault) ?? customVoices[0],
@@ -118,8 +169,8 @@ export default function VoicePicker({
   const lastLoadScrollTop = useRef(0);
 
   useEffect(() => {
-    if (!value && defaultVoiceId) onChange(defaultVoiceId);
-  }, [defaultVoiceId, onChange, value]);
+    if (!isPlivoProvider && !value && defaultVoiceId) onChange(defaultVoiceId);
+  }, [defaultVoiceId, isPlivoProvider, onChange, value]);
   const languages = useMemo(
     () => [...new Set([...voices.map((v) => v.language_code), ...customVoices.map((v) => v.language).filter((lang): lang is string => !!lang)])].sort(),
     [voices, customVoices],
@@ -142,6 +193,7 @@ export default function VoicePicker({
 
   const matches = (text: string, lang: string | null | undefined, voiceStyle?: string | null) =>
     (!language || lang === language) &&
+    (!isPlivoProvider || !plivoLanguage || lang === plivoLanguage) &&
     (!activeStyle || voiceStyle?.trim() === activeStyle) &&
     text.toLowerCase().includes(search.trim().toLowerCase());
 
@@ -170,7 +222,7 @@ export default function VoicePicker({
     );
   });
   const known = [...voices.map((v) => v.voice_id), ...customVoices.map((v) => v.id)];
-  const selectedMissing = !!value && catalog.isSuccess && custom.isFetched && !known.includes(value);
+  const selectedMissing = !!value && stockIsSuccess && custom.isFetched && !known.includes(value);
   const shownMissing = selectedMissing && matches(value, agentLanguage);
   const customVoiceCount = customVoices.length + (selectedMissing ? 1 : 0);
   const filtered = !!search.trim() || !!language || !!activeStyle;
@@ -181,7 +233,7 @@ export default function VoicePicker({
     setVisibleStockCount(VOICE_PAGE_SIZE);
     lastLoadScrollTop.current = 0;
     stockListRef.current?.scrollTo({ top: 0 });
-  }, [search, language, activeStyle, voices.length, customVoices.length]);
+  }, [search, language, plivoLanguage, activeStyle, voices.length, customVoices.length]);
 
   const handleStockScroll = () => {
     const list = stockListRef.current;
@@ -198,6 +250,8 @@ export default function VoicePicker({
   const [previewPace, setPreviewPace] = useState(1);
   const [previewSampleRate, setPreviewSampleRate] = useState<SpeechSampleRate>(24000);
   const preview = usePreview(previewText, agentLanguage, previewPace, previewSampleRate);
+  const plivoPreview = usePlivoPreview(previewText);
+  const activePreview = isPlivoProvider ? plivoPreview : preview;
   const selectedCustomVoice = customVoices.find((voice) => voice.id === value);
   const selectedCatalogVoice = voices.find((voice) => voice.voice_id === value);
   const currentVoiceName = selectedCustomVoice?.name ?? selectedCatalogVoice?.speaker ?? defaultVoice?.name;
@@ -272,11 +326,11 @@ export default function VoicePicker({
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold text-heading">Voice</h2>
           <p className="mt-0.5 text-sm text-muted">
-            The voice this agent speaks with on every call. Stock voices can be previewed; saved voices can be selected here.
+            The voice this agent speaks with on every call. {isPlivoProvider ? "Plivo voices are loaded for the agent's main language." : "Stock voices can be previewed; saved voices can be selected here."}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
-          <label
+        <div className={clsx("grid gap-2 sm:flex sm:justify-end", isPlivoProvider ? "grid-cols-1" : "grid-cols-2")}>
+          {!isPlivoProvider && <label
             className={clsx(
               "voice-import-action relative inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1 rounded-md border border-hairline-strong bg-surface px-2 text-xs font-medium text-heading transition-colors hover:bg-surface-hover focus-within:ring-2 focus-within:ring-[var(--input-glow)] sm:w-auto sm:gap-2 sm:px-3 sm:text-sm",
               upload.isPending && "pointer-events-none opacity-60",
@@ -295,7 +349,7 @@ export default function VoicePicker({
                 e.target.value = "";
               }}
             />
-          </label>
+          </label>}
           <Button 
           size="sm"
            className="blue-fields h-9 w-full px-2 text-xs sm:w-auto sm:px-3 sm:text-sm btn-blue"
@@ -323,28 +377,34 @@ export default function VoicePicker({
       {deleteError && <ErrorBanner message={deleteError instanceof Error ? deleteError.message : "The voice could not be deleted."} />}
       <>
           <div 
-          className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_10rem_10rem] blue-fields">
+          className={clsx("grid min-w-0 grid-cols-1 gap-3 blue-fields", isPlivoProvider ? "md:grid-cols-[minmax(0,1fr)_10rem]" : "md:grid-cols-[minmax(0,1fr)_10rem_10rem]")}>
             <div className="min-w-0 md:col-span-1">
               <SearchInput value={search} onChange={(next) => { setSearch(next); resetSamplePages(); }} placeholder="Search voices…" label="Search voices" />
             </div>
             <SelectMenu
-              value={language}
-              onChange={(value) => { setLanguage(value); resetSamplePages(); }}
+              value={isPlivoProvider ? plivoLanguage : language}
+              onChange={(value) => {
+                if (isPlivoProvider) setPlivoLanguage(value);
+                else setLanguage(value);
+                resetSamplePages();
+              }}
               label="Language"
-              options={[{ value: "", label: "All languages" }, ...languages.map((code) => ({ value: code, label: languageName(code) }))]}
+              options={isPlivoProvider
+                ? [{ value: "", label: "All languages" }, ...PLIVO_LANGUAGES.map(([value, label]) => ({ value, label }))]
+                : [{ value: "", label: "All languages" }, ...languages.map((code) => ({ value: code, label: languageName(code) }))]}
             />
-            <SelectMenu
+            {!isPlivoProvider && <SelectMenu
               value={activeStyle}
               onChange={(value) => { setStyle(value); resetSamplePages(); }}
               label="Style"
               options={[{ value: "", label: "All styles" }, ...styles.map((style) => ({ value: style, label: style.charAt(0).toUpperCase() + style.slice(1) }))]}
-            />
+            />}
           </div>
 
           <div role="tablist" aria-label="Voice sources" className="no-scrollbar flex gap-1 overflow-x-auto border-b border-hairline">
             <button type="button" role="tab" id="voice-tab-imported" aria-controls="voice-panel-imported" aria-selected={voiceSection === "imported"} onClick={() => switchVoiceSection("imported")}
               className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "imported" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
-              Imported voices ({voices.length})
+              {isPlivoProvider ? "Plivo voices" : "Imported voices"} ({voices.length})
             </button>
             <button type="button" role="tab" id="voice-tab-custom" aria-controls="voice-panel-custom" aria-selected={voiceSection === "custom"} onClick={() => switchVoiceSection("custom")}
               className={clsx("-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors", voiceSection === "custom" ? "border-[var(--primary)] text-[var(--primary)]" : "border-transparent text-muted hover:text-heading")}>
@@ -378,7 +438,7 @@ export default function VoicePicker({
                 }
                 selected={!!value && known.includes(value)}
                 onSelect={() => onChange(value && known.includes(value) ? value : defaultVoice?.id ?? "")}
-                preview={preview}
+                preview={activePreview}
                 />
               </div>
               <Field label="Pace" className="w-full lg:w-20">
@@ -407,7 +467,7 @@ export default function VoicePicker({
             )}
             {voiceSection === "background" && (
               <section id="voice-panel-background" role="tabpanel" aria-labelledby="voice-tab-background">
-                <BackgroundAudioPreview agentId={agentId} speaker={selectedCatalogVoice?.voice_id} language={previewLanguage} text={previewText} />
+                <BackgroundAudioPreview agentId={agentId} speaker={isPlivoProvider ? undefined : selectedCatalogVoice?.voice_id} language={previewLanguage} text={previewText} />
               </section>
             )}
             {voiceSection === "samples" && (
@@ -495,7 +555,7 @@ export default function VoicePicker({
             {voiceSection === "imported" && <section id="voice-panel-imported" role="tabpanel" aria-labelledby="voice-tab-imported" className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">Stock voices</p>
-                <button
+                {!isPlivoProvider && <button
                   type="button"
                   aria-label="Delete Catalogs"
                   disabled={removeWholeCatalog.isPending || removeStockVoice.isPending || voices.length === 0}
@@ -511,38 +571,39 @@ export default function VoicePicker({
                 >
                   <Trash2 size={16} aria-hidden />
                   Delete Catalogs
-                </button>
+                </button>}
               </div>
-              <SkeletonBoundary loading={catalog.isLoading} skeleton={<StockVoicesSkeleton />}>
-              {catalog.isError ? (
-                <ErrorState title="Couldn't load voices" message={(catalog.error as Error).message} onRetry={() => catalog.refetch()} />
+              <SkeletonBoundary loading={stockLoading} skeleton={<StockVoicesSkeleton />}>
+              {stockIsError ? (
+                <ErrorState title="Couldn't load voices" message={(stockError as Error).message} onRetry={() => void refetchStock()} />
               ) : voices.length === 0 ? (
-                <RowMessage>No stock voices yet. Import the voice list (CSV or Excel).</RowMessage>
+                <RowMessage compact bordered>{isPlivoProvider ? `No Plivo voices are available${plivoLanguage ? ` for ${plivoLanguage}` : ""}.` : "No stock voices yet. Import the voice list (CSV or Excel)."}</RowMessage>
               ) : shown.length === 0 ? (
-                <RowMessage>No stock voices match these filters.</RowMessage>
+                <RowMessage compact bordered>No stock voices match these filters.</RowMessage>
               ) : (
                 <div
                   ref={stockListRef}
                   onScroll={handleStockScroll}
-                  className="h-96 w-full overflow-y-auto overscroll-contain rounded-xl border border-hairline bg-raised p-3"
+                  className="max-h-96 w-full overflow-y-auto overscroll-contain rounded-xl border border-hairline bg-raised p-3"
                 >
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {shownPage.map((v) => (
                       <div key={v.voice_id} className="relative min-w-0">
                         <VoiceCard
                           playable={{ id: v.voice_id, name: v.speaker || v.voice_id, language: v.language_code }}
                           label={v.speaker || v.voice_id}
-                          detail={[languageName(v.language_code), v.style].filter(Boolean).join(" · ")}
+                          detail={[languageName(v.language_code), v.gender ?? v.style].filter(Boolean).join(" · ")}
                           selected={value === v.voice_id}
                           onSelect={() => onChange(v.voice_id)}
-                          preview={preview}
+                          preview={activePreview}
+                          whiteBackground
                           className="min-h-[72px] pr-12"
                         />
-                        <DeleteIconButton
+                        {!isPlivoProvider && <DeleteIconButton
                           disabled={removeCustomVoice.isPending || removeStockVoice.isPending || removeWholeCatalog.isPending}
                           className="absolute right-2 top-1/2 -translate-y-1/2"
                           onClick={() => void confirmVoiceDelete(v.speaker || v.voice_id, true, v.voice_id)}
-                        />
+                        />}
                       </div>
                     ))}
                     {hasMoreVoices && (
@@ -562,7 +623,7 @@ export default function VoicePicker({
             </span>
             <span>Previews use “{SAMPLE_NAME}” in place of {"{{name}}"}.</span>
           </p>}
-          {voiceSection === "imported" && preview.error && <ErrorBanner message={`Couldn't play voice preview: ${preview.error}`} />}
+          {voiceSection === "imported" && activePreview.error && <ErrorBanner message={`Couldn't play voice preview: ${activePreview.error}`} />}
       </>
 
       {adding && (
@@ -921,8 +982,8 @@ function SampleDetailRow({ label, value }: { label: string; value: string }) {
 }
 
 /** Shared empty and no-results message used by the custom and stock voice lists. */
-function RowMessage({ children }: { children: React.ReactNode }) {
-  return <p className="col-span-full px-4 py-6 text-center text-sm text-muted">{children}</p>;
+function RowMessage({ children, compact = false, bordered = false }: { children: React.ReactNode; compact?: boolean; bordered?: boolean }) {
+  return <p className={clsx("col-span-full text-center text-sm text-muted", compact ? "px-3 py-3" : "px-4 py-6", bordered && "rounded-xl border border-hairline bg-raised")}>{children}</p>;
 }
 
 /** Tell the user when their stock voice filters return no results. */
@@ -930,6 +991,13 @@ const NoMatch = () => <RowMessage>No voices match these filters.</RowMessage>;
 
 /** Stock voice previews use /voices/speak. Saved voices cannot be previewed by ID. */
 type Playable = { id: string; name: string; language: string | null };
+type VoicePreviewController = {
+  playingId: string | null;
+  loadingId: string | null;
+  error: string | null;
+  toggle: (voice: Playable) => Promise<void>;
+  stop: () => void;
+};
 
 /** Select a voice independently from its play/pause preview control. */
 function VoiceCard({
@@ -943,17 +1011,19 @@ function VoiceCard({
   subDetail,
   actions,
   compact = false,
+  whiteBackground = false,
 }: {
   playable?: Playable;
   label: string;
   detail: string;
   selected: boolean;
   onSelect: () => void;
-  preview?: ReturnType<typeof usePreview>;
+  preview?: VoicePreviewController;
   className?: string;
   subDetail?: string;
   actions?: React.ReactNode;
   compact?: boolean;
+  whiteBackground?: boolean;
 }) {
   const playing = !!playable && preview?.playingId === playable.id;
   const loading = !!playable && preview?.loadingId === playable.id;
@@ -962,7 +1032,11 @@ function VoiceCard({
     <div
       className={clsx(
         clsx("flex min-w-0 items-center border px-3 py-2 transition-colors", compact ? "gap-2 rounded-xl" : "gap-3 rounded-md"),
-        selected ? "border-[var(--input-glow)] bg-[var(--input-glow)]/20" : "border-hairline hover:border-[var(--input-glow)] hover:bg-[var(--input-glow)]/10",
+        selected
+          ? "border-[var(--input-glow)] bg-[var(--input-glow)]/20"
+          : whiteBackground
+            ? "border-hairline bg-white hover:border-[var(--input-glow)] hover:bg-white dark:bg-surface dark:hover:bg-surface"
+            : "border-hairline hover:border-[var(--input-glow)] hover:bg-[var(--input-glow)]/10",
         className,
       )}
     >
@@ -998,7 +1072,7 @@ function VoiceCard({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline text-heading transition-colors hover:border-[var(--input-glow)] hover:bg-surface hover:text-[var(--input-glow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-glow)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
-            <ActionProgressSkeleton />
+            <Loader2 size={16} className="animate-spin text-blue-800" aria-label="Loading voice preview" />
           ) : playing ? (
             <Pause size={15} fill="currentColor" />
           ) : (
@@ -1085,5 +1159,61 @@ function usePreview(
     });
   };
 
-  return { playingId, loadingId, error, toggle };
+  return { playingId, loadingId, error, toggle, stop };
+}
+
+/** Generate and play a WAV preview from the Plivo stock voice endpoint. */
+function usePlivoPreview(text: string): VoicePreviewController {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const clips = useRef(new Map<string, string>());
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cache = clips.current;
+    return () => {
+      audioRef.current?.pause();
+      cache.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const stop = () => {
+    audioRef.current?.pause();
+    setPlayingId(null);
+  };
+
+  const toggle = async (voice: Playable) => {
+    if (playingId === voice.id) return stop();
+    stop();
+    setError(null);
+    const spoken = `Hi, I'm ${voice.name}. ${text}`.slice(0, 1000);
+    const key = `${voice.id}|${spoken}`;
+    let url = clips.current.get(key);
+    if (!url) {
+      setLoadingId(voice.id);
+      try {
+        const audioBlob = await speakPlivoVoice({ voice_id: voice.id, text: spoken });
+        url = URL.createObjectURL(audioBlob);
+        clips.current.set(key, url);
+      } catch (previewError) {
+        setError(previewError instanceof Error ? previewError.message : "The preview couldn't be generated.");
+        return;
+      } finally {
+        setLoadingId(null);
+      }
+    }
+
+    const audio = audioRef.current ?? new Audio();
+    audioRef.current = audio;
+    audio.src = url;
+    audio.onended = () => setPlayingId(null);
+    setPlayingId(voice.id);
+    audio.play().catch((playError: unknown) => {
+      setPlayingId(null);
+      setError(playError instanceof Error ? playError.message : "The preview couldn't be played.");
+    });
+  };
+
+  return { playingId, loadingId, error, toggle, stop };
 }

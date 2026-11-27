@@ -118,6 +118,7 @@ export function Table({
   headClassNames,
   columnClassNames,
   mobileListDense = false,
+  mobileChevronLast = false,
 }: {
   head: ReactNode[];
   children?: ReactNode;
@@ -134,8 +135,10 @@ export function Table({
   headClassNames?: string[];
   columnClassNames?: string[];
   mobileListDense?: boolean;
+  mobileChevronLast?: boolean;
 }) {
-  const accordion = mobileItems ?? buildAccordionItems(children, head);
+  const items = mobileItems ?? buildAccordionItems(children, head);
+  const accordion = mobileChevronLast ? items.map((item) => ({ ...item, chevronLast: true })) : items;
   const emptyContent = mobileEmpty ?? findEmptyContent(children);
   return (
     <div

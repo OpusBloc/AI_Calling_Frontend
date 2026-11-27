@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, ChevronLeft, ChevronRight, PenLine, Plus } from "lucide-react";
+import { ArrowLeft, Bot, ChevronLeft, ChevronRight, PenLine, Plus } from "lucide-react";
 
 import { loadDraft } from "@/lib/agentDraft";
 import { Agent, deleteAgent, listAgents, listVoiceCatalog } from "@/lib/callingAgentApi";
@@ -18,7 +18,6 @@ import {
   ErrorState,
   LinkRow,
   SearchInput,
-  SectionHeader,
   Table,
   TableMessage,
   errorMessage,
@@ -75,7 +74,7 @@ export default function AgentsTab() {
 
 const newButton = (
   <Button
-    className="btn-blue"
+    className="btn-blue shrink-0 whitespace-nowrap"
     onClick={() => router.push("/calling-agent/agents/new")}
   >
     {newDraft ? <PenLine size={16} aria-hidden /> : <Plus size={16} aria-hidden />} {newAgentLabel}
@@ -84,11 +83,33 @@ const newButton = (
 
   return (
     <section>
-      <SectionHeader
-        title="Agents"
-        description="Each agent is a voice persona: intro, rules, knowledge, ending and optional notes. Campaigns pick one agent."
-        action={newButton}
-      />
+      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <button type="button" aria-label="Back to dashboard" title="Back to dashboard" onClick={() => router.push("/")} className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-heading">Agents</h2>
+            <p className="mt-0.5 line-clamp-2 max-w-sm text-sm text-muted">
+              Each agent is a voice persona: intro, rules, knowledge, ending and optional notes. Campaigns pick one agent.
+            </p>
+          </div>
+        </div>
+        {agents.length > 0 && (
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pagination.setPage(1);
+              }}
+              placeholder="Search agents"
+              className="agent-search min-w-0 w-full max-w-[220px]"
+            />
+            {newButton}
+          </div>
+        )}
+      </div>
 
       <div className="space-y-3">
         <ErrorBanner message={actionError} />
@@ -107,15 +128,6 @@ const newButton = (
           />
         ) : (
           <>
-            <SearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pagination.setPage(1);
-              }}
-              placeholder="Search agents"
-              className="agent-search w-full sm:max-w-sm"
-            />
             <div className="recent-table blue-table">
               <Table head={AGENT_COLUMNS.map((column) => column.label)} columns={AGENT_COLUMNS} label="Agents">
                 {filteredAgents.length === 0 ? (

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Pencil, PhoneForwarded, Plus } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, PhoneForwarded, Plus } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -22,7 +22,6 @@ import {
   ErrorState,
   IconButton,
   SearchInput,
-  SectionHeader,
   Table,
   TableMessage,
   Toggle,
@@ -81,17 +80,41 @@ export default function RepresentativesTab() {
     run(rep.id, () => deleteRepresentative(rep.id), ["Transfer agent deleted", `"${rep.name}" was deleted.`]);
   };
 
+  const addButton = (
+    <Button className="btn-blue shrink-0 whitespace-nowrap" onClick={() => router.push("/calling-agent/representatives/new")} disabled={loading}>
+      <Plus size={16} aria-hidden /> Add transfer agent
+    </Button>
+  );
+
   return (
     <section>
-      <SectionHeader
-        title="Call Transfer"
-        description="People a live call can be transferred to. Campaigns ring active transfer agents in turn."
-        action={
-          <Button className="btn-blue" onClick={() => router.push("/calling-agent/representatives/new")} disabled={loading}>
-            <Plus size={16} aria-hidden /> Add transfer agent
-          </Button>
-        }
-      />
+      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <button type="button" aria-label="Back to dashboard" title="Back to dashboard" onClick={() => router.push("/")} className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-heading">Call Transfer</h2>
+            <p className="mt-0.5 line-clamp-2 max-w-sm text-sm text-muted">
+              People a live call can be transferred to. Campaigns ring active transfer agents in turn.
+            </p>
+          </div>
+        </div>
+        {reps.length > 0 && (
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pagination.setPage(1);
+              }}
+              placeholder="Search transfer agents"
+              className="agent-search min-w-0 w-full max-w-[220px]"
+            />
+            {addButton}
+          </div>
+        )}
+      </div>
 
       <div className="space-y-3">
         <ErrorBanner
@@ -112,19 +135,10 @@ export default function RepresentativesTab() {
             icon={<PhoneForwarded size={20} />}
             title="No transfer agents yet"
             text="Add the people who should take a call when a lead is interested."
-            action={<Button className="btn-blue" onClick={() => router.push("/calling-agent/representatives/new")}>Add transfer agent</Button>}
+            action={addButton}
           />
         ) : reps.length > 0 ? (
           <>
-            <SearchInput
-              value={search}
-              onChange={(value) => {
-                setSearch(value);
-                pagination.setPage(1);
-              }}
-              placeholder="Search transfer agents"
-              className="agent-search w-full sm:max-w-sm"
-            />
             <div className="recent-table blue-table">
             <Table head={REPRESENTATIVE_COLUMNS.map((column) => column.label)} columns={REPRESENTATIVE_COLUMNS} label="Transfer agents">
               {filteredReps.length === 0 ? (
