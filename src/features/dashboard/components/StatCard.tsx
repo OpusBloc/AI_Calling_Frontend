@@ -75,14 +75,14 @@ export default function StatCard(props: OverviewProps | DashboardProps) {
   const { title, icon, tone, value, label, loading = false, href } = props;
 
   const content = (
-    <div className="rounded-2xl border border-hairline bg-surface p-1.5">
-      <div className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ${TONES[tone]}`}>
+    <div className="flex h-full min-w-0 flex-col rounded-2xl border border-hairline bg-surface p-4">
+      <div className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium ${TONES[tone]}`}>
         <span className="shrink-0" aria-hidden="true">
           {icon}
         </span>
         <span className="truncate">{title}</span>
       </div>
-      <div className="min-w-0 px-3 pb-2.5 pt-2">
+      <div className="min-w-0 flex-1 pt-3">
         <SkeletonBoundary loading={loading} skeleton={<DashboardStatValueSkeleton />}>
           <>
             <p className="truncate text-2xl font-bold tabular-nums font-numeric text-heading">{value}</p>
@@ -93,7 +93,7 @@ export default function StatCard(props: OverviewProps | DashboardProps) {
     </div>
   );
 
-  const className = `w-full min-w-0 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md motion-reduce:transition-none${href ? " block cursor-pointer" : ""}`;
+  const className = `block h-full w-full min-w-0 rounded-2xl transition-shadow duration-200 hover:shadow-md motion-reduce:transition-none${href ? " cursor-pointer" : ""}`;
 
   return href ? (
     <Link href={href} className={className}>

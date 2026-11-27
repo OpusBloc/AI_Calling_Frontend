@@ -318,6 +318,11 @@ export interface DispatchControlResponse {
 /** AI usage cost (Sarvam STT/LLM/TTS) in INR - GET /call-costs/summary */
 export interface CallCostSummary {
   calls: number;
+  calls_by_type?: {
+    total: number;
+    campaign: number;
+    test: number;
+  };
   seconds: number;
   turns?: number;
   user_turns?: number;

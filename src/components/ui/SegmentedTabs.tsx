@@ -16,6 +16,7 @@ type Props = {
   onChange: (id: string) => void;
   className?: string;
   ariaLabel?: string;
+  variant?: "steps" | "segmented";
 };
 
 export default function SegmentedTabs({
@@ -24,6 +25,7 @@ export default function SegmentedTabs({
   onChange,
   className,
   ariaLabel,
+  variant = "steps",
 }: Props) {
   const activeIndex = Math.max(
     0,
@@ -34,7 +36,12 @@ export default function SegmentedTabs({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={clsx("no-scrollbar flex gap-2 overflow-x-auto pb-1", className)}
+      className={clsx(
+        variant === "segmented"
+          ? "inline-flex h-10 items-center gap-0 rounded-lg border border-hairline bg-surface-input p-1"
+          : "no-scrollbar flex gap-2 overflow-x-auto pb-1",
+        className,
+      )}
     >
       {items.map((item, i) => {
         const active = i === activeIndex;
@@ -47,8 +54,16 @@ export default function SegmentedTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(item.id)}
-            className="group flex min-w-[96px] flex-1 flex-col gap-2 text-left"
+            className={clsx(
+              variant === "segmented"
+                ? "h-full rounded-md px-3 text-sm font-medium transition-colors"
+                : "group flex min-w-[96px] flex-1 flex-col gap-2 text-left",
+              variant === "segmented" && (active
+                ? "bg-surface text-heading shadow-sm"
+                : "text-muted hover:text-heading"),
+            )}
           >
+            {variant === "segmented" ? item.label : <>
             {/* Dash segment */}
             <span
               className={clsx(
@@ -76,6 +91,7 @@ export default function SegmentedTabs({
                 <span className="text-xs font-normal text-faint">optional</span>
               )}
             </span>
+            </>}
           </button>
         );
       })}

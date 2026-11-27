@@ -6,6 +6,7 @@
   import { formatMoney } from "@/components/ui";
   import { ChartSkeleton, DonutChartSkeleton } from "@/components/skeletons/chart-skeleton";
   import type { CallCostSummary } from "@/types/types";
+  import SegmentedTabs from "@/components/ui/SegmentedTabs";
 
   export type CostTrendPoint = { date: string; cost: number };
 
@@ -165,7 +166,7 @@ if (
       <div ref={chartRef} className="relative w-full min-w-0 max-w-full">
         <svg
           viewBox="0 0 500 270"
-          className="block h-auto w-full max-w-full"
+          className="block h-auto max-h-64 w-auto max-w-full"
           role="img"
           aria-label={shown.map((p) => `${p.label}: ${rupees(p.value, 2)}`).join(", ")}
         >
@@ -312,24 +313,15 @@ if (
 
     return (
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-heading">Cost trend</h3>
-          <div role="radiogroup" aria-label="Trend type" className="inline-flex rounded-md border border-hairline bg-surface-input p-0.5">
-            {(["cumulative", "daily"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={mode === m}
-                onClick={() => setMode(m)}
-                className={`h-7 rounded px-2.5 text-xs font-medium capitalize transition-colors ${
-                  mode === m ? "bg-surface text-heading shadow-sm" : "text-muted hover:text-heading"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            ariaLabel="Trend type"
+            variant="segmented"
+            activeId={mode}
+            onChange={(id) => setMode(id as "cumulative" | "daily")}
+            items={[{ id: "cumulative", label: "Cumulative" }, { id: "daily", label: "Daily" }]}
+          />
         </div>
 
         <div className="relative">
@@ -528,8 +520,8 @@ if (
     <div data-costsplit-ready={!loading && !trendLoading ? "true" : undefined} className={`relative z-0 grid min-w-0 grid-cols-1 items-stretch gap-4 overflow-visible ${stackUntil2xl ? "dashboard-cost-layout" : "xl:grid-cols-2"}`}>
 
       {/* Cost breakdown card */}
-      <section className="relative z-20 flex h-full min-w-0 flex-col overflow-visible rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
-        <h3 className="text-sm font-semibold text-heading">
+      <section className="relative z-20 flex h-full min-h-[340px] min-w-0 flex-col overflow-visible rounded-lg border border-hairline bg-surface p-4 shadow-sm">
+        <h3 className="flex h-10 shrink-0 items-center text-sm font-semibold text-heading">
           Where the cost goes
         </h3>
 
@@ -544,24 +536,24 @@ if (
         ) : grandTotal === 0 ? (
             <p className="py-4 text-center text-sm text-muted">No AI or Plivo spend yet.</p>
           ) : (
-            <div className="mt-4 min-w-0">
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-visible">
               <SemiDonut parts={allParts} grandTotal={grandTotal} totalLabel={centerLabel} caption={centerCaption} active={active} setActive={setActive} />
             </div>
           )}
       </section>
 
       {/* Cost trend card */}
-      <section className="relative z-0 h-full min-w-0 rounded-lg border border-hairline bg-surface p-4 shadow-sm sm:p-5">
+      <section className="relative z-0 flex h-full min-h-[340px] min-w-0 flex-col rounded-lg border border-hairline bg-surface p-4 shadow-sm">
         {trendLoading ? (
           <>
-            <h3 className="mb-3 text-sm font-semibold text-heading">Cost trend</h3>
+            <h3 className="flex h-10 shrink-0 items-center text-sm font-semibold text-heading">Cost trend</h3>
             <ChartSkeleton height="h-[240px]" bare />
           </>
         ) : trend && trend.length > 0 ? (
             <TrendChart data={trend} />
           ) : (
-          <div className="flex h-full min-h-[240px] flex-col items-center justify-center text-center">
-            <h3 className="text-sm font-semibold text-heading">
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <h3 className="flex h-10 items-center text-sm font-semibold text-heading">
               Cost trend
             </h3>
             <p className="mt-1 text-sm text-muted">

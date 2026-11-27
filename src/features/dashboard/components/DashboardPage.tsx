@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { DASHBOARD_CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
 import { TableSkeleton } from "@/components/skeletons";
+import SegmentedTabs from "@/components/ui/SegmentedTabs";
 
 
 const RECENT_HEAD = DASHBOARD_CAMPAIGN_COLUMNS.map((column) => column.label);
@@ -84,13 +85,13 @@ function DashboardPageContent() {
   const setupDone = steps.every((s) => s.done);
 
   return (
-    <div className="space-y-5 sm:space-y-8" data-dashboard-ready={dashboardReady ? "true" : undefined}>
+    <div className="space-y-6" data-dashboard-ready={dashboardReady ? "true" : undefined}>
       
       <div className="w-full overflow-visible">
         <h2 id="analytics-heading" className="mb-3 text-lg font-semibold text-heading">
         Analytics
       </h2>
-        <div className="grid w-full grid-cols-2 gap-3 overflow-visible sm:gap-4 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-2 items-stretch gap-4 overflow-visible lg:grid-cols-4">
           <CampaignsStatCard running={running} scheduled={scheduled} total={campaigns.data?.length} />
           <StatCard
             title="Agents"
@@ -241,12 +242,12 @@ function CostStatCard({
   tone: keyof typeof TONES;
 }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-surface p-1.5">
-      <div className={clsx("flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium", TONES[tone])}>
+    <div className="flex h-full flex-col rounded-2xl border border-hairline bg-surface p-4">
+      <div className={clsx("flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium", TONES[tone])}>
         <span className="shrink-0" aria-hidden>{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      <div className="px-3 pb-2.5 pt-2">
+      <div className="flex-1 pt-3">
         <div className="truncate text-2xl font-bold tabular-nums font-numeric text-heading">{value}</div>
         <p className="mt-1.5 text-xs text-muted">{hint}</p>
       </div>
@@ -270,43 +271,21 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
   const callDays = days > 0 ? days : s?.by_day?.length || 1; // "All time" uses the number of days with data
 
   return (
-    <section aria-labelledby="cost-heading" className="space-y-3" data-dashboard-costs-error={summary.isError ? "true" : undefined}>
+    <section aria-labelledby="cost-heading" className="space-y-4" data-dashboard-costs-error={summary.isError ? "true" : undefined}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="cost-heading" className="text-lg font-semibold text-heading">
             Call costs
           </h2>
         </div>
-<div
-  role="radiogroup"
-  aria-label="Period"
-  className="inline-flex rounded-md border border-[var(--dashboard-toggle-border)] bg-toggle p-0.5"
->
-  {PERIODS.map((p) => (
-    <button
-      key={p.days}
-      type="button"
-      role="radio"
-      aria-checked={days === p.days}
-      onClick={() => setDays(p.days)}
-      className={clsx(
-        "h-8 rounded px-3 text-sm font-medium transition-colors",
-        days === p.days
-          ? "bg-[var(--dashboard-toggle-active-bg)] text-[var(--dashboard-toggle-active-text)] shadow-sm"
-          : "text-[var(--dashboard-toggle-inactive-text)] hover:text-heading",
-      )}
-    >
-      {p.label}
-    </button>
-  ))}
-</div>
+<SegmentedTabs ariaLabel="Period" variant="segmented" activeId={String(days)} onChange={(id) => setDays(Number(id))} items={PERIODS.map((p) => ({ id: String(p.days), label: p.label }))} />
       </div>
 
       {summary.isError ? (
         <ErrorState title="Couldn't load call costs" message={(summary.error as Error).message} onRetry={() => summary.refetch()} />
       ) : (
         <>
-          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 [&>div]:min-w-0 [&>div>a]:relative [&>div>a]:z-0 [&>div>a]:shadow-sm [&>div>a]:transition-transform [&>div>a]:duration-200 [&>div>a:hover]:z-10 motion-safe:[&>div>a:hover]:scale-[1.01] [&>div>a:hover]:shadow-md [&>div>div]:relative [&>div>div]:z-0 [&>div>div]:shadow-sm [&>div>div]:transition-transform [&>div>div]:duration-200 [&>div>div:hover]:z-10 motion-safe:[&>div>div:hover]:scale-[1.01] [&>div>div:hover]:shadow-md motion-reduce:[&>div>a]:transition-none motion-reduce:[&>div>div]:transition-none [&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1">
+          <div className="grid min-w-0 grid-cols-2 items-stretch gap-4 sm:grid-cols-3 lg:grid-cols-5 [&>div]:min-w-0 [&>div>a]:h-full [&>div>a]:min-w-0 [&>div>a:hover]:shadow-md [&>div>div]:h-full [&>div>div:hover]:shadow-md [&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1">
 <div className="min-w-0">
   <CostStatCard
     tone="green"
@@ -328,10 +307,12 @@ function CostSection({ days, setDays }: { days: number; setDays: (d: number) => 
 <div className="min-w-0">
   <CostStatCard
     tone="pink"
-    label="Calls"
+    label="Total calls"
     icon={<PhoneCall size={20} />}
-    value={v(s?.calls.toLocaleString())}
-    hint={s ? `${Math.round(s.calls / callDays).toLocaleString()} calls per day on average` : undefined}
+    value={v((s?.calls_by_type?.total ?? s?.calls)?.toLocaleString())}
+    hint={s?.calls_by_type ? (
+      <span className="block whitespace-nowrap">{s.calls_by_type.campaign.toLocaleString()} campaign · {s.calls_by_type.test.toLocaleString()} test</span>
+    ) : s ? `${Math.round(s.calls / callDays).toLocaleString()} calls per day on average` : undefined}
   />
 </div>
 <div className="min-w-0">
