@@ -99,8 +99,11 @@ export default function DispatchPanel({ campaignId }: { campaignId: string }) {
     >
       <SkeletonBoundary loading={status.isLoading} skeleton={<DispatchStatsSkeleton />}>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {stats.map((s) => (
-              <div key={s.label} className="rounded-md bg-raised px-3 py-2.5">
+        {stats.map((s, index) => (
+              <div key={s.label} className={clsx(
+                "min-w-0 rounded-md bg-raised px-3 py-2.5",
+                stats.length % 2 === 1 && index === stats.length - 1 && "col-span-2 sm:col-span-1",
+              )}>
                 <dt className="text-xs text-muted">{s.label}</dt>
                 <dd
                   className={clsx(

@@ -9,7 +9,7 @@
   export type CostTrendPoint = { date: string; cost: number };
 
   export const rupees = (n: number | undefined, digits = 2) =>
-    n === undefined ? "—" : `₹${formatMoney(n, digits)}`;
+    n === undefined ? "-" : `₹${formatMoney(n, digits)}`;
 
   export type CostParts = {
     stt: number;
@@ -161,10 +161,10 @@ if (
     ]);
 
     return (
-      <div ref={chartRef} className="relative w-full min-w-0">
+      <div ref={chartRef} className="relative w-full min-w-0 max-w-full">
         <svg
           viewBox="0 0 500 270"
-          className="block h-auto w-full"
+          className="block h-auto w-full max-w-full"
           role="img"
           aria-label={shown.map((p) => `${p.label}: ${rupees(p.value, 2)}`).join(", ")}
         >
@@ -186,8 +186,16 @@ if (
             return (
               <g
                 key={a.key}
-                onMouseEnter={() => setActive(a.key)}
-                onMouseLeave={() => setActive(null)}
+                onPointerEnter={(event) => {
+                  if (event.pointerType === "mouse") setActive(a.key);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === "mouse") setActive(null);
+                }}
+                onClick={(event) => {
+                  const pointerType = (event.nativeEvent as PointerEvent).pointerType;
+                  setActive(pointerType === "mouse" ? a.key : active === a.key ? null : a.key);
+                }}
                 style={{ cursor: "pointer" }}
               >
                 <path
@@ -297,8 +305,6 @@ if (
     const h = hover !== null ? series[hover] : null;
     const hx = hover !== null ? pts[hover][0] : 0;
     const hy = hover !== null ? pts[hover][1] : 0;
-    const tipW = 148;
-    const tipX = Math.min(Math.max(hx - tipW / 2, PAD.l), TW - PAD.r - tipW);
     const singleBarWidth = Math.min(64, innerW);
     const singleBarHeight = Math.max(0, base - pts[0][1]);
     const singleBarX = x(0) - singleBarWidth / 2;
@@ -325,12 +331,15 @@ if (
           </div>
         </div>
 
+        <div className="relative">
         <svg
           viewBox={`0 0 ${TW} ${TH}`}
           className="w-full"
           role="img"
           aria-label={`${mode} cost over ${series.length} days, latest ${rupees(series[series.length - 1]?.value, 2)}`}
-          onMouseLeave={() => setHover(null)}
+          onPointerLeave={(event) => {
+            if (event.pointerType === "mouse") setHover(null);
+          }}
         >
           <defs>
             <linearGradient id={`g${gid}`} x1="0" y1="0" x2="0" y2="1">
@@ -381,10 +390,6 @@ if (
             <g pointerEvents="none">
               <line x1={hx} x2={hx} y1={PAD.t} y2={base} stroke="currentColor" className="text-hairline" />
               <circle cx={hx} cy={hy} r={5} strokeWidth={2.5} style={{ fill: "var(--surface)", stroke: "var(--series-1)" }} />
-              <rect x={tipX} y={Math.max(hy - 42, 2)} width={tipW} height={30} rx={8} style={{ fill: "var(--surface)", stroke: "var(--series-1)" }} />
-              <text x={tipX + tipW / 2} y={Math.max(hy - 42, 2) + 19} textAnchor="middle" fontSize="12" fontWeight="600" className="fill-current text-heading">
-                {h.date} · {rupees(h.value, 2)}
-              </text>
             </g>
           )}
 
@@ -394,13 +399,31 @@ if (
             width={innerW}
             height={innerH}
             fill="transparent"
-            onMouseMove={(e) => {
+            onPointerMove={(e) => {
+              const box = e.currentTarget.getBoundingClientRect();
+              const ratio = (e.clientX - box.left) / box.width;
+              setHover(Math.min(series.length - 1, Math.max(0, Math.round(ratio * (series.length - 1)))));
+            }}
+            onPointerDown={(e) => {
               const box = e.currentTarget.getBoundingClientRect();
               const ratio = (e.clientX - box.left) / box.width;
               setHover(Math.min(series.length - 1, Math.max(0, Math.round(ratio * (series.length - 1)))));
             }}
           />
         </svg>
+        {h && (
+          <div
+            role="status"
+            className="pointer-events-none absolute z-10 max-w-[calc(100%-16px)] -translate-x-1/2 truncate rounded-lg border border-[var(--series-1)] bg-surface px-3 py-2 text-sm font-semibold text-heading shadow-md sm:text-base"
+            style={{
+              left: `clamp(120px, ${(hx / TW) * 100}%, calc(100% - 120px))`,
+              top: `max(4px, calc(${(hy / TH) * 100}% - 56px))`,
+            }}
+          >
+            {h.date} · {rupees(h.value, 2)}
+          </div>
+        )}
+        </div>
       </div>
     );
   }

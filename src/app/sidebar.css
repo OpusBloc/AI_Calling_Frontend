@@ -2,6 +2,7 @@
   --ob-sidebar-expanded-width: 220px;
   --ob-sidebar-collapsed-width: 76px;
   --ob-sidebar-mobile-width: 280px;
+  --ob-sidebar-current-width: var(--ob-sidebar-expanded-width);
   --ob-sidebar-bg: var(--sidebar);
   --ob-page-bg: var(--sidebar-page);
   --ob-sidebar-border: var(--sidebar-border);
@@ -12,6 +13,20 @@
   --ob-sidebar-shadow: none;
   --ob-topbar-shadow: none;
   --ob-sidebar-transition: 300ms;
+}
+
+html[data-sidebar="collapsed"] {
+  --ob-sidebar-current-width: var(--ob-sidebar-collapsed-width);
+}
+
+.ob-drawer-offset-sidebar {
+  left: 0;
+}
+
+@media (min-width: 769px) {
+  .ob-drawer-offset-sidebar {
+    left: var(--ob-sidebar-current-width);
+  }
 }
 
 .ob-layout {
@@ -404,6 +419,14 @@ html[data-sidebar="collapsed"] .ob-layout {
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --ob-sidebar-current-width: var(--ob-sidebar-collapsed-width);
+  }
+
+  html[data-sidebar-open="true"] {
+    --ob-sidebar-current-width: var(--ob-sidebar-expanded-width);
+  }
+
   .ob-layout,
   html[data-sidebar="collapsed"] .ob-layout {
     grid-template-columns: var(--ob-sidebar-collapsed-width) minmax(0, 1fr);
@@ -551,6 +574,10 @@ html[data-sidebar="collapsed"] .ob-layout {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --ob-sidebar-current-width: 0px;
+  }
+
   .ob-layout,
   html[data-sidebar="collapsed"] .ob-layout {
     grid-template-columns: minmax(0, 1fr);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { Representative, RepresentativeInput, createRepresentative, updateRepresentative } from "@/lib/callingAgentApi";
@@ -56,15 +57,26 @@ export default function RepresentativeForm({ rep }: { rep: Representative | null
     <FormPage
       title={rep ? `Edit ${rep.name}` : "Add transfer agent"}
       description="When a lead is interested, the call rings active transfer agents in turn."
+      headerLeading={
+        <button
+          type="button"
+          aria-label="Back to Call Transfer"
+          title="Back to Call Transfer"
+          onClick={() => router.replace(backHref)}
+          className="btn-blue-filled mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+        </button>
+      }
       footer={
-        <>
-          <Button variant="secondary" className="btn-blue" onClick={() => router.replace(backHref)}>
+        <div className="mx-auto grid w-full min-w-0 max-w-sm grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 md:mx-0 md:w-auto md:max-w-none">
+          <Button variant="secondary" className="btn-blue h-11 w-full min-w-0 whitespace-normal px-1 text-center text-[11px] leading-tight sm:px-2 sm:text-sm" onClick={() => router.replace(backHref)}>
             Cancel
           </Button>
-          <Button className="btn-blue-filled" onClick={handleSave} disabled={!complete} loading={saving}>
+          <Button className="btn-blue-filled h-11 w-full min-w-0 whitespace-normal px-1 text-center text-[11px] leading-tight sm:px-2 sm:text-sm" onClick={handleSave} disabled={!complete} loading={saving}>
             {rep ? "Save changes" : "Add transfer agent"}
           </Button>
-        </>
+        </div>
       }
       error={error}
     >

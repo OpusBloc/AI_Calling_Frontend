@@ -1,4 +1,4 @@
-# Opus Bloc Admin — starter
+# Opus Bloc Admin - starter
 
 A slim copy of `admin\fractionalization-Admin-Frontend` for building a new
 feature on its own. It has the **same packages, folder layout, login flow,

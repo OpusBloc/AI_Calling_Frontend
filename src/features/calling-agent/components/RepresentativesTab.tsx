@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, PhoneForwarded, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, PhoneForwarded, Plus } from "lucide-react";
 
 import { showSuccessNotification } from "@/hooks/useNotification";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -21,9 +21,10 @@ import {
   ErrorBanner,
   ErrorState,
   IconButton,
-  Pagination,
+  SearchInput,
   SectionHeader,
   Table,
+  TableMessage,
   Toggle,
   errorMessage,
   formatDate,
@@ -46,9 +47,15 @@ export default function RepresentativesTab() {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const reps = data ?? [];
-  const pagination = usePagination(reps);
+  const query = search.trim().toLowerCase();
+  const filteredReps = query
+    ? reps.filter((rep) => [rep.name, rep.phone_e164, rep.active ? "active" : "inactive", formatDate(rep.updated_at)]
+        .some((value) => value.toLowerCase().includes(query)))
+    : reps;
+  const pagination = usePagination(filteredReps, 6);
 
   const run = async (id: string, action: () => Promise<unknown>, success: [title: string, message: string]) => {
     setBusyId(id);
@@ -109,9 +116,20 @@ export default function RepresentativesTab() {
           />
         ) : reps.length > 0 ? (
           <>
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pagination.setPage(1);
+              }}
+              placeholder="Search transfer agents"
+              className="agent-search w-full sm:max-w-sm"
+            />
             <div className="recent-table blue-table">
             <Table head={REPRESENTATIVE_COLUMNS.map((column) => column.label)} columns={REPRESENTATIVE_COLUMNS} label="Transfer agents">
-              {pagination.pageItems.map((rep) => (
+              {filteredReps.length === 0 ? (
+                <TableMessage cols={REPRESENTATIVE_COLUMNS.length}>No transfer agents match your search.</TableMessage>
+              ) : pagination.pageItems.map((rep) => (
                 <tr key={rep.id}>
                   <td className="px-4 py-3 font-medium text-heading">{rep.name}</td>
                   <td className="tnum whitespace-nowrap px-4 py-3 text-body">{rep.phone_e164}</td>
@@ -148,7 +166,27 @@ export default function RepresentativesTab() {
               ))}
             </Table>
             </div>
-            <Pagination {...pagination} noun="transfer agents" />
+            {filteredReps.length > 6 && (
+              <div className="flex items-center justify-between gap-3 text-sm text-muted">
+                <button
+                  type="button"
+                  onClick={() => pagination.setPage(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} aria-hidden /> Previous
+                </button>
+                <span aria-live="polite">Page {pagination.page} of {pagination.pageCount}</span>
+                <button
+                  type="button"
+                  onClick={() => pagination.setPage(pagination.page + 1)}
+                  disabled={pagination.page === pagination.pageCount}
+                  className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next <ChevronRight size={16} aria-hidden />
+                </button>
+              </div>
+            )}
           </>
         ) : null}
       </div>

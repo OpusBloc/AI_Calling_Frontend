@@ -28,6 +28,8 @@ export interface AgentDraft {
   llmModel: string;
   sttProvider: string;
   sttModel: string;
+  ttsProvider: string;
+  ttsModel: string;
   silenceCheckSeconds: number | null;
   silencePrompt: string;
   silenceHangupSeconds: number | null;
@@ -76,6 +78,8 @@ export const emptyDraft = (): AgentDraft => ({
   llmModel: "",
   sttProvider: "sarvam",
   sttModel: "",
+  ttsProvider: "sarvam",
+  ttsModel: "",
   silenceCheckSeconds: null,
   silencePrompt: "",
   silenceHangupSeconds: null,
@@ -100,6 +104,8 @@ export const draftFromAgent = (agent: Agent): AgentDraft => ({
   llmModel: agent.llm_model ?? "",
   sttProvider: agent.stt_provider ?? "sarvam",
   sttModel: agent.stt_model ?? "",
+  ttsProvider: agent.tts_provider ?? "sarvam",
+  ttsModel: agent.tts_model ?? "",
   silenceCheckSeconds: agent.silence_check_seconds ?? null,
   silencePrompt: agent.silence_prompt ?? "",
   silenceHangupSeconds: agent.silence_hangup_seconds ?? null,
@@ -135,6 +141,8 @@ export const loadDraft = (agentId: string | null): AgentDraft | null => {
       llmModel: parsed.llmModel ?? "",
       sttProvider: parsed.sttProvider || "sarvam",
       sttModel: parsed.sttModel ?? "",
+      ttsProvider: parsed.ttsProvider || "sarvam",
+      ttsModel: parsed.ttsModel ?? "",
       silenceCheckSeconds: parsed.silenceCheckSeconds ?? null,
       silencePrompt: parsed.silencePrompt ?? "",
       silenceHangupSeconds: parsed.silenceHangupSeconds ?? null,
@@ -231,6 +239,8 @@ export function toCreateForm(draft: AgentDraft): FormData {
   if (draft.llmModel) form.append("llm_model", draft.llmModel);
   if (draft.sttProvider) form.append("stt_provider", draft.sttProvider);
   if (draft.sttModel) form.append("stt_model", draft.sttModel);
+  if (draft.ttsProvider) form.append("tts_provider", draft.ttsProvider);
+  if (draft.ttsModel) form.append("tts_model", draft.ttsModel);
 
   if (
     draft.silenceCheckSeconds !== null &&
@@ -313,6 +323,12 @@ export function toUpdateForm(draft: AgentDraft, agent: Agent): FormData | null {
     form.append("stt_model", draft.sttModel);
   } else if (draft.sttModel !== (agent.stt_model ?? "")) {
     form.append("stt_model", draft.sttModel);
+  }
+  if (draft.ttsProvider !== (agent.tts_provider ?? "")) {
+    form.append("tts_provider", draft.ttsProvider);
+    form.append("tts_model", draft.ttsModel);
+  } else if (draft.ttsModel !== (agent.tts_model ?? "")) {
+    form.append("tts_model", draft.ttsModel);
   }
 
   if (draft.silenceCheckSeconds !== (agent.silence_check_seconds ?? null)) {

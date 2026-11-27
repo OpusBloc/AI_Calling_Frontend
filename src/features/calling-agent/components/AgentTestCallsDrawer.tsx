@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, AudioLines, ChevronRight, ClipboardList } from "lucide-react";
+import { ArrowLeft, AudioLines, ChevronRight, ClipboardList, Copy } from "lucide-react";
 
 import { getAgentTestCalls } from "@/lib/callingAgentApi";
 import { Badge, Drawer, EmptyState, ErrorState, errorMessage } from "@/components/ui";
@@ -36,7 +36,7 @@ function removeHiddenFields(value: unknown): unknown {
 }
 
 function displayValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "-";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
   return JSON.stringify(removeHiddenFields(value), null, 2);
 }
@@ -175,7 +175,7 @@ export default function AgentTestCallsDrawer({ agentId, onClose }: { agentId: st
         <ErrorState title="Couldn't load test calls" message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
       ) : selectedRecord ? (
         <div className="space-y-4">
-          <button type="button" onClick={() => setSelectedIndex(null)} className="inline-flex h-9 items-center gap-2 rounded-md border border-hairline px-3 text-sm font-medium text-heading hover:bg-blue-50 dark:hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+          <button type="button" onClick={() => setSelectedIndex(null)} className="btn-blue-filled inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
             <ArrowLeft size={16} aria-hidden /> Back to test calls
           </button>
           <TestCallRecordDetails record={selectedRecord} index={selectedIndex!} />
@@ -236,6 +236,7 @@ function TestCallRecordDetails({ record, index }: { record: DataRecord; index: n
       {audioUrl && (
         <div className="space-y-2">
           <h5 className="flex items-center gap-2 text-xs font-medium text-muted"><AudioLines size={14} /> Recording</h5>
+          <RecordingUrl value={audioUrl} />
           <audio className="w-full" controls preload="none" src={audioUrl}>Your browser does not support audio playback.</audio>
         </div>
       )}
@@ -258,5 +259,35 @@ function TestCallRecordDetails({ record, index }: { record: DataRecord; index: n
         </section>
       ))}
     </article>
+  );
+}
+
+function RecordingUrl({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="flex items-start gap-2">
+      <a href={value} target="_blank" rel="noreferrer" className="min-w-0 break-all text-xs text-info hover:underline">
+        {value}
+      </a>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1800);
+          } catch {
+            setCopied(false);
+          }
+        }}
+        aria-label="Copy recording URL"
+        title={copied ? "Copied" : "Copy recording URL"}
+        className="shrink-0 rounded-md border border-blue-200 bg-blue-50 p-1.5 text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+      >
+        <Copy size={14} aria-hidden />
+      </button>
+      {copied && <span role="status" className="sr-only">Recording URL copied</span>}
+    </div>
   );
 }

@@ -9,8 +9,8 @@ import { SidebarProvider } from "@/context/SidebarContext";
 
 
 export const metadata: Metadata = {
-  title: "Opus Bloc Admin",
-  description: "Admin console",
+  title: "Opus Bloc User",
+  description: "User console",
 };
 
 // Apply the saved theme before first paint so dark mode doesn't flash light

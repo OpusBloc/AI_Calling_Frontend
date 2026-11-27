@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 
+import { getUserIdFromToken } from "@/lib/auth";
 import { getCampaign, getPlivoPool } from "@/lib/api";
 import { getAgent, getRepresentative } from "@/lib/callingAgentApi";
 import { Skeleton } from "@/components/skeletons";
@@ -26,7 +27,7 @@ export default function AppBreadcrumb() {
   const agent = useQuery({ queryKey: ["agents", "crumb", agentId], queryFn: () => getAgent(agentId as string), enabled: Boolean(agentId && agentId !== "new") });
   const representative = useQuery({ queryKey: ["representatives", "crumb", representativeId], queryFn: () => getRepresentative(representativeId as string), enabled: Boolean(representativeId && representativeId !== "new") });
   const campaign = useQuery({ queryKey: ["campaigns", campaignId], queryFn: () => getCampaign(campaignId as string), enabled: Boolean(campaignId && campaignId !== "new"), retry: false });
-  const pool = useQuery({ queryKey: ["plivo-pools", poolId], queryFn: () => getPlivoPool(poolId as string), enabled: Boolean(poolId && poolId !== "new"), retry: false });
+  const pool = useQuery({ queryKey: ["plivo-pools", getUserIdFromToken(), poolId], queryFn: () => getPlivoPool(poolId as string), enabled: Boolean(poolId && poolId !== "new"), retry: false });
 
   if (!current) return null;
 

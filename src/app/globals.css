@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================================
-   Opus Bloc Design System — token layer
+   Opus Bloc Design System - token layer
    Ported from the design-system project (`_ds/opus-bloc-design-system-58703bb5`).
 
    The admin is LIGHT-FIRST: `:root` carries the design system's
@@ -11,7 +11,7 @@
    `.dark` uses the shared dark-blue palette defined below.
    `.dark` is toggled on <html> by Navbar.tsx.
 
-   Only semantic tokens flip between themes — the brand scales below do not.
+   Only semantic tokens flip between themes - the brand scales below do not.
    Use the semantic aliases in components, never the raw scales.
    ========================================================================== */
 
@@ -106,6 +106,8 @@
   --fields-input: #eaf2fd;
   --fields-input-border: rgba(22, 119, 232, 0.35);
   --fields-ring: rgba(22, 119, 232, 0.35);
+  --agent-search-bg: #eaf2fd;
+  --agent-search-border: rgba(22, 119, 232, 0.35);
   --fields-raised: #f3f8fe;
   --fields-hover: #eaf2fc;
   --scrollbar-thumb: #94a3b8;
@@ -264,6 +266,8 @@
   --primary-hover: #3B7BF5;
   --primary-soft: #1B3463;
   --primary-soft-text: #9EC0FF;
+  --agent-search-bg: rgba(47, 111, 235, 0.18);
+  --agent-search-border: rgba(78, 142, 255, 0.5);
   --ring: #4C8DFF;
   --success: #5AD79A;
   --success-soft: rgba(52,199,123,.14);
@@ -485,6 +489,14 @@
   transform: translateY(-1px);
 }
 
+.voice-import-action {
+  box-shadow: var(--button-shadow) !important;
+}
+
+.voice-import-action:hover {
+  box-shadow: var(--button-shadow-hover) !important;
+}
+
 .btn-blue-filled {
   background: var(--btn-blue-filled) !important;
   background-image: none !important;
@@ -518,7 +530,7 @@
 }
 
 
-/* Blue form fields — scoped styling */
+/* Blue form fields - scoped styling */
 .blue-fields {
   --surface-input: var(--fields-input);
   --input-glow: var(--fields-ring);
@@ -696,7 +708,7 @@ font-family:
   text-rendering: optimizeLegibility;
 }
 
-/* Tabular figures. Every money / percentage / token count / address uses this —
+/* Tabular figures. Every money / percentage / token count / address uses this -
    it is what keeps columns of numbers aligned and is core to the brand voice. */
 .tnum {
   font-family: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
@@ -747,7 +759,7 @@ font-family:
   color: var(--text-body);
 }
 
-/* Mono eyebrow label — the design system's small uppercase caption */
+/* Mono eyebrow label - the design system's small uppercase caption */
 .eyebrow {
   font-family: var(--font-plex-mono, ui-monospace), "SF Mono", monospace;
   font-size: 0.6875rem;
@@ -824,7 +836,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Slide-over drawer (right edge) and its backdrop. Used for the property edit
-   panel, which is a long form — a drawer keeps the page visible behind it and
+   panel, which is a long form - a drawer keeps the page visible behind it and
    gives the form full height instead of a capped 90vh centred box. */
 @keyframes slide-in-right {
   from {
@@ -923,7 +935,7 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Sidebar nav list — token-driven scrollbar, and rows that hold their height.
+/* Sidebar nav list - token-driven scrollbar, and rows that hold their height.
    The nav is a flex column, so its children default to `flex-shrink: 1`: when a
    collapsible group expands, the browser squashes every sibling row to fit
    before it will scroll. Pinning shrink to 0 keeps each row at its own height
@@ -996,6 +1008,15 @@ summary {
   cursor: pointer;
 }
 
+button:not(:disabled) {
+  transition-property: scale, background-color, border-color, color, box-shadow;
+  transition-duration: 160ms;
+}
+
+button:not(:disabled):hover {
+  scale: 1.04;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1019,6 +1040,25 @@ summary {
   isolation: isolate;
   /* Same as Tailwind's rounded-md in this theme (--radius-md is inlined, not a CSS var) */
   border-radius: 10px;
+}
+
+.agent-search input {
+  background-color: var(--agent-search-bg);
+  border-color: var(--agent-search-border);
+}
+
+.agent-search input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+
+.agent-search > svg {
+  color: var(--primary);
+}
+
+.agent-search > button:hover {
+  background-color: var(--primary-tint);
+  color: var(--primary);
 }
 
 /* Hide the browser's native search clear control; SearchInput provides its own. */
@@ -1168,6 +1208,11 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 /*  ------------------Tabs UI design---------------------*/
+svg:focus,
+svg *:focus {
+  outline: none;
+}
+
 .tab-active::after {
   content: "";
   position: absolute;

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Megaphone, Pencil, Plus } from "lucide-react";
 
 import { deleteCampaign } from "@/lib/api";
 import type { Campaign, Weekday } from "@/types/types";
@@ -19,7 +19,6 @@ import {
   LinkRow,
   Pagination,
   SearchInput,
-  Select,
   Table,
   TableMessage,
   StatusBadge,
@@ -31,11 +30,12 @@ import { CAMPAIGN_STATUSES } from "./CampaignForm";
 import { CampaignsTableSkeleton } from "@/components/skeletons";
 import { useSkeletonVisibility } from "@/components/skeletons";
 import { CAMPAIGN_COLUMNS } from "@/components/skeletons/table-columns";
+import SelectMenu from "@/components/SelectMenu";
 
 const HEAD = CAMPAIGN_COLUMNS.map((column) => column.label);
 
 export const formatWindow = (start?: string | null, end?: string | null) =>
-  start || end ? `${start?.slice(0, 5) ?? "—"} – ${end?.slice(0, 5) ?? "—"}` : "Any time";
+  start || end ? `${start?.slice(0, 5) ?? "-"} – ${end?.slice(0, 5) ?? "-"}` : "Any time";
 
 export const WEEKDAYS: { id: Weekday; short: string }[] = [
   { id: "monday", short: "Mon" },
@@ -73,7 +73,7 @@ export default function CampaignsTab() {
   const filtered = all.filter(
     (c) => (status === "all" || c.status === status) && (!term || c.name.toLowerCase().includes(term)),
   );
-  const pagination = usePagination(filtered);
+  const pagination = usePagination(filtered, 6);
 
   const remove = useMutation({
     mutationFn: (campaign: Campaign) => deleteCampaign(campaign.id),
@@ -92,7 +92,7 @@ export default function CampaignsTab() {
     if (ok) remove.mutate(campaign);
   };
   const newButton = (
-    <Button className="btn-blue-filled" onClick={() => router.push("/campaigns/new")}>
+    <Button className="btn-blue-filled w-full sm:w-auto" onClick={() => router.push("/campaigns/new")}>
       <Plus size={16} aria-hidden /> New campaign
     </Button>
   );
@@ -114,22 +114,28 @@ export default function CampaignsTab() {
 
   return (
     <section className="blue-fields space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        aria-label="Back to dashboard"
+        title="Back to dashboard"
+        onClick={() => router.push("/")}
+        className="btn-blue-filled inline-flex size-10 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <ArrowLeft size={18} aria-hidden="true" />
+      </button>
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Search campaigns" className="w-full sm:w-72" />
-        <Select
-          aria-label="Filter by status"
+        <SelectMenu
+          label="Filter by status"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={setStatus}
+          options={[
+            { value: "all", label: "All statuses" },
+            ...CAMPAIGN_STATUSES.map((s) => ({ value: s, label: humanize(s) })),
+          ]}
           className="w-full sm:w-44"
-        >
-          <option value="all">All statuses</option>
-          {CAMPAIGN_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {humanize(s)}
-            </option>
-          ))}
-        </Select>
-        <div className="ml-auto">{newButton}</div>
+        />
+        <div className="w-full sm:ml-auto sm:w-auto">{newButton}</div>
       </div>
 
       <Table head={HEAD} columns={CAMPAIGN_COLUMNS} label="Campaigns" className="blue-table" loading={campaigns.isLoading || showCampaignSkeleton} skeleton={<CampaignsTableSkeleton />}>
@@ -157,13 +163,13 @@ export default function CampaignsTab() {
               <td className="px-4 py-3">
                 <StatusBadge status={c.status} />
               </td>
-              <td className="px-4 py-3 text-body">{agentName.get(c.agent_id) ?? <span className="text-faint">—</span>}</td>
+              <td className="px-4 py-3 text-body">{agentName.get(c.agent_id) ?? <span className="text-faint">-</span>}</td>
               <td className="whitespace-nowrap px-4 py-3">
                 <span className="tnum block text-body">{formatWindow(c.window_start, c.window_end)}</span>
                 <span className="text-xs text-muted">{formatDays(c.call_days)}</span>
               </td>
               <td className="tnum px-4 py-3 text-body">{c.concurrent_calls ?? c.concurrency_limit}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted">{c.start_at ? formatDate(c.start_at) : "—"}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted">{c.start_at ? formatDate(c.start_at) : "-"}</td>
               <td className="px-4 py-2">
                 <div className="flex items-center justify-end gap-2">
                   <IconButton label={`Edit ${c.name}`} className="h-8 w-8 p-1 [&>svg]:h-[18px] [&>svg]:w-[18px]" onClick={() => router.push(`/campaigns/${c.id}/edit`)}>
@@ -179,7 +185,7 @@ export default function CampaignsTab() {
           ))
         )}
       </Table>
-      <Pagination {...pagination} noun="campaigns" />
+      <Pagination {...pagination} noun="campaigns" mobileCompact />
     </section>
   );
 }

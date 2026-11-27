@@ -62,6 +62,7 @@ export function EditLoadState({
 export function FormPage({
   title,
   description,
+  headerLeading,
   children,
   footer,
   showHeaderActions = true,
@@ -71,6 +72,7 @@ export function FormPage({
 }: {
   title: string;
   description?: string;
+  headerLeading?: ReactNode;
   children: ReactNode;
   footer: ReactNode;
   showHeaderActions?: boolean;
@@ -87,13 +89,16 @@ export function FormPage({
           showHeaderActions && "justify-between",
         )}
       >
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
-          )}
+        <div className="flex min-w-0 items-start gap-3">
+          {headerLeading}
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-heading sm:text-[28px]">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
+            )}
+          </div>
         </div>
         {showHeaderActions && (
           <div className="hidden items-center gap-2 md:flex ">{footer}</div>
@@ -108,7 +113,7 @@ export function FormPage({
       <div
         data-sticky-form-footer
         className={clsx(
-          "sticky z-10 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 py-3 backdrop-blur-md  -mx-10 sm:-mx-10 sm:pl-6 sm:pr-10  lg:-mx-10 lg:pl-10 lg:pr-10",
+          "sticky z-10 flex flex-wrap justify-end gap-2 border-t border-hairline bg-canvas/85 px-4 py-3 backdrop-blur-md -mx-4 sm:-mx-4 sm:px-4 lg:-mx-8 lg:px-0 lg:pl-10 lg:pr-10",
           flushFooterToBottom ? "bottom-[-20px]" : "bottom-0",
         )}
       >

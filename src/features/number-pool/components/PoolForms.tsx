@@ -97,7 +97,7 @@ export function PlivoPoolForm({ pool }: { pool: PlivoPool | null }) {
               selected={selected}
               onChange={setSelected}
               error={numbersError}
-              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed — use “Sync numbers” if one is missing.`}
+              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed - use “Sync numbers” if one is missing.`}
             />
           </section>
         </div>
@@ -121,7 +121,7 @@ export function PlivoPoolForm({ pool }: { pool: PlivoPool | null }) {
               selected={selected}
               onChange={setSelected}
               error={numbersError}
-              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed — use “Sync numbers” if one is missing.`}
+              hint={`${choices.length} number${choices.length === 1 ? "" : "s"} available. Numbers already in another pool aren't listed - use “Sync numbers” if one is missing.`}
             />
           </FormSection>
         </div>

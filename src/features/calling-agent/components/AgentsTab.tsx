@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, PenLine, Plus } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, PenLine, Plus } from "lucide-react";
 
 import { loadDraft } from "@/lib/agentDraft";
 import { Agent, deleteAgent, listAgents, listVoiceCatalog } from "@/lib/callingAgentApi";
@@ -17,9 +17,10 @@ import {
   ErrorBanner,
   ErrorState,
   LinkRow,
-  Pagination,
+  SearchInput,
   SectionHeader,
   Table,
+  TableMessage,
   errorMessage,
   formatDate,
   usePagination,
@@ -38,10 +39,21 @@ export default function AgentsTab() {
   const { data: voiceCatalog } = useQuery({ queryKey: voiceCatalogKey, queryFn: listVoiceCatalog, retry: false });
   const showLoadingSkeleton = useSkeletonVisibility(loading && !data);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [newDraft] = useState(() => loadDraft(null));
 
   const agents = data ?? [];
-  const pagination = usePagination(agents);
+  const query = search.trim().toLowerCase();
+  const filteredAgents = query
+    ? agents.filter((agent) => {
+        const speaker = agent.voice
+          ? voiceCatalog?.voices.find((voice) => voice.voice_id === agent.voice)?.speaker
+          : "";
+        return [agent.name, agent.llm_model, agent.stt_model, agent.voice, speaker]
+          .some((value) => value?.toLowerCase().includes(query));
+      })
+    : agents;
+  const pagination = usePagination(filteredAgents, 6);
   const newAgentLabel = newDraft ? "Continue draft" : "New agent";
 
   const handleDelete = async (agent: Agent) => {
@@ -86,7 +98,7 @@ const newButton = (
         ) : (loading && !data) || showLoadingSkeleton ? (
           <Table head={AGENT_COLUMNS.map((column) => column.label)} columns={AGENT_COLUMNS} loading skeleton={<TableSkeleton columns={AGENT_COLUMNS} rows={6} />}>
           </Table>
-        ) : agents.length === 0 ? (
+          ) : agents.length === 0 ? (
           <EmptyState
             icon={<Bot size={20} />}
             title="No agents yet"
@@ -95,41 +107,68 @@ const newButton = (
           />
         ) : (
           <>
+            <SearchInput
+              value={search}
+              onChange={(value) => {
+                setSearch(value);
+                pagination.setPage(1);
+              }}
+              placeholder="Search agents"
+              className="agent-search w-full sm:max-w-sm"
+            />
             <div className="recent-table blue-table">
-    <Table head={AGENT_COLUMNS.map((column) => column.label)} columns={AGENT_COLUMNS} label="Agents">
-              {pagination.pageItems.map((agent) => {
-                const hasDraft = !!loadDraft(agent.id);
-                return (
-                  <LinkRow key={agent.id} href={`/calling-agent/agents/${agent.id}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 font-medium text-heading">
-                        {agent.name}
-                        {hasDraft && <Badge tone="neutral">Unsaved changes</Badge>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-body">
-                      {agent.llm_model || "_"}
-                    </td>
-                    <td className="px-4 py-3 text-body">
-                      {agent.stt_model || "_"}
-                    </td>
-                    <td className="px-4 py-3 text-body">
-                      {agent.voice
-                        ? voiceCatalog?.voices.find((voice) => voice.voice_id === agent.voice)?.speaker ?? agent.voice
-                        : "_"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(agent.updated_at)}</td>
-                    <td className="px-4 py-2">
-                      <div className="flex justify-end">
-                        <DeleteIconButton onClick={() => handleDelete(agent)} />
-                      </div>
-                    </td>
-                  </LinkRow>
-                );
-              })}
-            </Table>
+              <Table head={AGENT_COLUMNS.map((column) => column.label)} columns={AGENT_COLUMNS} label="Agents">
+                {filteredAgents.length === 0 ? (
+                  <TableMessage cols={AGENT_COLUMNS.length}>No agents match your search.</TableMessage>
+                ) : pagination.pageItems.map((agent) => {
+                  const hasDraft = !!loadDraft(agent.id);
+                  return (
+                    <LinkRow key={agent.id} href={`/calling-agent/agents/${agent.id}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2 font-medium text-heading">
+                          {agent.name}
+                          {hasDraft && <Badge tone="neutral">Unsaved changes</Badge>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-body">{agent.llm_model || "_"}</td>
+                      <td className="px-4 py-3 text-body">{agent.stt_model || "_"}</td>
+                      <td className="px-4 py-3 text-body">
+                        {agent.voice
+                          ? voiceCatalog?.voices.find((voice) => voice.voice_id === agent.voice)?.speaker ?? agent.voice
+                          : "_"}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted">{formatDate(agent.updated_at)}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex justify-end">
+                          <DeleteIconButton onClick={() => handleDelete(agent)} />
+                        </div>
+                      </td>
+                    </LinkRow>
+                  );
+                })}
+              </Table>
             </div>
-            <Pagination {...pagination} noun="agents" />
+            {filteredAgents.length > 6 && (
+              <div className="flex items-center justify-between gap-3 text-sm text-muted">
+                <button
+                  type="button"
+                  onClick={() => pagination.setPage(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} aria-hidden /> Previous
+                </button>
+                <span aria-live="polite">Page {pagination.page} of {pagination.pageCount}</span>
+                <button
+                  type="button"
+                  onClick={() => pagination.setPage(pagination.page + 1)}
+                  disabled={pagination.page === pagination.pageCount}
+                  className="btn-blue-filled inline-flex min-h-10 items-center gap-1 rounded-md px-4 font-medium disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next <ChevronRight size={16} aria-hidden />
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

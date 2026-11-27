@@ -34,7 +34,7 @@ export default function SegmentedTabs({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={clsx("flex gap-2 overflow-x-auto pb-1", className)}
+      className={clsx("no-scrollbar flex gap-2 overflow-x-auto pb-1", className)}
     >
       {items.map((item, i) => {
         const active = i === activeIndex;

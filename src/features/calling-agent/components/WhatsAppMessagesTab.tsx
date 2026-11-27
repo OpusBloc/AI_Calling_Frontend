@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, History, MessageSquare } from "lucide-react";
 
 import {
   getWhatsAppDelivery,
@@ -35,6 +36,7 @@ const deliveryTone = (status: string): "gain" | "info" | "warn" | "loss" | "neut
 };
 
 export default function WhatsAppMessagesTab() {
+  const router = useRouter();
   const { data, error, isLoading, refetch } = useWhatsAppMessages();
 
   const [deliveryView, setDeliveryView] = useState<DeliveryView | null>(null);
@@ -93,6 +95,17 @@ export default function WhatsAppMessagesTab() {
     <section className="blue-fields">
       <SectionHeader
         title="WhatsApp messages"
+        leading={(
+          <button
+            type="button"
+            aria-label="Back to Calling Agent"
+            title="Back to Calling Agent"
+            onClick={() => router.push("/?tab=calling-agent")}
+            className="btn-blue-filled inline-flex size-10 shrink-0 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ArrowLeft size={18} aria-hidden="true" />
+          </button>
+        )}
         description="Template messages agents can send to the customer during or after a call. Attach them to an agent."
         action={
           <Button variant="secondary" className="btn-blue" onClick={openDeliveryActivity}>
@@ -115,19 +128,21 @@ export default function WhatsAppMessagesTab() {
           />
         ) : (
           <>
-            <Table head={TEMPLATE_COLUMNS.map((column) => column.label)} columns={TEMPLATE_COLUMNS} label="WhatsApp messages" className="blue-table">
-              {messages.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-4 py-3 font-medium text-heading">{m.name}</td>
-                  <td className="px-4 py-3 text-body">{m.template_id}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">
-                    {m.updated_at
-                      ? new Date(m.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </Table>
+            <div className="no-scrollbar max-h-[480px] overflow-y-auto overscroll-contain md:max-h-[340px]">
+              <Table head={TEMPLATE_COLUMNS.map((column) => column.label)} columns={TEMPLATE_COLUMNS} label="WhatsApp messages" className="blue-table">
+                {messages.map((m) => (
+                  <tr key={m.id}>
+                    <td className="px-4 py-3 font-medium text-heading">{m.name}</td>
+                    <td className="px-4 py-3 text-body">{m.template_id}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-muted">
+                      {m.updated_at
+                        ? new Date(m.updated_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
           </>
         )}
       </div>
@@ -212,7 +227,7 @@ function DeliveryDetails({ delivery, content }: { delivery: WhatsAppDelivery; co
       <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <DeliveryField label="Recipient" value={delivery.recipient} />
         <DeliveryField label="Template ID" value={delivery.template_id} />
-        <DeliveryField label="Twilio message SID" value={delivery.twilio_message_sid || "—"} />
+        <DeliveryField label="Twilio message SID" value={delivery.twilio_message_sid || "-"} />
         <DeliveryField label="Created" value={formatDate(delivery.created_at)} />
         <DeliveryField label="Updated" value={formatDate(delivery.updated_at)} />
       </dl>

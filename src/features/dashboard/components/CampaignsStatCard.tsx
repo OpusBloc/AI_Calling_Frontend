@@ -26,7 +26,7 @@ export default function CampaignsStatCard({ running, scheduled, total: rawTotal,
       title="Campaigns"
       icon={<Megaphone size={22} />}
       tone="pink"
-      value={loading ? "—" : total}
+      value={loading ? "-" : total}
       label={`${activeCount} active`}
       loading={loading}
       href="/campaigns"

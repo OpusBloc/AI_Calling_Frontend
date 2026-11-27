@@ -65,18 +65,18 @@ export default function AgentPromptTab({
             type="button"
             onClick={() => goToPromptIndex(promptIndex - 1)}
             disabled={promptIndex === 0}
-            className="order-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] px-2 text-sm font-semibold text-[#2f5bea] transition-colors hover:bg-[#eef2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-[#7d879c] disabled:hover:bg-transparent sm:order-none sm:col-start-1 sm:row-start-1 sm:w-fit sm:justify-self-start sm:px-3.5"
+            className="btn-blue-filled order-2 inline-flex h-9 w-fit max-w-full items-center justify-self-start gap-1.5 rounded-lg px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:order-none sm:col-start-1 sm:row-start-1 sm:px-3"
           >
-            <ArrowLeft size={16} strokeWidth={2.2} /> Previous section
+            <ArrowLeft size={14} strokeWidth={2.2} /> Previous section
           </button>
 
           <button
             type="button"
             onClick={() => goToPromptIndex(promptIndex + 1)}
             disabled={promptIndex === AGENT_PARTS.length - 1}
-            className="order-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] px-2 text-sm font-semibold text-[#2f5bea] transition-colors hover:bg-[#eef2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-[#7d879c] disabled:hover:bg-transparent sm:order-none sm:col-start-3 sm:row-start-1 sm:w-fit sm:justify-self-end sm:px-3.5"
+            className="btn-blue-filled order-3 inline-flex h-9 w-fit max-w-full items-center justify-self-end gap-1.5 rounded-lg px-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f5bea] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:order-none sm:col-start-3 sm:row-start-1 sm:px-3"
           >
-            Next section <ArrowRight size={16} strokeWidth={2.2} />
+            Next section <ArrowRight size={14} strokeWidth={2.2} />
           </button>
         </nav>
 
